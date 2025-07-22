@@ -1,0 +1,13 @@
+#Librerias que utiliza la parte de python
+#para su funcionamiento
+opencv-python
+numpy
+pillow
+face_recognition
+pymongo
+flask
+flask_cors
+dlib
+flask-cors
+requests
+dotenv

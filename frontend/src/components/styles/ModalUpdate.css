@@ -1,0 +1,113 @@
+.cvcard-modal {
+  position: relative;
+  width: 400px;
+  max-width: 95vw;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  padding: 32px 28px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: "Poppins", sans-serif;
+  animation: modalZoomIn 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.cvcard-modal-scroll {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.cvcard-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.cvcard-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 10px;
+  margin-top: 0;
+  border: 3px solid #e0e0e0;
+}
+
+.cvcard-nombre {
+  font-size: 22px;
+  font-weight: 500;
+  color: #444;
+  margin-bottom: 0;
+  text-align: center;
+  margin-top: 8px;
+  width: 100%;
+  word-break: break-word;
+}
+
+.cvcard-info {
+  width: 100%;
+  margin-top: 18px;
+}
+
+.cvcard-info-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.cvcard-info-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: #222;
+}
+
+.cvcard-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.cvcard-action-btn {
+  background: #f5f5f5;
+  border: none;
+  border-radius: 50%;
+  padding: 7px;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cvcard-action-btn:hover {
+  background: #e0e0e0;
+}
+
+.cvcard-info-group {
+  margin-bottom: 7px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cvcard-label {
+  font-size: 13px;
+  color: #b0b0b0;
+  margin-bottom: 1px;
+}
+
+.cvcard-value {
+  font-size: 15px;
+  color: #222;
+  font-weight: 400;
+}
+
+@media (max-width: 500px) {
+  .cvcard-modal {
+    width: 98vw;
+    padding: 16px 4px 16px 4px;
+  }
+}

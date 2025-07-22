@@ -1,0 +1,92 @@
+/* Contenedor general */
+.dashboard-home-container {
+  padding: 2rem;
+  background-color: #f8f9fb00;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  color: #333;
+}
+
+/* Título de bienvenida */
+.dashboard-home-container h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+}
+
+/* Contenedor de widgets superiores */
+.dashboard-widgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Tarjetas generales */
+.widget {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Gráfico de barras */
+.widget-bar-chart {
+  min-height: 150px;
+}
+
+/* Día actual */
+.widget-day h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #000;
+}
+
+.widget-day .day-number {
+  font-size: 2.8rem;
+  font-weight: bold;
+  color: #7b8494;
+  margin-top: 0.5rem;
+}
+
+/* Progreso circular */
+.widget-progress .progress-circle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 10px solid #ccc;
+  border-top-color: #0052cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 1rem;
+  transform: rotate(45deg); /* da efecto circular parcial */
+}
+
+.widget-progress .progress-fill {
+  position: absolute;
+  font-size: 1.2rem;
+  font-weight: bold;
+  transform: rotate(-45deg); /* corrige texto */
+  color: #000;
+}
+
+.widget-progress p {
+  font-size: 0.95rem;
+  text-align: center;
+  margin: 0;
+  color: #555;
+}
+
+/* Gráfico de líneas */
+.widget-line-chart {
+  min-height: 250px;
+  text-align: center;
+  padding: 1rem;
+}

@@ -1,0 +1,16 @@
+
+
+
+.admin-main-content {
+  flex: 1;
+  background-color: #ffffff00;
+  transition: margin-left 0.3s ease;
+}
+
+
+@media (max-width: 768px) {
+  .admin-main-content {
+    margin-top: 4rem; 
+    width: 100%;
+  }
+}

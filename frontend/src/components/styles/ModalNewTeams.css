@@ -1,0 +1,147 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@keyframes modalZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.new-coordinador-form {
+  position: relative;
+  width: 600px;
+  max-width: 95vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 35px;
+  background-color: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  font-family: "Poppins", sans-serif;
+  box-sizing: border-box;
+  animation: modalZoomIn 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.close-modal {
+  position: absolute;
+  top: 18px;
+  right: 25px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #888;
+  cursor: pointer;
+  z-index: 2;
+  padding: 0;
+  line-height: 1;
+}
+
+.close-modal:hover {
+  color: #222;
+}
+
+.new-coordinador-form h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #222;
+  font-weight: 500;
+}
+
+.form-field {
+  margin-bottom: 18px;
+}
+
+.form-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #555;
+}
+
+.form-field input,
+.form-field select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-field select {
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  border-color: #888;
+}
+
+.btn-guardar {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background-color: #9fa1aa;
+  color: #ffffff;
+  border-radius: 25px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.btn-guardar:hover {
+  background-color: #878a91;
+}
+
+.btn-abrir-modal {
+  padding: 10px 20px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.btn-abrir-modal:hover {
+  background-color: #357ab8;
+}
+
+@media (max-width: 700px) {
+  .new-coordinador-form {
+    width: 98vw;
+    padding: 18px 8px;
+    min-width: unset;
+  }
+  .close-modal {
+    top: 10px;
+    right: 10px;
+    font-size: 24px;
+  }
+}

@@ -1,0 +1,124 @@
+@keyframes modalZoomIn {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.card-teams-modal {
+  position: relative;
+  width: 420px;
+  max-width: 95vw;
+  background: #fefefe;
+  border-radius: 18px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: "Poppins", sans-serif;
+  animation: modalZoomIn 0.3s ease-in-out;
+}
+
+.card-teams-header {
+  width: 100%;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.card-teams-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #222;
+}
+
+.card-teams-form {
+  width: 100%;
+}
+
+.card-teams-group {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-teams-label {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.card-teams-input {
+  padding: 10px 14px;
+  font-size: 15px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  transition: border 0.3s, box-shadow 0.3s;
+}
+
+.card-teams-input:focus {
+  border-color: #4caf50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+  outline: none;
+}
+
+.card-teams-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.card-teams-btn {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.card-teams-btn:hover {
+  transform: scale(1.03);
+}
+
+.card-teams-btn.success {
+  background: #4caf50;
+  color: white;
+}
+
+.card-teams-btn.danger {
+  background: #f44336;
+  color: white;
+}
+
+.card-teams-btn.neutral {
+  background: #e0e0e0;
+  color: #333;
+}
+
+@media (max-width: 500px) {
+  .card-teams-modal {
+    width: 94vw;
+    padding: 24px 20px;
+  }
+
+  .card-teams-title {
+    font-size: 20px;
+  }
+
+  .card-teams-input {
+    font-size: 14px;
+  }
+
+  .card-teams-btn {
+    font-size: 14px;
+  }
+}

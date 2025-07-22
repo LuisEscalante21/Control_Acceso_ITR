@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+
+* {
+  font-family: 'Poppins', sans-serif;
+}
+
+.admin-main-content{
+  padding: 40px 0 40px 0;
+}
+
+.admin-dashboard-container {
+  min-height: 100vh;
+  display: flex;
+  position: relative;
+}
+
+/* Background Global */
+.admin-dashboard-container,admin-main-content {
+  background-color: rgb(249, 245, 245);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  width: 100%;
+}
