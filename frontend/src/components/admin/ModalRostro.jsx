@@ -4,15 +4,16 @@ import rostroImg1 from "../../img/Rostros-1.png";
 import rostroImg2 from "../../img/Rostros-2.png";
 import Swal from "sweetalert2";
 
-const ModalFace = ({ mode = "add", face = {}, onClose, onSubmit }) => {
+function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   const [newFile, setNewFile] = useState(null);
   const [name, setName] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
 
   useEffect(() => {
-    if (mode === "edit") {
+    if (mode === "edit" && face) {
       setName(face.name || "");
       setEmployeeCode(face.employee_code || "");
+      setNewFile(null);
     } else {
       setName("");
       setEmployeeCode("");
@@ -30,18 +31,24 @@ const ModalFace = ({ mode = "add", face = {}, onClose, onSubmit }) => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      return Swal.fire("Archivo inválido", "Selecciona una imagen válida.", "error");
+    }
+
     setNewFile(file);
+
     Swal.fire({
       icon: "success",
       title: "Imagen cargada",
-      text: "La imagen fue cargada correctamente.",
+      text: `Archivo seleccionado: ${file.name}`,
       timer: 1000,
       showConfirmButton: false,
     });
   };
 
   const handleSave = async () => {
-    if (!name || !employeeCode || !newFile) {
+    if (!name.trim() || !employeeCode.trim() || (mode === "add" && !newFile)) {
       return Swal.fire(
         "Campos incompletos",
         "Completa todos los campos y selecciona una imagen.",
@@ -50,72 +57,20 @@ const ModalFace = ({ mode = "add", face = {}, onClose, onSubmit }) => {
     }
 
     try {
-      Swal.fire({
-        title: "Subiendo imagen...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-      });
+      const data = {
+        file: newFile,
+        name: name.trim(),
+        employee_code: employeeCode.trim(),
+      };
 
-      // 1. Subir imagen al backend (que la sube a Cloudinary)
-      const formData = new FormData();
-      formData.append("title", name);
-      formData.append("content", employeeCode);
-      formData.append("image", newFile);
-
-      const uploadResponse = await fetch("http://localhost:4000/api/blog", {
-        method: "POST",
-        body: formData,
-      });
-
-      const uploadData = await uploadResponse.json();
-
-      if (uploadData.status !== "success") {
-        Swal.close();
-        return Swal.fire(
-          "Error al subir imagen",
-          uploadData.message || "No se pudo subir la imagen.",
-          "error"
-        );
+      if (mode === "edit") {
+        data.id = face._id;
       }
 
-      const imageUrl = uploadData.data.image;
-
-      // 2. Llamar a la API Flask para mapear el rostro
-      const mapeoResponse = await fetch("http://localhost:4500/mapeo", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_MAPEO_API_KEY}`,
-        },
-        body: JSON.stringify({
-          name,
-          code: employeeCode,
-          image_url: imageUrl,
-        }),
-      });
-
-      const mapeoData = await mapeoResponse.json();
-      Swal.close();
-
-      if (mapeoData.status !== "success") {
-        return Swal.fire(
-          "Error al mapear rostro",
-          mapeoData.message || "No se pudo procesar la imagen.",
-          "error"
-        );
-      }
-
-      Swal.fire("Éxito", "Rostro guardado y mapeado correctamente", "success");
-      onSubmit(mode === "edit" ? face._id : null, newFile, name);
+      await onSubmit(data);
       handleClose();
-    } catch (error) {
-      console.error("Error:", error);
-      Swal.close();
-      Swal.fire(
-        "Error inesperado",
-        error.message || "No se pudo conectar con el servidor.",
-        "error"
-      );
+    } catch (err) {
+      Swal.fire("Error", "Ocurrió un error al guardar.", "error");
     }
   };
 
@@ -152,7 +107,7 @@ const ModalFace = ({ mode = "add", face = {}, onClose, onSubmit }) => {
             </label>
             <input
               id="file-input"
-              name="file"
+              name="image"
               type="file"
               accept="image/*"
               onChange={handleFileChange}
@@ -176,6 +131,6 @@ const ModalFace = ({ mode = "add", face = {}, onClose, onSubmit }) => {
       </div>
     </div>
   );
-};
+}
 
 export default ModalFace;

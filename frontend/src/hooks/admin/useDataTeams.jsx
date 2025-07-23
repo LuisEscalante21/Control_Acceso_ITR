@@ -2,6 +2,10 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const API_URL = `${BASE_URL}${PORT}/api`;
+
 const useDataTeams = () => {
   const [showRegister, setShowRegister] = useState(false);
   const [teams, setTeams] = useState([]);
@@ -10,34 +14,34 @@ const useDataTeams = () => {
   // Obtener todas las áreas
   const fetchTeams = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/teams");
+      const res = await axios.get(`${API_URL}/teams`);
       setTeams(res.data);
     } catch (err) {
       Swal.fire("Error", "No se pudo obtener la lista de equipos.", "error");
     }
   };
 
-  // Guardar o actualizar área
+  // Guardar o actualizar equipo
   const saveTeam = async (teamData) => {
     try {
       if (teamData._id) {
         // Actualizar
-        await axios.put(`http://localhost:4000/api/teams/${teamData._id}`, teamData);
+        await axios.put(`${API_URL}/teams/${teamData._id}`, teamData);
         Swal.fire("¡Actualizado!", "El equipo ha sido actualizado.", "success");
       } else {
         // Insertar
-        await axios.post("http://localhost:4000/api/teams", teamData);
+        await axios.post(`${API_URL}/teams`, teamData);
         Swal.fire("¡Guardado!", "El equipo ha sido guardado.", "success");
       }
 
-      fetchTeams();
+      await fetchTeams();
       handleCloseModal();
     } catch (err) {
       Swal.fire("Error", "No se pudo guardar el equipo.", "error");
     }
   };
 
-  // Eliminar área con confirmación
+  // Eliminar equipo con confirmación
   const eliminarTeam = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -50,9 +54,9 @@ const useDataTeams = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:4000/api/teams/${id}`);
+        await axios.delete(`${API_URL}/teams/${id}`);
         Swal.fire("¡Eliminado!", "El equipo ha sido eliminado.", "success");
-        fetchTeams();
+        await fetchTeams();
       } catch (err) {
         Swal.fire("Error", "No se pudo eliminar el equipo.", "error");
       }

@@ -9,5 +9,6 @@ flask
 flask_cors
 dlib
 flask-cors
-requests
-dotenv
+cloudinary
+faiss-cpu
+bson

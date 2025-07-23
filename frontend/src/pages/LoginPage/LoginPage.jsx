@@ -1,65 +1,101 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
+import '../../styles/LoginPage.css';
 import Swal from 'sweetalert2';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LogoRedondo from '../../img/logo_redondo.png';
-import '../../styles/LoginPage.css';
+
+const BASE = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const API_URL = `${BASE}${PORT}/api`;
 
 export const LoginPage = () => {
-  const [loading, setLoading] = React.useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm();
 
-  const onSubmit = async (data) => {
+  // Verificar si ya hay una sesión activa
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch(`${API_URL}/checkAuth`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const userType = data.user.userType;
+
+          // Redirige automáticamente según el rol
+          if (userType === "Admin") {
+            navigate("/admin-dashboard");
+          } else if (userType === "Coordinator") {
+            navigate("/coordinator-dashboard");
+          } else if (userType === "Employee") {
+            navigate("/employee-dashboard");
+          }
+        }
+      } catch (error) {
+        console.log("Usuario no autenticado o error al verificar sesión:", error);
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/login`, {
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ email, password }),
         credentials: 'include',
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (response.ok && result.message === 'login successful') {
+      if (response.status === 403) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Usuario inactivo',
+          text: 'Tu cuenta está inactiva. Por favor, contacta al administrador.',
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error en la solicitud. Verifica tus credenciales.');
+      }
+
+      if (data.message === 'login successful') {
         Swal.fire({
           icon: 'success',
           title: '¡Inicio de sesión exitoso!',
-          text: `Bienvenido, ${result.userType}`,
+          text: `Bienvenido, ${data.userType}`,
           timer: 1500,
           showConfirmButton: false,
         });
 
         // Redirigir según el rol
-        if (result.userType === 'Admin') {
+        if (data.userType === 'Admin') {
           navigate('/admin-dashboard');
-        } else if (result.userType === 'Coordinator') {
+        } else if (data.userType === 'Coordinator') {
           navigate('/coordinator-dashboard');
-        } else if (result.userType === 'Employee') {
+        } else if (data.userType === 'Employee') {
           navigate('/employee-dashboard');
         }
-      } else {
-        // Mostrar el mensaje específico del backend
-        Swal.fire({
-          icon: 'error',
-          title: 'Error al iniciar sesión',
-          text: result.message || 'Ocurrió un error. Inténtalo de nuevo más tarde.',
-        });
       }
     } catch (error) {
       console.error('Error:', error);
       Swal.fire({
         icon: 'error',
         title: 'Error al iniciar sesión',
-        text: 'Ocurrió un error. Inténtalo de nuevo más tarde.',
+        text: error.message || 'Ocurrió un error. Inténtalo de nuevo más tarde.',
       });
     } finally {
       setLoading(false);
@@ -85,7 +121,7 @@ export const LoginPage = () => {
           Ingresa tus credenciales para acceder al sistema
         </p>
 
-        <form className="login-form" onSubmit={handleSubmit(onSubmit)}>
+        <form className="login-form" onSubmit={handleSubmit}>
           <div className="input-group">
             <label htmlFor="email" className="input-label">
               Correo electrónico institucional
@@ -93,12 +129,11 @@ export const LoginPage = () => {
             <input
               id="email"
               type="email"
-              className="input-field"
+              name="email"
               placeholder="Email"
-              {...register("email", { 
-                required: true,
-                pattern: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i
-              })}
+              className="input-field"
+              required
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
@@ -109,9 +144,11 @@ export const LoginPage = () => {
             <input
               id="password"
               type="password"
-              className="input-field"
+              name="password"
               placeholder="Contraseña"
-              {...register("password", { required: true })}
+              className="input-field"
+              required
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
@@ -126,7 +163,13 @@ export const LoginPage = () => {
           </b>
           <b>
             <p>
-              del <a href="https://www.ricaldone.edu.sv/" className="highlight">
+              del{' '}
+              <a
+                href="https://www.ricaldone.edu.sv/"
+                className="highlight"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Instituto Técnico Ricaldone
               </a>
             </p>

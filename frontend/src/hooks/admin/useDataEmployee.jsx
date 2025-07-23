@@ -2,6 +2,11 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
+// Variables de entorno
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const API_URL = `${BASE_URL}${PORT}/api`;
+
 const useDataEmployee = () => {
   const [employees, setEmployees] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -9,7 +14,7 @@ const useDataEmployee = () => {
   // Obtener todos los empleados
   const fetchEmployees = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/employee");
+      const res = await axios.get(`${API_URL}/employee`);
       setEmployees(res.data);
     } catch (error) {
       console.error("Error al obtener empleados:", error);
@@ -22,14 +27,14 @@ const useDataEmployee = () => {
     try {
       if (idToUpdate) {
         // Actualizar empleado
-        await axios.put(`http://localhost:4000/api/employee/${idToUpdate}`, employeeData);
+        await axios.put(`${API_URL}/employee/${idToUpdate}`, employeeData);
         Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
       } else {
         // Crear empleado
-        await axios.post("http://localhost:4000/api/registerEmployees", employeeData);
+        await axios.post(`${API_URL}/registerEmployees`, employeeData);
         Swal.fire("¡Guardado!", "El empleado ha sido creado.", "success");
       }
-      fetchEmployees();
+      await fetchEmployees();
       handleCloseForm();
     } catch (error) {
       console.error("Error al guardar/actualizar empleado:", error);
@@ -50,9 +55,9 @@ const useDataEmployee = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:4000/api/employee/${id}`);
+        await axios.delete(`${API_URL}/employee/${id}`);
         Swal.fire("¡Eliminado!", "El empleado ha sido eliminado.", "success");
-        fetchEmployees();
+        await fetchEmployees();
       } catch (error) {
         console.error("Error al eliminar empleado:", error);
         Swal.fire("Error", "No se pudo eliminar el empleado.", "error");

@@ -7,6 +7,31 @@
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   position: relative;
+
+  width: 180px;
+  height: 260px; 
+  box-sizing: border-box;
+}
+
+.photo-wrapper {
+  width: 100%;
+  height: 180px; 
+  overflow: hidden;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.photo-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+}
+
+.info {
+  flex-grow: 1;
+  text-align: center;
 }
 
 .face-card-actions {

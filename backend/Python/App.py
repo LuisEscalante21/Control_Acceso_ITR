@@ -1,30 +1,30 @@
 from multiprocessing import Process
+from Connections import conectar_api_mapeo, conectar_api_reconocimiento
 from Mapeo import iniciar_api_mapeo
 from Reconocimiento import iniciar_api_reconocimiento
-from Health import iniciar_api_health
-from Connections import conectar_api_mapeo, conectar_api_reconocimiento, conectar_api_health
-import time
 
 def main():
-    p_mapeo = Process(target=iniciar_api_mapeo)
-    p_reconocimiento = Process(target=iniciar_api_reconocimiento)
-    p_health = Process(target=iniciar_api_health)
+    print("Iniciando APIs...")
+    p1 = Process(target=iniciar_api_mapeo)
+    p2 = Process(target=iniciar_api_reconocimiento)
+    p1.start()
+    p2.start()
+    print("[INFO] Conectando a las APIs...")
 
-    p_mapeo.start()
-    p_reconocimiento.start()
-    p_health.start()
+    mapeo_resultado = conectar_api_mapeo()
+    if mapeo_resultado:
+        print("[INFO] Respuesta de la API de mapeo:", mapeo_resultado)
+    else:
+        print("[ERROR] al conectar a la API de mapeo")
 
-    # Dar tiempo a que los servidores Flask arranquen antes de hacer requests
-    time.sleep(5)
+    reconocimiento_resultado = conectar_api_reconocimiento()
+    if reconocimiento_resultado:
+        print("[INFO] Respuesta de la API de reconocimiento:", reconocimiento_resultado)
+    else:
+        print("[ERROR]Error al conectar a la API de reconocimiento")
 
-    print("Respuesta API Mapeo:", conectar_api_mapeo())
-    print("Respuesta API Reconocimiento:", conectar_api_reconocimiento())
-    print("Respuesta API Health:", conectar_api_health())
-
-    p_mapeo.join()
-    p_reconocimiento.join()
-    p_health.join()
+    p1.join()
+    p2.join()
 
 if __name__ == "__main__":
     main()
- 

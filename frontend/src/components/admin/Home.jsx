@@ -1,83 +1,50 @@
-// src/pages/admin/AdminHome.jsx
 import React, { useEffect, useState } from 'react';
-import '../../components/styles/Home.css'; 
+import Cookies from 'js-cookie'; // Importar la librería
+import '../../components/styles/admin/Home.css';
+import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
+import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
 
-export default function Home() {
+export default function AdminHome() {
   const [greeting, setGreeting] = useState('');
-  const [dayName, setDayName] = useState('');
-  const [dayNumber, setDayNumber] = useState('');
-  const [progress, setProgress] = useState(0);
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
-    updateGreetingAndDate();
-    calculateSchoolYearProgress();
-  }, []);
-
-  // Función para determinar el saludo y la fecha
-  const updateGreetingAndDate = () => {
-    const now = new Date();
-    const hour = now.getHours();
-
-    if (hour >= 5 && hour < 12) {
-      setGreeting('Buenos días');
-    } else if (hour >= 12 && hour < 18) {
-      setGreeting('Buenas tardes');
+    // Leer y parsear la cookie userInfo
+    const userInfoCookie = Cookies.get('userInfo');
+    if (userInfoCookie) {
+      try {
+        const userInfo = JSON.parse(userInfoCookie);
+        setUserName(userInfo.fullName || 'Usuario');
+      } catch (error) {
+        console.error('Error al parsear userInfo:', error);
+        setUserName('Usuario');
+      }
     } else {
-      setGreeting('Buenas noches');
+      setUserName('Usuario');
     }
-
-    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    setDayName(diasSemana[now.getDay()]);
-    setDayNumber(now.getDate());
-    setCurrentYear(now.getFullYear());
-  };
-
-  // Función para calcular el porcentaje de progreso del año escolar
-  const calculateSchoolYearProgress = () => {
-    const year = new Date().getFullYear();
-    const start = new Date(`${year}-01-20`);
-    const end = new Date(`${year}-10-20`);
-    const today = new Date();
-
-    if (today < start) {
-      setProgress(0);
-      return;
-    }
-
-    if (today > end) {
-      setProgress(100);
-      return;
-    }
-
-    const totalDuration = end - start;
-    const elapsed = today - start;
-    const percentage = (elapsed / totalDuration) * 100;
-    setProgress(Math.floor(percentage)); 
-  };
+  }, []);
 
   return (
     <div className="dashboard-home-container">
-      <h2>{greeting}, Luis Escalante</h2>
+      {/* Mostrar saludo solo si existe */}
+      <h2>{greeting && `${greeting}, ${userName}`}</h2>
 
+      {/* Fila superior con 3 widgets distribuidos horizontalmente */}
       <div className="dashboard-widgets">
         <div className="widget widget-bar-chart">
           <p>Gráfico de barras (ejemplo)</p>
         </div>
 
         <div className="widget widget-day">
-          <h3>{dayName}</h3>
-          <span className="day-number">{dayNumber}</span>
+          <GreetingCard onGreetingReady={setGreeting} />
         </div>
 
         <div className="widget widget-progress">
-          <div className="progress-circle">
-            <div className="progress-fill">{progress}%</div>
-          </div>
-          <p>Progreso de año electivo {currentYear}</p>
+          <SchoolYearProgress />
         </div>
       </div>
 
+      {/* Widget inferior que ocupa el ancho completo */}
       <div className="widget widget-line-chart">
         <p>Gráfico de líneas (ejemplo)</p>
       </div>

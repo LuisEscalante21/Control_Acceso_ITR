@@ -2,6 +2,11 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
+// Importar la URL base desde variables de entorno
+const BASE = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const API_URL = `${BASE}${PORT}/api`;
+
 const useDataAdmin = () => {
   const [admins, setAdmins] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -10,7 +15,7 @@ const useDataAdmin = () => {
   // Obtener todos los administradores
   const fetchAdmins = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/administrators");
+      const res = await axios.get(`${API_URL}/administrators`);
       setAdmins(res.data);
     } catch (error) {
       console.error("Error al obtener administradores:", error);
@@ -18,25 +23,25 @@ const useDataAdmin = () => {
     }
   };
 
- // Crear o actualizar administrador
-const saveAdmin = async (adminData, id = null) => {
-  try {
-    if (id) {
-      // Actualizar administrador
-      await axios.put(`http://localhost:4000/api/administrators/${id}`, adminData);
-      Swal.fire("¡Actualizado!", "El administrador ha sido actualizado.", "success");
-    } else {
-      // Crear administrador
-      await axios.post("http://localhost:4000/api/registerAdministrators", adminData);
-      Swal.fire("¡Guardado!", "El administrador ha sido creado.", "success");
+  // Crear o actualizar administrador
+  const saveAdmin = async (adminData) => {
+    try {
+      if (adminEdit) {
+        // Actualizar administrador
+        await axios.put(`${API_URL}/administrators/${adminEdit._id}`, adminData);
+        Swal.fire("¡Actualizado!", "El administrador ha sido actualizado.", "success");
+      } else {
+        // Crear administrador
+        await axios.post(`${API_URL}/registerAdministrators`, adminData);
+        Swal.fire("¡Guardado!", "El administrador ha sido creado.", "success");
+      }
+      fetchAdmins();
+      handleCloseForm();
+    } catch (error) {
+      console.error("Error al guardar/actualizar administrador:", error);
+      Swal.fire("Error", "No se pudo guardar el administrador.", "error");
     }
-    await fetchAdmins();
-    handleCloseForm();
-  } catch (error) {
-    console.error("Error al guardar/actualizar administrador:", error);
-    Swal.fire("Error", "No se pudo guardar el administrador.", "error");
-  }
-};
+  };
 
   // Eliminar administrador con confirmación
   const deleteAdmin = async (id) => {
@@ -51,7 +56,7 @@ const saveAdmin = async (adminData, id = null) => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:4000/api/administrators/${id}`);
+        await axios.delete(`${API_URL}/administrators/${id}`);
         Swal.fire("¡Eliminado!", "El administrador ha sido eliminado.", "success");
         fetchAdmins();
       } catch (error) {

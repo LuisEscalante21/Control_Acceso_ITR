@@ -1,0 +1,110 @@
+/* Contenedor general */
+.dashboard-home-container {
+  padding: 2rem;
+  background-color: #ffffff00;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  color: #333;
+}
+
+.dashboard-home-container h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+}
+
+/* Contenedor de widgets */
+.dashboard-widgets {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Estilo base para cada widget */
+.widget {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  min-width: 180px;
+  flex: 1;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Widget Día actual */
+.widget-day {
+  margin-right: 0.5rem;
+}
+
+.widget-day h3 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #000;
+  margin: 0;
+}
+
+.widget-day .day-number {
+  font-size: 2.8rem;
+  font-weight: 600;
+  color: #7b8494;
+  margin-top: 0.5rem;
+}
+
+/* Widget Progreso con fondo y sombra como tarjeta */
+.widget-progress {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  min-width: 180px;
+  flex: 1;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Gráfico circular */
+.widget-progress .progress-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #0052cc calc(var(--progress) * 1%),
+    #ccc 0
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 1rem;
+  transition: background 0.5s ease;
+  box-shadow: 0 0 8px rgba(0, 82, 204, 0.5);
+}
+
+/* Texto del porcentaje */
+.widget-progress .progress-fill {
+  position: absolute;
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #000;
+  user-select: none;
+  transform: none !important;
+}
+
+/* Texto descriptivo */
+.widget-progress p {
+  font-size: 0.95rem;
+  text-align: center;
+  margin: 0;
+  color: #000;
+  font-weight: 600;
+}

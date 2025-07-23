@@ -16,13 +16,11 @@ import registerCoordinatorsRoutes from "./src/routes/registerCoordinators.js";
 import teamsRoutes from "./src/routes/teamsRoutes.js";
 import AccessControl from "./src/routes/accessControlRoute.js";
 import ScheduleRoutes from "./src/routes/schedules.js";
-import mapRoute from "./src/routes/mapRoute.js";
 import swaggerUi from "swagger-ui-express";
 import fs from "fs";
 import path from "path";
 
 const app = express();
-
 
 // Aumenta el límite a 10mb (puedes ajustar según lo que necesites)
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -48,7 +46,6 @@ const swaggerDocument = JSON.parse(
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Definir las rutas de la API
-app.use("/api/permissions", permissionsRoutes); // Ruta para permisos
 app.use("/api/employee", employeeRoutes)
 app.use("/api/schedules", ScheduleRoutes);
 app.use("/api/login", loginRoutes)
@@ -60,8 +57,7 @@ app.use("/api/coordinators", coordinatorsRoutes); // Ruta para coordinadores
 app.use("/api/registerCoordinators", registerCoordinatorsRoutes); // Ruta para registrar coordinadores
 app.use("/api/administrators", administratorsRoutes); // Ruta para administradores
 app.use("/api/teams", teamsRoutes); // Ruta para las areas o departamentos
-app.use("/api/access", AccessControl); // Ruta para el control de acceso
-app.use("/api/mapFaces", mapRoute); // Ruta para el mapeo de rostros
+app.use("/api/access", AccessControl);
 
 // Exporto la constante para poder usar express en otros archivos
 export default app;

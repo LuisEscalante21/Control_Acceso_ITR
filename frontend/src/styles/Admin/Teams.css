@@ -120,10 +120,10 @@
 }
 
 .area-card {
-  background: linear-gradient(135deg, #e0f7fa, #ffffff);
+  background: #ece9e9;
   border-radius: 16px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-  width: calc(25% - 20px); /* 4 por fila */
+  width: calc(25% - 20px); 
   min-width: 200px;
   max-width: 280px;
   height: 120px;

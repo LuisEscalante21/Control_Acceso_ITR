@@ -1,12 +1,8 @@
-from flask import Flask, jsonify
-from Config import PORT_HEALTH
+# health se usa para ver el estado de los endpoints
+from flask import Blueprint, jsonify
 
-app = Flask("HealthAPI")
+health_bp = Blueprint('health', __name__)
 
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({"status": "ok - Health Service"})
-
-def iniciar_api_health():
-    print(f"Iniciando API Health en puerto {PORT_HEALTH}")
-    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=PORT_HEALTH)
+@health_bp.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'ok'}), 200
