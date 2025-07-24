@@ -26,7 +26,6 @@ employeesController.deleteEmployees = async (req, res) => {
 // U P D A T E
 employeesController.updateEmployees = async (req, res) => {
   try {
-    console.log("PHOTO RECIBIDA:", req.body.photo); // <-- Verifica aquí
     const {
       numEmpleado,
       names,

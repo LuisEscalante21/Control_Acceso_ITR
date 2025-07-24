@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 import "../../../../styles/Admin/Empleados.css";
-import { Pencil, Trash2, Camera } from "lucide-react";
+import { Pencil, Trash2, Camera, UserCircle } from "lucide-react";
 
 const toInputDateFormat = (date) => {
   if (!date) return "";
@@ -19,7 +19,6 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
     reset,
     formState: { errors },
@@ -31,26 +30,20 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
         ...admin,
         birthday: toInputDateFormat(admin.birthday),
         status: admin.status ? "activo" : "inactivo",
-        password: "", // siempre vacío
+        password: "",
       });
       setPhotoPreview(admin.photo || "");
       setEditMode(false);
     }
   }, [admin, reset]);
 
-  // Mantener sincronizado el valor del select con photoPreview
   const statusValue = watch("status");
 
   const onSubmit = async (data) => {
     try {
-      // Convertir status a boolean
       data.status = data.status === "activo";
-
-      // Enviar la imagen en base64
       data.photo = photoPreview;
-
       await onSave(data, admin._id);
-
       Swal.fire("Actualizado", "El administrador ha sido actualizado exitosamente.", "success");
       setEditMode(false);
       onClose();
@@ -100,7 +93,11 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
       <div className="cvcard-modal cvcard-modal-scroll">
         <button className="close-modal" onClick={onClose} aria-label="Cerrar modal">×</button>
         <div className="cvcard-header">
-          <img src={photoPreview} alt="Avatar" className="cvcard-avatar" />
+          {photoPreview ? (
+            <img src={photoPreview} alt="Avatar" className="cvcard-avatar" />
+          ) : (
+            <UserCircle className="cvcard-avatar-placeholder" size={80} />
+          )}
           <div className="cvcard-nombre">{admin.names} {admin.surnames}</div>
         </div>
         <div className="cvcard-info">
@@ -219,19 +216,13 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
 
               <div className="form-field">
                 <label htmlFor="telephone">Número telefónico:</label>
-                <input
-                  id="telephone"
-                  {...register("telephone", { required: "Teléfono obligatorio" })}
-                />
+                <input id="telephone" {...register("telephone", { required: "Teléfono obligatorio" })} />
                 {errors.telephone && <span className="error-message">{errors.telephone.message}</span>}
               </div>
 
               <div className="form-field">
                 <label htmlFor="address">Dirección de residencia:</label>
-                <input
-                  id="address"
-                  {...register("address", { required: "Dirección obligatoria" })}
-                />
+                <input id="address" {...register("address", { required: "Dirección obligatoria" })} />
                 {errors.address && <span className="error-message">{errors.address.message}</span>}
               </div>
 
@@ -293,7 +284,7 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
                     {photoPreview ? (
                       <img src={photoPreview} alt="Preview" className="image-preview" />
                     ) : (
-                      <div className="image-placeholder">Sin imagen</div>
+                      <UserCircle className="image-preview-placeholder" size={80} />
                     )}
                   </div>
                 </div>

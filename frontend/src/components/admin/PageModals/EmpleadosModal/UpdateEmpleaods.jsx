@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 import "../../../../styles/Admin/Empleados.css";
-import { Pencil, Trash2, Camera } from "lucide-react";
+import { Pencil, Trash2, Camera, UserCircle } from "lucide-react";
 
 const toInputDateFormat = (date) => {
   if (!date) return "";
@@ -31,7 +31,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
         ...empleado,
         birthday: toInputDateFormat(empleado.birthday),
         status: empleado.status ? "activo" : "inactivo",
-        password: "" // <-- Esto asegura que el campo esté vacío siempre
+        password: ""
       });
       setPhotoPreview(empleado.photo || "");
       setEditMode(false);
@@ -80,7 +80,11 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
       <div className="cvcard-modal cvcard-modal-scroll">
         <button className="close-modal" onClick={onClose}>×</button>
         <div className="cvcard-header">
-          <img src={photoPreview} alt="Avatar" className="cvcard-avatar" />
+          {photoPreview ? (
+            <img src={photoPreview} alt="Avatar" className="cvcard-avatar" />
+          ) : (
+            <UserCircle className="cvcard-avatar-placeholder" size={80} />
+          )}
           <div className="cvcard-nombre">{empleado.names} {empleado.surnames}</div>
         </div>
         <div className="cvcard-info">
@@ -197,7 +201,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                     {photoPreview ? (
                       <img src={photoPreview} alt="Preview" className="image-preview" />
                     ) : (
-                      <div className="image-placeholder">Sin imagen</div>
+                      <UserCircle className="image-preview-placeholder" size={80} />
                     )}
                   </div>
                 </div>

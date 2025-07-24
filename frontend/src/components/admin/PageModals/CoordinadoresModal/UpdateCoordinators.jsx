@@ -1,9 +1,8 @@
-// UpdateCoordinators.jsx
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 import "../../../../components/styles/ModalUpdate.css";
-import { Pencil, Trash2, Camera } from "lucide-react";
+import { Pencil, Trash2, Camera, UserCircle } from "lucide-react";
 
 const toInputDateFormat = (date) => {
   if (!date) return "";
@@ -33,16 +32,13 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
         password: ""
       });
       setEditMode(false);
-      setPhotoPreview(coordinator.photo);
+      setPhotoPreview(coordinator.photo || "");
     }
   }, [coordinator, reset]);
 
   const onSubmit = async (data) => {
-    // Convierte el estado a booleano
     data.status = data.status === "activo";
-    // Si hay una nueva foto, envíala; si no, envía la original
     data.photo = photoPreview || coordinator.photo;
-    // Si la contraseña está vacía, elimínala para no sobreescribir
     if (!data.password) delete data.password;
 
     await onSave(data, coordinator._id);
@@ -84,9 +80,13 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
   return (
     <div className="modal-overlay active">
       <div className="cvcard-modal cvcard-modal-scroll">
-        <button className="close-modal" onClick={onClose}>×</button>
+        <button className="close-modal" onClick={onClose} aria-label="Cerrar modal">×</button>
         <div className="cvcard-header">
-          <img src={coordinator.photo} alt="Avatar" className="cvcard-avatar" />
+          {photoPreview ? (
+            <img src={photoPreview} alt="Avatar" className="cvcard-avatar" />
+          ) : (
+            <UserCircle className="cvcard-avatar-placeholder" size={80} />
+          )}
           <div className="cvcard-nombre">{coordinator.names} {coordinator.surnames}</div>
         </div>
         <div className="cvcard-info">
@@ -94,10 +94,20 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
             <span className="cvcard-info-title">Información personal</span>
             {!editMode && (
               <span className="cvcard-actions">
-                <button className="cvcard-action-btn" onClick={() => setEditMode(true)} title="Editar">
+                <button
+                  className="cvcard-action-btn"
+                  onClick={() => setEditMode(true)}
+                  title="Editar"
+                  aria-label="Editar coordinador"
+                >
                   <Pencil size={22} />
                 </button>
-                <button className="cvcard-action-btn" onClick={handleDelete} title="Eliminar">
+                <button
+                  className="cvcard-action-btn"
+                  onClick={handleDelete}
+                  title="Eliminar"
+                  aria-label="Eliminar coordinador"
+                >
                   <Trash2 size={22} />
                 </button>
               </span>
@@ -198,11 +208,9 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
               <div className="form-field">
                 <label htmlFor="photo">Imagen de perfil:</label>
                 <div className="image-upload-container">
-                  <label htmlFor="photo" className="custom-image-upload">
-                    <span className="image-upload-label">
-                      <Camera className="camera-icon" />
-                      <span>{photoPreview ? "Cambiar imagen" : "Agregar imagen"}</span>
-                    </span>
+                  <label htmlFor="photo" className="custom-image-upload" tabIndex={0} onKeyDown={e => e.key === "Enter" && document.getElementById('photo').click()}>
+                    <Camera className="camera-icon" />
+                    <span>{photoPreview ? "Cambiar imagen" : "Agregar imagen"}</span>
                     <input
                       id="photo"
                       name="photo"
@@ -216,7 +224,7 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
                     {photoPreview ? (
                       <img src={photoPreview} alt="Preview" className="image-preview" />
                     ) : (
-                      <div className="image-placeholder">Sin imagen</div>
+                      <UserCircle className="image-preview-placeholder" size={80} />
                     )}
                   </div>
                 </div>

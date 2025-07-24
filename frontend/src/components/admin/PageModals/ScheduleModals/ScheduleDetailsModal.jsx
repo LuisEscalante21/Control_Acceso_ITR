@@ -46,12 +46,9 @@ const ViewScheduleModal = ({ schedule, onClose, onEdit, onDelete }) => {
 
   return (
     <div className="modal-overlay active">
-      
       <div className="cardH">
+        <button className="close-x-btn" onClick={onClose}>×</button>
 
-        <button className="close-icon" onClick={onClose}>×</button>
-
-        
         <div className="view-header">
           <h2>{schedule?.name || "Horario sin nombre"}</h2>
           <div className="action-buttons">
@@ -108,7 +105,6 @@ const ViewScheduleModal = ({ schedule, onClose, onEdit, onDelete }) => {
             );
           })}
         </div>
-
       </div>
     </div>
   );

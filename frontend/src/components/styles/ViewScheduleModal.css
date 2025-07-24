@@ -151,23 +151,7 @@ hr {
   margin: 10px 0 8px;
 }
 
-.close-btn {
-  margin-top: 20px;
-  width: 100%;
-  background-color: #bcbcc1;
-  padding: 12px 0;
-  border: none;
-  border-radius: 20px;
-  color: #333;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.close-btn:hover {
-  background-color: #a5a5ab;
-}
-
+/* Botón "X" para cerrar modal */
 .close-x-btn {
   position: absolute;
   top: 16px;
@@ -182,7 +166,7 @@ hr {
 }
 
 .close-x-btn:hover {
-  color: #333;
+  color: red;
 }
 
 @keyframes fadeOutScale {
@@ -199,4 +183,3 @@ hr {
 .cardH.closing {
   animation: fadeOutScale 0.3s ease-out forwards;
 }
-
