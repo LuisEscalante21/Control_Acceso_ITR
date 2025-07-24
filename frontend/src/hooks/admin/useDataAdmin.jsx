@@ -2,7 +2,6 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
-// Importar la URL base desde variables de entorno
 const BASE = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${BASE}${PORT}/api`;
@@ -24,18 +23,19 @@ const useDataAdmin = () => {
   };
 
   // Crear o actualizar administrador
-  const saveAdmin = async (adminData) => {
+  const saveAdmin = async (adminData, adminId = null) => {
     try {
-      if (adminEdit) {
+      if (adminId) {
         // Actualizar administrador
-        await axios.put(`${API_URL}/administrators/${adminEdit._id}`, adminData);
+        await axios.put(`${API_URL}/administrators/${adminId}`, adminData);
         Swal.fire("¡Actualizado!", "El administrador ha sido actualizado.", "success");
       } else {
         // Crear administrador
         await axios.post(`${API_URL}/registerAdministrators`, adminData);
         Swal.fire("¡Guardado!", "El administrador ha sido creado.", "success");
       }
-      fetchAdmins();
+
+      fetchAdmins(); // Actualizar lista
       handleCloseForm();
     } catch (error) {
       console.error("Error al guardar/actualizar administrador:", error);

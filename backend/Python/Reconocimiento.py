@@ -11,7 +11,7 @@ from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from health import health_bp 
+from Health import health_bp 
 from faiss_index import FaissFaceIndex 
 
 app = Flask(__name__)

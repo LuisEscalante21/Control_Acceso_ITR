@@ -28,7 +28,6 @@ export default function Sidebar() {
   ];
 
   const handleLogout = async () => {
-    // Mostrar alerta de confirmación
     const result = await Swal.fire({
       title: "¿Cerrar sesión?",
       text: "¿Estás seguro de que deseas cerrar la sesión?",
@@ -41,60 +40,68 @@ export default function Sidebar() {
       reverseButtons: true,
     });
 
-    if (result.isConfirmed) {
-      try {
-        Swal.fire({
-          title: "Cerrando sesión...",
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
-          },
-        });
+    if (!result.isConfirmed) return;
 
-        await fetch(`${API_URL}/logout`, {
-          method: "POST",
-          credentials: "include",
-        });
+    try {
+      Swal.fire({
+        title: "Cerrando sesión...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
 
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userRole");
-        localStorage.removeItem("userData");
-        sessionStorage.clear();
+      await fetch(`${API_URL}/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
 
-        Swal.close();
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("userData");
+      sessionStorage.clear();
 
-        await Swal.fire({
-          title: "¡Sesión cerrada!",
-          text: "Has cerrado sesión correctamente",
-          icon: "success",
-          timer: 1000,
-          showConfirmButton: false,
-        });
+      // ✅ Eliminar cookie userInfo desde el frontend
+      document.cookie = "userInfo=; Max-Age=0; path=/";
 
-        navigate("/login", { replace: true });
+      Swal.close();
 
+      await Swal.fire({
+        title: "¡Sesión cerrada!",
+        text: "Has cerrado sesión correctamente",
+        icon: "success",
+        timer: 1000,
+        showConfirmButton: false,
+      });
+
+      navigate("/login", { replace: true });
+
+      // Prevenir retroceso con el botón atrás
+      window.history.pushState(null, "", window.location.href);
+      window.addEventListener("popstate", () => {
         window.history.pushState(null, "", window.location.href);
-        window.addEventListener("popstate", function (event) {
-          window.history.pushState(null, "", window.location.href);
-        });
-      } catch (error) {
-        console.error("Error al cerrar sesión:", error);
-        Swal.close();
+      });
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      Swal.close();
 
-        await Swal.fire({
-          title: "Error de conexión",
-          text: "Hubo un problema al cerrar sesión en el servidor, pero se cerrará la sesión local",
-          icon: "warning",
-          timer: 1500,
-          showConfirmButton: false,
-        });
+      await Swal.fire({
+        title: "Error de conexión",
+        text: "Hubo un problema al cerrar sesión en el servidor, pero se cerrará la sesión local",
+        icon: "warning",
+        timer: 1500,
+        showConfirmButton: false,
+      });
 
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userRole");
-        localStorage.removeItem("userData");
-        sessionStorage.clear();
-        navigate("/login", { replace: true });
-      }
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("userData");
+      sessionStorage.clear();
+
+      // ✅ También eliminar la cookie en caso de error
+      document.cookie = "userInfo=; Max-Age=0; path=/";
+
+      navigate("/login", { replace: true });
     }
   };
 

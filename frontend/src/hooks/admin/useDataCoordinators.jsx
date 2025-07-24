@@ -2,7 +2,7 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;  
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${BASE_URL}${PORT}/api`;
 
@@ -17,23 +17,26 @@ const useDataCoordinators = () => {
       const res = await axios.get(`${API_URL}/coordinators`);
       setCoordinators(res.data);
     } catch (error) {
-      console.error("Error al obtener coordinador:", error);
-      Swal.fire("Error", "No se pudo obtener la lista de coordinador.", "error");
+      console.error("Error al obtener coordinadores:", error);
+      Swal.fire("Error", "No se pudo obtener la lista de coordinadores.", "error");
     }
   };
 
   // Crear o actualizar coordinador
-  const saveCoordinator = async (coordinatorData) => {
+  const saveCoordinator = async (coordinatorData, id = null) => {
     try {
-      if (coordinatorEdit) {
+      const coordinatorId = id || coordinatorEdit?._id;
+
+      if (coordinatorId) {
         // Actualizar coordinador
-        await axios.put(`${API_URL}/coordinators/${coordinatorEdit._id}`, coordinatorData);
+        await axios.put(`${API_URL}/coordinators/${coordinatorId}`, coordinatorData);
         Swal.fire("¡Actualizado!", "El coordinador ha sido actualizado.", "success");
       } else {
         // Crear coordinador
         await axios.post(`${API_URL}/registerCoordinators`, coordinatorData);
         Swal.fire("¡Guardado!", "El coordinador ha sido creado.", "success");
       }
+
       await fetchCoordinators();
       handleCloseForm();
     } catch (error) {

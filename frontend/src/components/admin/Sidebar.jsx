@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import {Home, Users, UserCheck, Settings, Shield, Clock, Scan, LayoutGrid, UserCog, Menu, X, LogOut, Calendar,} from "lucide-react";
+import {
+  Home, UserCheck, Settings, Shield, Clock,
+  Scan, LayoutGrid, UserCog, Menu, X, LogOut, Calendar,
+} from "lucide-react";
 import "../../components/styles/Sidebar.css";
 import logoRical from "../../img/logo_rical.png";
 
@@ -11,45 +14,17 @@ const API_URL = `${BASE}${PORT}/api`;
 
 export default function Sidebar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   const navigationItems = [
     { name: "Dashboard", path: "/admin-dashboard/dashboard", icon: Home },
-    {
-      name: "Gestión de empleados",
-      path: "/admin-dashboard/personal",
-      icon: UserCheck,
-    },
-    {
-      name: "Gestión de coordinadores",
-      path: "/admin-dashboard/coordinadores",
-      icon: UserCog,
-    },
-    {
-      name: "Gestión de administradores",
-      path: "/admin-dashboard/usuarios",
-      icon: Settings,
-    },
-    {
-      name: "Gestión de permisos",
-      path: "/admin-dashboard/permisos",
-      icon: Shield,
-    },
-    {
-      name: "Historial de accesos",
-      path: "/admin-dashboard/historial",
-      icon: Clock,
-    },
-    {
-      name: "Registros faciales",
-      path: "/admin-dashboard/registros",
-      icon: Scan,
-    },
-    {
-      name: "Gestión de áreas",
-      path: "/admin-dashboard/areas",
-      icon: LayoutGrid,
-    },
+    { name: "Gestión de empleados", path: "/admin-dashboard/personal", icon: UserCheck },
+    { name: "Gestión de coordinadores", path: "/admin-dashboard/coordinadores", icon: UserCog },
+    { name: "Gestión de administradores", path: "/admin-dashboard/usuarios", icon: Settings },
+    { name: "Gestión de permisos", path: "/admin-dashboard/permisos", icon: Shield },
+    { name: "Historial de accesos", path: "/admin-dashboard/historial", icon: Clock },
+    { name: "Registros faciales", path: "/admin-dashboard/registros", icon: Scan },
+    { name: "Gestión de áreas", path: "/admin-dashboard/areas", icon: LayoutGrid },
     { name: "Horarios", path: "/admin-dashboard/horarios", icon: Calendar },
   ];
 
@@ -87,6 +62,9 @@ export default function Sidebar() {
       localStorage.removeItem("userData");
       sessionStorage.clear();
 
+      // ✅ Eliminar también la cookie userInfo desde el frontend
+      document.cookie = "userInfo=; Max-Age=0; path=/";
+
       Swal.close();
 
       await Swal.fire({
@@ -121,6 +99,9 @@ export default function Sidebar() {
       localStorage.removeItem("userData");
       sessionStorage.clear();
 
+      // ✅ También eliminar cookie userInfo en caso de error
+      document.cookie = "userInfo=; Max-Age=0; path=/";
+
       navigate("/login", { replace: true });
     }
   };
@@ -134,11 +115,7 @@ export default function Sidebar() {
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className="hamburger-button"
         >
-          {isMenuOpen ? (
-            <X className="hamburger-icon" />
-          ) : (
-            <Menu className="hamburger-icon" />
-          )}
+          {isMenuOpen ? <X className="hamburger-icon" /> : <Menu className="hamburger-icon" />}
         </button>
       </div>
 

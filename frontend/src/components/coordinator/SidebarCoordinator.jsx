@@ -1,7 +1,15 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import {Home, FileCheck, Clock, Menu, X, UserCheck, LogOut,} from "lucide-react";
+import {
+  Home,
+  FileCheck,
+  Clock,
+  Menu,
+  X,
+  UserCheck,
+  LogOut,
+} from "lucide-react";
 import "../../components/styles/SidebarEmployee.css";
 import logoRical from "../../img/logo_rical.png";
 
@@ -38,7 +46,6 @@ export default function Sidebar() {
   ];
 
   const handleLogout = async () => {
-    // Mostrar alerta de confirmación
     const result = await Swal.fire({
       title: "¿Cerrar sesión?",
       text: "¿Estás seguro de que deseas cerrar la sesión?",
@@ -60,7 +67,7 @@ export default function Sidebar() {
             Swal.showLoading();
           },
         });
-        
+
         await fetch(`${API_URL}/logout`, {
           method: "POST",
           credentials: "include",
@@ -70,6 +77,9 @@ export default function Sidebar() {
         localStorage.removeItem("userRole");
         localStorage.removeItem("userData");
         sessionStorage.clear();
+
+        // ✅ Eliminar cookie userInfo desde el frontend
+        document.cookie = "userInfo=; Max-Age=0; path=/";
 
         Swal.close();
 
@@ -83,8 +93,9 @@ export default function Sidebar() {
 
         navigate("/login", { replace: true });
 
+        // Prevenir retroceso con botón atrás
         window.history.pushState(null, "", window.location.href);
-        window.addEventListener("popstate", function (event) {
+        window.addEventListener("popstate", function () {
           window.history.pushState(null, "", window.location.href);
         });
       } catch (error) {
@@ -103,6 +114,10 @@ export default function Sidebar() {
         localStorage.removeItem("userRole");
         localStorage.removeItem("userData");
         sessionStorage.clear();
+
+        // ✅ También eliminar cookie en caso de error
+        document.cookie = "userInfo=; Max-Age=0; path=/";
+
         navigate("/login", { replace: true });
       }
     }

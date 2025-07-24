@@ -9,14 +9,14 @@ import "../../../styles/Modal.css";
 const FormInput = ({ label, id, register, errors, validation, required, ...props }) => (
   <div className="form-field">
     <label htmlFor={id}>
-      {label} 
+      {label}
       {validation?.required && <span className="required-asterisk">*</span>}
     </label>
-    <input 
-      id={id} 
+    <input
+      id={id}
       aria-invalid={errors[id] ? "true" : "false"}
-      {...register(id, validation)} 
-      {...props} 
+      {...register(id, validation)}
+      {...props}
     />
     {errors[id] && (
       <span className="error-message" role="alert">
@@ -33,8 +33,8 @@ const FormSelect = ({ label, id, register, errors, options, loading, validation,
       {label}
       {validation?.required && <span className="required-asterisk">*</span>}
     </label>
-    <select 
-      id={id} 
+    <select
+      id={id}
       aria-invalid={errors[id] ? "true" : "false"}
       {...register(id, validation)}
     >
@@ -75,19 +75,20 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
   // Watchers para campos con formato
   const DUI = watch("DUI") || "";
   const telephone = watch("telephone") || "";
-  const password = watch("password");
-  const hireDate = watch("hireDate");
   const birthday = watch("birthday");
+  const hireDate = watch("hireDate");
 
   // Cargar equipos al montar el componente
   useEffect(() => {
     const fetchTeams = async () => {
       try {
         const res = await axios.get("http://localhost:4000/api/teams");
-        setTeams(res.data.map(team => ({
-          value: team._id,
-          label: team.name
-        })));
+        setTeams(
+          res.data.map((team) => ({
+            value: team._id,
+            label: team.name,
+          }))
+        );
       } catch (error) {
         console.error("Error al cargar equipos:", error);
         setTeams([]);
@@ -101,13 +102,13 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
   // Formateadores de inputs
   useEffect(() => {
     setValue("DUI", formatDUI(DUI));
-  }, [DUI]);
+  }, [DUI, setValue]);
 
   useEffect(() => {
     setValue("telephone", formatTelephone(telephone));
-  }, [telephone]);
+  }, [telephone, setValue]);
 
-  // Validación de fechas
+  // Validación de fechas: hireDate debe ser posterior a birthday
   useEffect(() => {
     if (hireDate && birthday && new Date(hireDate) <= new Date(birthday)) {
       setValue("hireDate", "", { shouldValidate: true });
@@ -126,28 +127,27 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
     return value;
   };
 
+  // Manejo cambio de imagen y validaciones
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
-      // Validar tipo de imagen
+
       if (!file.type.match("image.*")) {
         Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
         return;
       }
-      
-      // Validar tamaño de imagen (2MB máximo)
+
       if (file.size > 2 * 1024 * 1024) {
         Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
         return;
       }
-      
+
       setImage(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
-  // Envío del formulario
+  // Envío del formulario con FormData para enviar imagen y demás datos
   const onSubmit = async (data) => {
     try {
       if (!data.email.toLowerCase().endsWith("@ricaldone.edu.sv")) {
@@ -155,8 +155,7 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
       }
 
       const formData = new FormData();
-      
-      // Agregar campos al FormData
+
       Object.entries(data).forEach(([key, value]) => {
         if (key === "birthday" || key === "hireDate") {
           formData.append(key, new Date(value).toISOString());
@@ -167,7 +166,6 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         }
       });
 
-      // Agregar imagen si existe
       if (image) {
         formData.append("photo", image);
       }
@@ -175,22 +173,20 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
       await axios.post("http://localhost:4000/api/registerAdministrators", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      
+
       await Swal.fire({
-        icon: 'success',
-        title: '¡Guardado!',
-        text: 'El Administrador ha sido registrado exitosamente.',
-        timer: 2000
+        icon: "success",
+        title: "¡Guardado!",
+        text: "El Administrador ha sido registrado exitosamente.",
+        timer: 2000,
       });
-      
-      // Resetear formulario
+
       reset();
       setImage(null);
       setPreviewUrl(null);
-      
+
       if (onSaved) onSaved();
       if (onClose) onClose();
-      
     } catch (error) {
       let errorMessage = "Error al registrar el administrador";
       if (error.response) {
@@ -198,33 +194,33 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       await Swal.fire({
-        icon: 'error',
-        title: 'Error',
+        icon: "error",
+        title: "Error",
         text: errorMessage,
       });
     }
   };
 
   return (
-    <form 
-      className="new-coordinador-form" 
+    <form
+      className="new-coordinador-form"
       onSubmit={handleSubmit(onSubmit)}
       aria-label="Formulario de nuevo administrador"
       noValidate
     >
-      <button 
-        type="button" 
-        className="close-modal" 
-        onClick={onClose} 
+      <button
+        type="button"
+        className="close-modal"
+        onClick={onClose}
         aria-label="Cerrar modal"
-        onKeyDown={(e) => e.key === 'Enter' && onClose()}
+        onKeyDown={(e) => e.key === "Enter" && onClose()}
         disabled={isSubmitting}
       >
         ×
       </button>
-      
+
       <h2>Crear un nuevo administrador</h2>
 
       <FormInput
@@ -241,12 +237,12 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         id="names"
         register={register}
         errors={errors}
-        validation={{ 
+        validation={{
           required: "Los nombres son obligatorios",
           pattern: {
             value: /^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$/,
-            message: "Solo se permiten letras"
-          }
+            message: "Solo se permiten letras",
+          },
         }}
         required
       />
@@ -256,12 +252,12 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         id="surnames"
         register={register}
         errors={errors}
-        validation={{ 
+        validation={{
           required: "Los apellidos son obligatorios",
           pattern: {
             value: /^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$/,
-            message: "Solo se permiten letras"
-          }
+            message: "Solo se permiten letras",
+          },
         }}
         required
       />
@@ -275,8 +271,8 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
           required: "El DUI es obligatorio",
           pattern: {
             value: /^\d{8}-\d{1}$/,
-            message: "Formato inválido (12345678-9)"
-          }
+            message: "Formato inválido (12345678-9)",
+          },
         }}
         placeholder="12345678-9"
         maxLength={10}
@@ -289,12 +285,12 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         type="date"
         register={register}
         errors={errors}
-        validation={{ 
+        validation={{
           required: "La fecha de nacimiento es obligatoria",
           max: {
-            value: new Date().toISOString().split('T')[0],
-            message: "La fecha no puede ser futura"
-          }
+            value: new Date().toISOString().split("T")[0],
+            message: "La fecha no puede ser futura",
+          },
         }}
         required
       />
@@ -308,8 +304,8 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
           required: "El teléfono es obligatorio",
           pattern: {
             value: /^\d{4}-\d{4}$/,
-            message: "Formato inválido (1234-5678)"
-          }
+            message: "Formato inválido (1234-5678)",
+          },
         }}
         placeholder="1234-5678"
         maxLength={9}
@@ -326,8 +322,8 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
           required: "El correo electrónico es obligatorio",
           pattern: {
             value: /^[a-zA-Z0-9._%+-]+@ricaldone\.edu\.sv$/,
-            message: "Debe usar un correo institucional @ricaldone.edu.sv"
-          }
+            message: "Debe usar un correo institucional @ricaldone.edu.sv",
+          },
         }}
         placeholder="usuario@ricaldone.edu.sv"
         required
@@ -343,12 +339,12 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
           required: "La contraseña es obligatoria",
           minLength: {
             value: 8,
-            message: "Mínimo 8 caracteres"
+            message: "Mínimo 8 caracteres",
           },
           pattern: {
             value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
-            message: "Debe incluir mayúsculas, minúsculas y números"
-          }
+            message: "Debe incluir mayúsculas, minúsculas y números",
+          },
         }}
         required
       />
@@ -359,13 +355,12 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         type="date"
         register={register}
         errors={errors}
-        validation={{ 
+        validation={{
           required: "La fecha de contratación es obligatoria",
-          validate: value => {
+          validate: (value) => {
             if (!birthday) return true;
-            return new Date(value) > new Date(birthday) || 
-              "Debe ser posterior a la fecha de nacimiento";
-          }
+            return new Date(value) > new Date(birthday) || "Debe ser posterior a la fecha de nacimiento";
+          },
         }}
         required
       />
@@ -388,7 +383,7 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         errors={errors}
         options={[
           { value: "activo", label: "Activo" },
-          { value: "inactivo", label: "Inactivo" }
+          { value: "inactivo", label: "Inactivo" },
         ]}
         validation={{ required: "Debe seleccionar un estado" }}
         required
@@ -399,12 +394,12 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         id="address"
         register={register}
         errors={errors}
-        validation={{ 
+        validation={{
           required: "La dirección es obligatoria",
           minLength: {
             value: 5,
-            message: "Mínimo 5 caracteres"
-          }
+            message: "Mínimo 5 caracteres",
+          },
         }}
         required
       />
@@ -412,7 +407,7 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
       <div className="form-field">
         <label>Imagen:</label>
         <div className="image-upload-container">
-          <label htmlFor="photo" className="custom-image-upload">
+          <label htmlFor="photo" className="custom-image-upload" tabIndex={0}>
             <div className="image-upload-label">
               <Camera className="camera-icon" />
               <span>{image ? "Cambiar imagen" : "Agregar imagen"}</span>
@@ -429,11 +424,7 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
             {isSubmitting ? (
               <div className="image-uploading-spinner"></div>
             ) : previewUrl ? (
-              <img
-                src={previewUrl}
-                alt="Vista previa"
-                className="image-preview"
-              />
+              <img src={previewUrl} alt="Vista previa" className="image-preview" />
             ) : (
               <div className="image-placeholder">Sin imagen</div>
             )}
@@ -441,8 +432,8 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         </div>
       </div>
 
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         className="btn-guardar"
         disabled={isSubmitting}
         aria-busy={isSubmitting}
@@ -452,7 +443,9 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
             <span className="spinner" aria-hidden="true"></span>
             <span className="sr-only">Guardando...</span>
           </>
-        ) : "GUARDAR"}
+        ) : (
+          "GUARDAR"
+        )}
       </button>
     </form>
   );

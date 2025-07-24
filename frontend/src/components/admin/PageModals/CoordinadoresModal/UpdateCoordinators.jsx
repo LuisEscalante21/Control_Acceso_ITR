@@ -29,7 +29,8 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
       reset({
         ...coordinator,
         birthday: toInputDateFormat(coordinator.birthday),
-        password: "" // <-- Esto asegura que el campo esté vacío siempre
+        status: coordinator.status ? "activo" : "inactivo",
+        password: ""
       });
       setEditMode(false);
       setPhotoPreview(coordinator.photo);

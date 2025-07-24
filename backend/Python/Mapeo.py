@@ -12,7 +12,7 @@ from cloudinary.uploader import upload
 from cloudinary import config as cloudinary_config
 from PIL import Image
 import numpy as np
-from health import health_bp
+from Health import health_bp
 
 # Cargar variables de entorno
 load_dotenv()

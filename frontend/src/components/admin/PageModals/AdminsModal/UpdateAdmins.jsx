@@ -31,20 +31,32 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
         ...admin,
         birthday: toInputDateFormat(admin.birthday),
         status: admin.status ? "activo" : "inactivo",
-        password: "" // <-- Esto asegura que el campo esté vacío siempre
+        password: "", // siempre vacío
       });
       setPhotoPreview(admin.photo || "");
       setEditMode(false);
     }
   }, [admin, reset]);
 
+  // Mantener sincronizado el valor del select con photoPreview
+  const statusValue = watch("status");
+
   const onSubmit = async (data) => {
-    data.status = data.status === "activo";
-    data.photo = photoPreview;
-    await onSave(data, admin._id);
-    Swal.fire("Actualizado", "El administrador ha sido actualizado exitosamente.", "success");
-    setEditMode(false);
-    onClose();
+    try {
+      // Convertir status a boolean
+      data.status = data.status === "activo";
+
+      // Enviar la imagen en base64
+      data.photo = photoPreview;
+
+      await onSave(data, admin._id);
+
+      Swal.fire("Actualizado", "El administrador ha sido actualizado exitosamente.", "success");
+      setEditMode(false);
+      onClose();
+    } catch (error) {
+      Swal.fire("Error", "No se pudo actualizar el administrador", "error");
+    }
   };
 
   const handleDelete = () => {
@@ -65,6 +77,14 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.startsWith("image/")) {
+        Swal.fire("Error", "Por favor selecciona un archivo de imagen válido.", "error");
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        Swal.fire("Error", "La imagen no debe superar los 2MB.", "error");
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -78,7 +98,7 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   return (
     <div className="modal-overlay active">
       <div className="cvcard-modal cvcard-modal-scroll">
-        <button className="close-modal" onClick={onClose}>×</button>
+        <button className="close-modal" onClick={onClose} aria-label="Cerrar modal">×</button>
         <div className="cvcard-header">
           <img src={photoPreview} alt="Avatar" className="cvcard-avatar" />
           <div className="cvcard-nombre">{admin.names} {admin.surnames}</div>
@@ -88,15 +108,28 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
             <span className="cvcard-info-title">Información personal</span>
             {!editMode && (
               <span className="cvcard-actions">
-                <button className="cvcard-action-btn" onClick={() => setEditMode(true)} title="Editar">
+                <button
+                  type="button"
+                  className="cvcard-action-btn"
+                  onClick={() => setEditMode(true)}
+                  title="Editar"
+                  aria-label="Editar administrador"
+                >
                   <Pencil size={22} />
                 </button>
-                <button className="cvcard-action-btn" onClick={handleDelete} title="Eliminar">
+                <button
+                  type="button"
+                  className="cvcard-action-btn"
+                  onClick={handleDelete}
+                  title="Eliminar"
+                  aria-label="Eliminar administrador"
+                >
                   <Trash2 size={22} />
                 </button>
               </span>
             )}
           </div>
+
           {!editMode ? (
             <>
               <div className="cvcard-info-group">
@@ -127,61 +160,124 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
                 <span className="cvcard-label">Fecha de nacimiento:</span>
                 <span className="cvcard-value">{toInputDateFormat(admin.birthday)}</span>
               </div>
+              <div className="cvcard-info-group">
+                <span className="cvcard-label">Estado:</span>
+                <span className="cvcard-value">{admin.status ? "Activo" : "Inactivo"}</span>
+              </div>
             </>
           ) : (
-            <form className="cvcard-form" onSubmit={handleSubmit(onSubmit)} style={{ width: "100%", marginTop: 10 }}>
+            <form
+              className="cvcard-form"
+              onSubmit={handleSubmit(onSubmit)}
+              style={{ width: "100%", marginTop: 10 }}
+              noValidate
+            >
               <div className="form-field">
-                <label>Código de administrador:</label>
-                <input {...register("numEmpleado", { required: true })} />
+                <label htmlFor="numEmpleado">Código de administrador:</label>
+                <input id="numEmpleado" {...register("numEmpleado", { required: "Código obligatorio" })} />
+                {errors.numEmpleado && <span className="error-message">{errors.numEmpleado.message}</span>}
               </div>
+
               <div className="form-field">
-                <label>Nombres:</label>
-                <input {...register("names", { required: true })} />
+                <label htmlFor="names">Nombres:</label>
+                <input id="names" {...register("names", { required: "Nombres obligatorios" })} />
+                {errors.names && <span className="error-message">{errors.names.message}</span>}
               </div>
+
               <div className="form-field">
-                <label>Apellidos:</label>
-                <input {...register("surnames", { required: true })} />
+                <label htmlFor="surnames">Apellidos:</label>
+                <input id="surnames" {...register("surnames", { required: "Apellidos obligatorios" })} />
+                {errors.surnames && <span className="error-message">{errors.surnames.message}</span>}
               </div>
+
               <div className="form-field">
-                <label>Correo electrónico:</label>
-                <input {...register("email", { required: true })} />
-              </div>
-              <div className="form-field">
-                <label>Nueva contraseña:</label>
+                <label htmlFor="email">Correo electrónico:</label>
                 <input
+                  id="email"
+                  type="email"
+                  {...register("email", {
+                    required: "Correo obligatorio",
+                    pattern: {
+                      value: /^[a-zA-Z0-9._%+-]+@ricaldone\.edu\.sv$/,
+                      message: "Correo debe ser @ricaldone.edu.sv",
+                    },
+                  })}
+                />
+                {errors.email && <span className="error-message">{errors.email.message}</span>}
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="password">Nueva contraseña:</label>
+                <input
+                  id="password"
                   type="password"
                   {...register("password")}
                   placeholder="Dejar vacío para no cambiar"
                   autoComplete="new-password"
                 />
               </div>
+
               <div className="form-field">
-                <label>Número telefónico:</label>
-                <input {...register("telephone", { required: true })} />
+                <label htmlFor="telephone">Número telefónico:</label>
+                <input
+                  id="telephone"
+                  {...register("telephone", { required: "Teléfono obligatorio" })}
+                />
+                {errors.telephone && <span className="error-message">{errors.telephone.message}</span>}
               </div>
+
               <div className="form-field">
-                <label>Dirección de residencia:</label>
-                <input {...register("address", { required: true })} />
+                <label htmlFor="address">Dirección de residencia:</label>
+                <input
+                  id="address"
+                  {...register("address", { required: "Dirección obligatoria" })}
+                />
+                {errors.address && <span className="error-message">{errors.address.message}</span>}
               </div>
+
               <div className="form-field">
-                <label>DUI:</label>
-                <input {...register("DUI", { required: true })} />
+                <label htmlFor="DUI">DUI:</label>
+                <input
+                  id="DUI"
+                  {...register("DUI", {
+                    required: "DUI obligatorio",
+                    pattern: {
+                      value: /^\d{8}-\d{1}$/,
+                      message: "Formato DUI inválido (12345678-9)",
+                    },
+                  })}
+                />
+                {errors.DUI && <span className="error-message">{errors.DUI.message}</span>}
               </div>
+
               <div className="form-field">
-                <label>Fecha de nacimiento:</label>
-                <input type="date" {...register("birthday", { required: true })} />
+                <label htmlFor="birthday">Fecha de nacimiento:</label>
+                <input
+                  id="birthday"
+                  type="date"
+                  {...register("birthday", { required: "Fecha obligatoria" })}
+                  max={toInputDateFormat(new Date())}
+                />
+                {errors.birthday && <span className="error-message">{errors.birthday.message}</span>}
               </div>
+
               <div className="form-field">
                 <label htmlFor="status">Estado:</label>
-                <select id="status" {...register("status", { required: true })}>
+                <select
+                  id="status"
+                  {...register("status", { required: "Estado obligatorio" })}
+                  defaultValue={statusValue}
+                >
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
                 </select>
+                {errors.status && <span className="error-message">{errors.status.message}</span>}
               </div>
+
               <div className="form-field">
                 <label htmlFor="photo">Imagen de perfil:</label>
                 <div className="image-upload-container">
-                  <label htmlFor="photo" className="custom-image-upload">
+                  <label htmlFor="photo" className="custom-image-upload" tabIndex={0} onKeyDown={e => e.key === "Enter" && document.getElementById('photo').click()}>
                     <Camera className="camera-icon" />
                     <span>{photoPreview ? "Cambiar imagen" : "Agregar imagen"}</span>
                     <input
@@ -202,7 +298,10 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
                   </div>
                 </div>
               </div>
-              <button type="submit" className="btn-guardar">ACTUALIZAR</button>
+
+              <button type="submit" className="btn-guardar" aria-label="Actualizar administrador">
+                ACTUALIZAR
+              </button>
             </form>
           )}
         </div>

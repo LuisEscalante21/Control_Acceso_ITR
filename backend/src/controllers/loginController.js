@@ -4,10 +4,10 @@ import AdministratorsModel from "../models/Administrators.js";
 import bcryptjs from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
 import { config } from "../config.js";
+import parseExpirationToMs from "../utils/parseExpirationToMs.js";
 
 const loginController = {};
 
-// L O G I N
 loginController.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -39,17 +39,14 @@ loginController.login = async (req, res) => {
         }
       }
 
-      // Usuario no encontrado
       if (!userFound) {
         return res.status(401).json({ message: "Usuario no encontrado" });
       }
 
-      // Validar si el usuario está activo
       if (userFound.status !== undefined && userFound.status !== true) {
         return res.status(403).json({ message: "Usuario inactivo. Contacte al administrador." });
       }
 
-      // Validar contraseña
       const isMatch = await bcryptjs.compare(password, userFound.password);
       if (!isMatch) {
         return res.status(401).json({ message: "Contraseña incorrecta" });
@@ -62,7 +59,7 @@ loginController.login = async (req, res) => {
       userType,
     };
 
-    // Agregar datos extendidos si es Coordinador o Empleado
+    // Agregar datos extendidos
     if (userType === "Coordinator" || userType === "Employee") {
       tokenPayload.names = userFound.names;
       tokenPayload.surnames = userFound.surnames;
@@ -73,26 +70,29 @@ loginController.login = async (req, res) => {
       tokenPayload.photo = userFound.photo;
     }
 
-    // Firmar token JWT
+    const cookieMaxAge = parseExpirationToMs(config.JWT.expiresIn) || 1000 * 60 * 60 * 24 * 30;
+
+    // Firmar el token JWT
     jsonwebtoken.sign(
       tokenPayload,
       config.JWT.secret,
       { expiresIn: config.JWT.expiresIn },
       (error, token) => {
         if (error) {
-          console.log(error);
+          console.error(error);
           return res.status(500).json({ message: "Error generando el token" });
         }
 
-        // ✅ Cookie con token JWT (httpOnly)
+        // Cookie de autenticación
         res.cookie("authToken", token, {
           httpOnly: true,
           secure: false, // true en producción con HTTPS
           sameSite: "lax",
-          path: "/",      // ⚠️ Esto es obligatorio para poder eliminarla después
+          path: "/",
+          maxAge: cookieMaxAge,
         });
 
-        // ✅ Cookie visible al frontend con info del usuario (solo para coordinador o empleado)
+        // Cookie visible con info del usuario
         if (userType === "Coordinator" || userType === "Employee") {
           res.cookie("userInfo", JSON.stringify({
             userType,
@@ -103,9 +103,10 @@ loginController.login = async (req, res) => {
             photo: tokenPayload.photo,
           }), {
             httpOnly: false,
+            secure: false,
             sameSite: "lax",
-            secure: false, // true en producción
-            path: "/",     // ⚠️ Igual que arriba
+            path: "/",
+            maxAge: cookieMaxAge,
           });
         }
 
@@ -120,7 +121,7 @@ loginController.login = async (req, res) => {
       }
     );
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error interno del servidor" });
   }
 };
