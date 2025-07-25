@@ -6,13 +6,15 @@ import threading
 import numpy as np
 import dlib
 import face_recognition
+import requests
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from Health import health_bp 
-from faiss_index import FaissFaceIndex 
+from Health import health_bp
+from faiss_index import FaissFaceIndex
+from Registro_acceso import registrar_acceso
 
 app = Flask(__name__)
 CORS(app)
@@ -27,6 +29,7 @@ mongo_uri = os.getenv("DB_URI")
 port = int(os.getenv("PORT_RECONOCIMIENTO", 5000))
 db_name = os.getenv("DB_NAME", "PTC_2025")
 collection_name = os.getenv("DB_COLLECTION", "faces")
+SCHEDULES_URL = "http://localhost:4000/api/schedules"
 
 # Conexión Mongo
 mongo_client = MongoClient(mongo_uri)
@@ -88,6 +91,22 @@ def malla_facial(image, faces, padding=10):
             cv2.circle(image, (x, y), 1, (255, 0, 39), -1)
     return image
 
+def determinar_tipo_acceso(schedule, ahora):
+    dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+    dia = dias[ahora.weekday()]
+    seccion = "Matutino" if ahora.hour < 12 else "Vespertino"
+
+    bloque = schedule.get(dia, {}).get(seccion)
+    if not bloque:
+        return None
+
+    hora_actual = ahora.strftime("%H:%M")
+    if bloque["start"] <= hora_actual <= bloque["end"]:
+        return "entrada"
+    if hora_actual > bloque["end"]:
+        return "salida"
+    return None
+
 def log():
     while True:
         time.sleep(2)
@@ -102,47 +121,7 @@ def log():
 
 threading.Thread(target=log, daemon=True).start()
 
-@app.route('/capture', methods=['POST'])
-@require_api_key(RECONOCIMIENTO_API_KEY)
-def capture():
-    global webcam_en_uso
-    with webcam_lock:
-        if webcam_en_uso:
-            return jsonify({"error": "La webcam está en uso por otro proceso."}), 409
-        webcam_en_uso = True
-
-    try:
-        data = request.get_json()
-        image_data = data.get('image', '')
-        if not image_data:
-            return jsonify({"error": "No se recibió imagen"}), 400
-
-        img_bytes = base64.b64decode(image_data)
-        np_img = np.frombuffer(img_bytes, np.uint8)
-        frame = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
-        if frame is None:
-            return jsonify({"error": "No se pudo decodificar la imagen."}), 400
-
-        faces = deteccion_rostros(frame)
-        rostro_detectado = len(faces) > 0
-
-        print("Se detecto un rostro." if rostro_detectado else "No se detectaron rostros.")
-        ultimo_estado.update({
-            'rostros_detectados': rostro_detectado,
-            'hora': datetime.now(),
-            'ultima_imagen': datetime.now()
-        })
-
-        frame = malla_facial(frame, faces)
-        _, buffer = cv2.imencode('.png', frame)
-        frame_b64 = base64.b64encode(buffer).decode('utf-8')
-        detections = [[int(face.left()), int(face.top()), int(face.width()), int(face.height())] for face in faces]
-
-        return jsonify({"image": frame_b64, "detections": detections})
-    finally:
-        webcam_en_uso = False
-
-@app.route('/video-capture')
+@app.route('/videoCapture')
 def realtime_face_recognition():
     return Response(generar_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
@@ -185,12 +164,24 @@ def generar_frames():
 
             for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
                 matched_id, distance = faiss_index.search_face(face_encoding, threshold=0.35)
-                
+
                 if matched_id:
-                    color = (0, 255, 0)  # verde
+                    face_doc = collection.find_one({"employee_code": matched_id})
+                    if face_doc:
+                        schedule_id = face_doc.get("schedule_id")
+                        res = requests.get(SCHEDULES_URL)
+                        if res.status_code == 200:
+                            schedules = res.json()
+                            schedule = next((s for s in schedules if s["_id"] == schedule_id), None)
+                            if schedule:
+                                tipo = determinar_tipo_acceso(schedule, datetime.now())
+                                if tipo:
+                                    registrar_acceso(matched_id, tipo=tipo)
+
+                    color = (0, 255, 0)
                     label = f"{matched_id}"
                 else:
-                    color = (0, 0, 255)  # rojo
+                    color = (0, 0, 255)
                     label = "Desconocido"
 
                 cv2.rectangle(frame, (left, top), (right, bottom), color, 1)
@@ -218,7 +209,7 @@ def generar_frames():
 
 def iniciar_api_reconocimiento():
     faiss_index.load_encodings(collection)
-    print("La API de reconocimiento facial con FAISS esta activa.")
+    print("La API de reconocimiento facial con FAISS está activa.")
     app.run(debug=True, use_reloader=False, host='0.0.0.0', port=port)
 
 if __name__ == '__main__':

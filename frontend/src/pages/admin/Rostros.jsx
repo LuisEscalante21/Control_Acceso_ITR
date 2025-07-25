@@ -37,14 +37,6 @@ const Rostros = () => {
     setShowForm(true);
   };
 
-  const handleSubmit = async (id, file, name) => {
-    if (modalMode === "add") {
-      await saveFace(file, name);
-    } else {
-      await updateFace(id, file, name);
-    }
-  };
-
   return (
     <>
       <div
@@ -114,7 +106,13 @@ const Rostros = () => {
           mode={modalMode}
           face={faceToEdit}
           onClose={() => setShowForm(false)}
-          onSubmit={handleSubmit}
+          onSubmit={async (formData) => {
+            if (modalMode === "add") {
+              return saveFace(formData);
+            } else {
+              return updateFace(faceToEdit._id, formData);
+            }
+          }}
         />
       )}
     </>

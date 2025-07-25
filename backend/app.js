@@ -39,7 +39,7 @@ app.use(cookieParser());
 
 //Traemos el archivo json
 const swaggerDocument = JSON.parse(
-  fs.readFileSync(path.resolve("./Apis.json"), "utf-8")
+  fs.readFileSync(path.resolve("./Api.json"), "utf-8")
 );
 
 // Definir las rutas de las funciones que tendrá la página web

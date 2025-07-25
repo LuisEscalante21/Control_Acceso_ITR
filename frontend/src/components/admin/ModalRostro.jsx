@@ -3,20 +3,27 @@ import "../../components/styles/ModalRostro.css";
 import rostroImg1 from "../../img/Rostros-1.png";
 import rostroImg2 from "../../img/Rostros-2.png";
 import Swal from "sweetalert2";
+import useDataSchedules from "../../hooks/admin/useDataSchedule.jsx";
 
 function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   const [newFile, setNewFile] = useState(null);
   const [name, setName] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
+  const [selectedScheduleId, setSelectedScheduleId] = useState("");
+
+  // Traer horarios con tu hook
+  const { schedules } = useDataSchedules();
 
   useEffect(() => {
     if (mode === "edit" && face) {
       setName(face.name || "");
       setEmployeeCode(face.employee_code || "");
+      setSelectedScheduleId(face.schedule_id || "");
       setNewFile(null);
     } else {
       setName("");
       setEmployeeCode("");
+      setSelectedScheduleId("");
       setNewFile(null);
     }
   }, [mode, face]);
@@ -24,6 +31,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   const handleClose = () => {
     setName("");
     setEmployeeCode("");
+    setSelectedScheduleId("");
     setNewFile(null);
     onClose();
   };
@@ -33,7 +41,11 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      return Swal.fire("Archivo inválido", "Selecciona una imagen válida.", "error");
+      return Swal.fire(
+        "Archivo inválido",
+        "Selecciona una imagen válida.",
+        "error"
+      );
     }
 
     setNewFile(file);
@@ -48,25 +60,28 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   };
 
   const handleSave = async () => {
-    if (!name.trim() || !employeeCode.trim() || (mode === "add" && !newFile)) {
+    if (
+      !name.trim() ||
+      !employeeCode.trim() ||
+      !selectedScheduleId ||
+      (mode === "add" && !newFile)
+    ) {
       return Swal.fire(
         "Campos incompletos",
-        "Completa todos los campos y selecciona una imagen.",
+        "Completa todos los campos y selecciona un horario.",
         "warning"
       );
     }
 
+    const data = new FormData();
+    data.append("name", name.trim());
+    data.append("employee_code", employeeCode.trim());
+    data.append("schedule_id", selectedScheduleId); 
+    if (newFile) {
+      data.append("image", newFile);
+    }
+
     try {
-      const data = {
-        file: newFile,
-        name: name.trim(),
-        employee_code: employeeCode.trim(),
-      };
-
-      if (mode === "edit") {
-        data.id = face._id;
-      }
-
       await onSubmit(data);
       handleClose();
     } catch (err) {
@@ -83,6 +98,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
 
         <h2>{mode === "edit" ? "Editar rostro" : "Agregar rostro"}</h2>
 
+        {/* Campo nombre */}
         <label>Nombres y Apellidos:</label>
         <input
           type="text"
@@ -91,6 +107,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           placeholder="Nombre completo"
         />
 
+        {/* Campo código de empleado */}
         <label>Código de empleado:</label>
         <input
           type="text"
@@ -99,6 +116,21 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           placeholder="Código"
         />
 
+        {/* Combobox para seleccionar horario - justo debajo del código */}
+        <label>Horario asociado:</label>
+        <select
+          value={selectedScheduleId || ""}
+          onChange={(e) => setSelectedScheduleId(e.target.value)}
+        >
+          <option value="">Selecciona un horario</option>
+          {schedules.map((sch) => (
+            <option key={sch._id} value={sch._id}>
+              {sch.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Opciones biométricas */}
         <div className="biometric-options">
           <div className="option">
             <label htmlFor="file-input">

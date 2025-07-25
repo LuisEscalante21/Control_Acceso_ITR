@@ -24,8 +24,8 @@ export default function Sidebar() {
   const navigationItems = [
     { name: "Dashboard", path: "/coordinator-dashboard/dashboard", icon: Home },
     {
-      name: "Gestión de personal",
-      path: "/coordinator-dashboard/personal",
+      name: "Gestión de Empleados",
+      path: "/coordinator-dashboard/empleado",
       icon: UserCheck,
     },
     {
@@ -37,11 +37,6 @@ export default function Sidebar() {
       name: "Historial de accesos",
       path: "/coordinator-dashboard/historial",
       icon: Clock,
-    },
-    {
-      name: "Gestiòn de Empleados",
-      path: "/coordinator-dashboard/empleado",
-      icon: UserCheck,
     },
   ];
 
@@ -78,7 +73,6 @@ export default function Sidebar() {
         localStorage.removeItem("userData");
         sessionStorage.clear();
 
-        // ✅ Eliminar cookie userInfo desde el frontend
         document.cookie = "userInfo=; Max-Age=0; path=/";
 
         Swal.close();

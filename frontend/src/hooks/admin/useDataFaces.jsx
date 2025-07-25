@@ -24,13 +24,14 @@ const useDataFace = () => {
     }
   };
 
-  const saveFace = async (file, name, employee_code) => {
-    if (!name || !employee_code || !file) {
-      Swal.fire(
-        "Error",
-        "Faltan datos válidos para guardar el rostro.",
-        "error"
-      );
+  const saveFace = async (formData) => {
+    const name = formData.get("name");
+    const employee_code = formData.get("employee_code");
+    const schedule_id = formData.get("schedule_id");
+    const file = formData.get("image");
+
+    if (!name?.trim() || !employee_code?.trim() || !schedule_id || !(file instanceof File)) {
+      Swal.fire("Error", "Faltan datos válidos para guardar el rostro.", "error");
       return;
     }
 
@@ -41,31 +42,21 @@ const useDataFace = () => {
         didOpen: () => Swal.showLoading(),
       });
 
-      const formData = new FormData();
-      formData.append("image", file);
-      formData.append("name", name);
-      formData.append("employee_code", employee_code);
-
       const res = await axios.post(`${BASE_URL}/mapeo`, formData, {
-        headers: { Authorization: `Bearer ${API_KEY}` },
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "multipart/form-data",
+        },
       });
 
       Swal.close();
 
       if (res.data.status !== "success") {
-        Swal.fire(
-          "Error",
-          res.data.message || "Error al registrar rostro",
-          "error"
-        );
+        Swal.fire("Error", res.data.message || "Error al registrar rostro", "error");
         return;
       }
 
-      Swal.fire(
-        "¡Guardado!",
-        "El rostro se registró correctamente.",
-        "success"
-      );
+      Swal.fire("¡Guardado!", "El rostro se registró correctamente.", "success");
       fetchFaces();
       handleCloseForm();
     } catch (error) {
@@ -78,13 +69,14 @@ const useDataFace = () => {
     }
   };
 
-  const updateFace = async (id, file, name, code) => {
-    if (!name && !code && !file) {
-      Swal.fire(
-        "Error",
-        "Faltan datos válidos para actualizar el rostro.",
-        "error"
-      );
+  const updateFace = async (id, formData) => {
+    const name = formData.get("name");
+    const code = formData.get("code");
+    const schedule_id = formData.get("schedule_id");
+    const file = formData.get("image");
+
+    if (!name && !code && !schedule_id && !file) {
+      Swal.fire("Error", "Faltan datos válidos para actualizar el rostro.", "error");
       return;
     }
 
@@ -95,25 +87,17 @@ const useDataFace = () => {
         didOpen: () => Swal.showLoading(),
       });
 
-      const formData = new FormData();
-      if (file) formData.append("image", file);
-      if (name) formData.append("name", name.trim());
-      if (code) formData.append("code", code.trim());
-
       const res = await axios.put(`${BASE_URL}/faces/${id}`, formData, {
         headers: {
           Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "multipart/form-data",
         },
       });
 
       Swal.close();
 
       if (res.data.status !== "success") {
-        Swal.fire(
-          "Error",
-          res.data.message || "Error al actualizar rostro",
-          "error"
-        );
+        Swal.fire("Error", res.data.message || "Error al actualizar rostro", "error");
         return;
       }
 

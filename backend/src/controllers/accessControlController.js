@@ -1,5 +1,5 @@
 import AccessControlModel from "../models/AccessControl.js";
-
+import { validarHorarioYRegistrar } from "../utils/registroAcceso.js"; 
 const accessControlController = {};
 
 // GET all access records
@@ -31,58 +31,57 @@ accessControlController.getAccessRecordById = async (req, res) => {
   }
 };
 
-// CREATE new access record
-accessControlController.createAccessRecord = async (req, res) => {
+// CREATE or UPDATE access record (único por día por tipo)
+accessControlController.createOrUpdateAccessRecord = async (req, res) => {
   try {
     const {
       id_Employee,
       entry_time,
-      entry_result,
       entry_photo,
       exit_time,
-      exit_result,
       exit_photo,
-      date,
     } = req.body;
 
-    const newRecord = new AccessControlModel({
-      id_Employee,
-      entry_time,
-      entry_result,
-      entry_photo,
-      exit_time,
-      exit_result,
-      exit_photo,
-      date,
-    });
+    if (!id_Employee) return res.status(400).json({ message: "Falta id_Employee" });
 
-    await newRecord.save();
-    res.status(201).json({ message: "Access record created successfully" });
+    let resultadoEntrada = "No enviado";
+    let resultadoSalida = "No enviado";
+
+    if (entry_time) {
+      resultadoEntrada = await validarHorarioYRegistrar({
+        id_Employee,
+        tipo: "entrada",
+        fechaHora: new Date(entry_time),
+        foto: entry_photo,
+      });
+    }
+
+    if (exit_time) {
+      resultadoSalida = await validarHorarioYRegistrar({
+        id_Employee,
+        tipo: "salida",
+        fechaHora: new Date(exit_time),
+        foto: exit_photo,
+      });
+    }
+
+    res.status(201).json({
+      message: "Registro de acceso procesado correctamente",
+      resultados: {
+        entrada: resultadoEntrada,
+        salida: resultadoSalida,
+      },
+    });
   } catch (error) {
-    console.error("Error creating access record:", error);
+    console.error("Error creando o actualizando acceso:", error);
     res.status(500).json({
-      message: "Error creating access record",
+      message: "Error procesando registro de acceso",
       error: error.message || error.toString(),
     });
   }
 };
 
-// UPDATE access record by ID
-accessControlController.updateAccessRecord = async (req, res) => {
-  try {
-    const updated = await AccessControlModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ message: "Access record not found" });
-    res.status(200).json({ message: "Access record updated successfully", updated });
-  } catch (error) {
-    console.error("Error updating access record:", error);
-    res.status(500).json({
-      message: "Error updating access record",
-      error: error.message || error.toString(),
-    });
-  }
-};
-
-// DELETE access record by ID
+// DELETE
 accessControlController.deleteAccessRecord = async (req, res) => {
   try {
     const deleted = await AccessControlModel.findByIdAndDelete(req.params.id);

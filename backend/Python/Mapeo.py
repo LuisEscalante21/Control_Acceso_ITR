@@ -13,6 +13,7 @@ from cloudinary import config as cloudinary_config
 from PIL import Image
 import numpy as np
 from Health import health_bp
+from faiss_index import FaissFaceIndex
 
 # Cargar variables de entorno
 load_dotenv()
@@ -20,6 +21,11 @@ DB_URI = os.getenv('DB_URI')
 DB_NAME = os.getenv('DB_NAME')
 DB_COLLECTION = os.getenv('DB_COLLECTION')
 MAPEO_API_KEY = os.getenv("MAPEO_API_KEY")
+
+
+# Inicializar FAISS
+faiss_index = FaissFaceIndex()
+
 
 if not DB_URI:
     raise Exception("DB_URI no está definida.")
@@ -97,7 +103,7 @@ def handle_exception(e):
     return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-# Endpoint para registrar un rostro
+#Endpoint para mapear y registrar un rostro
 @app.route('/mapeo', methods=['POST'])
 @require_api_key(MAPEO_API_KEY)
 def mapeo():
@@ -106,12 +112,15 @@ def mapeo():
 
     name = request.form.get('name')
     employee_code = request.form.get('employee_code')
+    schedule_id = request.form.get('schedule_id')
     image = request.files['image']
 
     if not name:
         return jsonify({'status': 'error', 'message': 'El nombre es obligatorio'}), 400
     if not employee_code:
         return jsonify({'status': 'error', 'message': 'El código de empleado es obligatorio'}), 400
+    if not schedule_id:
+        return jsonify({'status': 'error', 'message': 'El horario es obligatorio'}), 400
     if image.filename == '':
         return jsonify({'status': 'error', 'message': 'La imagen es obligatoria'}), 400
     if not allowed_file(image.filename):
@@ -144,9 +153,14 @@ def mapeo():
         'image_url': image_url,
         'encoding': codificacion.tolist(),
         'name': name,
-        'employee_code': employee_code
+        'employee_code': employee_code,
+        'schedule_id': schedule_id
     }
+
+    print(">>> Documento a insertar en MongoDB:", documento)
+
     coleccion_de_caras.insert_one(documento)
+    faiss_index.add_face(codificacion, employee_code)
 
     return jsonify({
         'status': 'success',
@@ -162,17 +176,27 @@ def mapeo():
 def actualizar_face(id):
     name = request.form.get('name')
     code = request.form.get('code')
+    schedule_id = request.form.get('schedule_id')
     image = request.files.get('image')
 
-    if not name and not code and not image:
+    if not name and not code and not schedule_id and not image:
         return jsonify({'status': 'error', 'message': 'No se proporcionaron datos para actualizar'}), 400
 
+    documento_anterior = coleccion_de_caras.find_one({'_id': ObjectId(id)})
+    if not documento_anterior:
+        return jsonify({'status': 'error', 'message': 'No se encontró el rostro'}), 404
+
+    codigo_anterior = documento_anterior.get('employee_code')
     campos_a_actualizar = {}
 
     if name:
         campos_a_actualizar['name'] = name
     if code:
         campos_a_actualizar['employee_code'] = code
+    if schedule_id:
+        campos_a_actualizar['schedule_id'] = schedule_id  # 👈 nuevo campo
+
+    nuevo_codigo = code if code else codigo_anterior
 
     if image and image.filename != '':
         if not allowed_file(image.filename):
@@ -181,7 +205,6 @@ def actualizar_face(id):
         try:
             upload_result = upload(image, folder="rostros")
             image_url = upload_result.get("secure_url")
-
             if not image_url:
                 return jsonify({'status': 'error', 'message': 'No se obtuvo URL de la imagen'}), 500
         except Exception as e:
@@ -210,6 +233,11 @@ def actualizar_face(id):
     )
 
     if resultado.matched_count == 1:
+        if codigo_anterior:
+            faiss_index.remove_face(codigo_anterior)
+        if 'encoding' in campos_a_actualizar:
+            faiss_index.add_face(np.array(campos_a_actualizar['encoding']), nuevo_codigo)
+
         return jsonify({'status': 'success', 'message': 'Rostro actualizado correctamente'}), 200
     else:
         return jsonify({'status': 'error', 'message': 'No se encontró el rostro'}), 404
@@ -229,12 +257,20 @@ def listar_faces():
 @app.route('/faces/<id>', methods=['DELETE'])
 @require_api_key(MAPEO_API_KEY)
 def eliminar_face(id):
+    # Buscar primero el documento para obtener el employee_code
+    documento = coleccion_de_caras.find_one({'_id': ObjectId(id)})
+    employee_code = documento.get("employee_code") if documento else None
+
+    # Eliminar de MongoDB
     resultado = coleccion_de_caras.delete_one({'_id': ObjectId(id)})
+
     if resultado.deleted_count == 1:
+        # Eliminar del índice FAISS si existe el código
+        if employee_code:
+            faiss_index.remove_face(employee_code)
         return jsonify({'status': 'success', 'message': 'Rostro eliminado correctamente'}), 200
     else:
         return jsonify({'status': 'error', 'message': 'No se encontró el rostro'}), 404
-
 
 def iniciar_api_mapeo():
     port = int(os.getenv('PORT_MAPEO'))

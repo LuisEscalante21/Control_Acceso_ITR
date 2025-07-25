@@ -8,13 +8,11 @@ const AccessControlSchema = new Schema(
       required: true
     },
     entry_time: {
-      type: Date,
-      required: true
+      type: Date
     },
     entry_result: {
       type: String,
-      enum: ["puntual", "tarde", "ausente"],
-      required: true
+      enum: ["A tiempo", "Tarde", "Sin horario asignado"]
     },
     entry_photo: {
       type: String
@@ -24,13 +22,13 @@ const AccessControlSchema = new Schema(
     },
     exit_result: {
       type: String,
-      enum: ["completado", "incompleto", "pendiente"]
+      enum: ["A tiempo", "Salió antes", "Sin horario asignado"]
     },
     exit_photo: {
       type: String
     },
     date: {
-      type: Date,
+      type: String, // YYYY-MM-DD
       required: true
     }
   },
