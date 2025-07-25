@@ -150,7 +150,7 @@ npm run dev
 npm i
 ````
 **Ejecutar consola:**
-````bash
+````bash    
 npm run dev
 ````
 
