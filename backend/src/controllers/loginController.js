@@ -16,22 +16,29 @@ loginController.login = async (req, res) => {
     let userType;
     let tokenPayload = {};
 
-    // 1. Admin desde .env
+    // 1. Validar admin hardcoded en .env
     if (email === config.emailAdmin.email && password === config.emailAdmin.password) {
       userType = "Admin";
-      userFound = { _id: "Admin" };
+      userFound = {
+        _id: "Admin",
+        fullName: config.emailAdmin.fullName,
+        IdTeam: null,
+        department: null,
+        numEmpleado: null,
+        photo: null,
+      };
     } else {
-      // 2. Buscar en Administradores
+      // 2. Buscar admin en BD
       userFound = await AdministratorsModel.findOne({ email });
       if (userFound) {
         userType = "Admin";
       } else {
-        // 3. Buscar en Coordinadores
+        // 3. Buscar coordinator en BD
         userFound = await CoordinatorsModel.findOne({ email });
         if (userFound) {
           userType = "Coordinator";
         } else {
-          // 4. Buscar en Empleados
+          // 4. Buscar empleado en BD
           userFound = await EmployeesModel.findOne({ email });
           if (userFound) {
             userType = "Employee";
@@ -39,90 +46,113 @@ loginController.login = async (req, res) => {
         }
       }
 
+      // Si no encontró usuario en ninguna colección
       if (!userFound) {
         return res.status(401).json({ message: "Usuario no encontrado" });
       }
 
+      // Verificar si está activo (si el campo existe)
       if (userFound.status !== undefined && userFound.status !== true) {
         return res.status(403).json({ message: "Usuario inactivo. Contacte al administrador." });
       }
 
+      // Comparar contraseña (no en admin hardcoded)
       const isMatch = await bcryptjs.compare(password, userFound.password);
       if (!isMatch) {
         return res.status(401).json({ message: "Contraseña incorrecta" });
       }
     }
 
-    // Payload del token
+    // Construir payload común para JWT
     tokenPayload = {
       id: userFound._id,
       userType,
     };
 
-    // Agregar datos extendidos
-    if (userType === "Coordinator" || userType === "Employee") {
+    // Función para obtener foto segura (sin base64)
+    const safePhoto = (photo) => {
+      if (!photo) return null;
+      // Si es URL (por ejemplo empieza con http o https), úsala
+      if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
+      // Si es base64 u otro, no incluir para evitar problema tamaño cookie
+      return null;
+    };
+
+    // Agregar datos extendidos al payload según tipo de usuario
+    if (userType === "Admin") {
+      tokenPayload.fullName = userFound.fullName || (userFound.names && userFound.surnames
+        ? `${userFound.names} ${userFound.surnames}`
+        : "Admin");
+      tokenPayload.idTeam = userFound.IdTeam || null;
+      tokenPayload.department = userFound.department || null;
+      tokenPayload.numEmpleado = userFound.numEmpleado || null;
+      tokenPayload.photo = safePhoto(userFound.photo);
+    } else if (userType === "Coordinator" || userType === "Employee") {
       tokenPayload.names = userFound.names;
       tokenPayload.surnames = userFound.surnames;
       tokenPayload.fullName = `${userFound.names} ${userFound.surnames}`;
       tokenPayload.idTeam = userFound.IdTeam;
       tokenPayload.department = userFound.department;
       tokenPayload.numEmpleado = userFound.numEmpleado;
-      tokenPayload.photo = userFound.photo;
+      tokenPayload.photo = safePhoto(userFound.photo);
     }
 
-    const cookieMaxAge = parseExpirationToMs(config.JWT.expiresIn) || 1000 * 60 * 60 * 24 * 30;
+    // Calcular duración cookie/token
+    const cookieMaxAge = parseExpirationToMs(config.JWT.expiresIn);
 
-    // Firmar el token JWT
+    // Firmar token JWT
     jsonwebtoken.sign(
       tokenPayload,
       config.JWT.secret,
       { expiresIn: config.JWT.expiresIn },
       (error, token) => {
         if (error) {
-          console.error(error);
+          console.error("Error generando token:", error);
           return res.status(500).json({ message: "Error generando el token" });
         }
 
-        // Cookie de autenticación
+        // Enviar cookie httpOnly con token (para backend)
         res.cookie("authToken", token, {
           httpOnly: true,
-          secure: false, // true en producción con HTTPS
+          secure: false, // En producción: true si usas HTTPS
           sameSite: "lax",
           path: "/",
           maxAge: cookieMaxAge,
         });
 
-        // Cookie visible con info del usuario
-        if (userType === "Coordinator" || userType === "Employee") {
-          res.cookie("userInfo", JSON.stringify({
+        // Enviar cookie accesible desde frontend con info del usuario, sin foto pesada
+        res.cookie(
+          "userInfo",
+          JSON.stringify({
             userType,
             fullName: tokenPayload.fullName,
             idTeam: tokenPayload.idTeam,
             numEmpleado: tokenPayload.numEmpleado,
             department: tokenPayload.department,
             photo: tokenPayload.photo,
-          }), {
+          }),
+          {
             httpOnly: false,
             secure: false,
             sameSite: "lax",
             path: "/",
             maxAge: cookieMaxAge,
-          });
-        }
+          }
+        );
 
-        // Respuesta al frontend
-        res.json({
+        // Responder con json
+        return res.json({
           message: "login successful",
           userType,
           token,
-          fullName: tokenPayload.fullName || null,
-          idTeam: tokenPayload.idTeam || null,
+          fullName: tokenPayload.fullName,
+          idTeam: tokenPayload.idTeam,
         });
       }
     );
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error interno del servidor" });
+    console.error("Error en loginController:", error);
+    return res.status(500).json({ message: "Error interno del servidor" });
   }
 };
 

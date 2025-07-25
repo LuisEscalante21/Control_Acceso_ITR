@@ -14,7 +14,7 @@ export default function AdminHome() {
     if (userInfoCookie) {
       try {
         const userInfo = JSON.parse(userInfoCookie);
-        setUserName(userInfo.fullName || 'Usuario');
+        setUserName(userInfo.fullName);
       } catch (error) {
         console.error('Error al parsear userInfo:', error);
         setUserName('Usuario');

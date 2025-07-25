@@ -18,17 +18,26 @@ const useDataAdmin = () => {
       setAdmins(res.data);
     } catch (error) {
       console.error("Error al obtener administradores:", error);
-      Swal.fire("Error", "No se pudo obtener la lista de administradores.", "error");
+      Swal.fire(
+        "Error",
+        "No se pudo obtener la lista de administradores.",
+        "error"
+      );
     }
   };
 
+  // Crear o actualizar administrador
   // Crear o actualizar administrador
   const saveAdmin = async (adminData, adminId = null) => {
     try {
       if (adminId) {
         // Actualizar administrador
         await axios.put(`${API_URL}/administrators/${adminId}`, adminData);
-        Swal.fire("¡Actualizado!", "El administrador ha sido actualizado.", "success");
+        Swal.fire(
+          "¡Actualizado!",
+          "El administrador ha sido actualizado.",
+          "success"
+        );
       } else {
         // Crear administrador
         await axios.post(`${API_URL}/registerAdministrators`, adminData);
@@ -38,8 +47,15 @@ const useDataAdmin = () => {
       fetchAdmins(); // Actualizar lista
       handleCloseForm();
     } catch (error) {
-      console.error("Error al guardar/actualizar administrador:", error);
-      Swal.fire("Error", "No se pudo guardar el administrador.", "error");
+      const backendMessage = error?.response?.data?.message;
+
+      if (backendMessage === "Email already exists.") {
+        Swal.fire("Error", "Este correo ya está en uso.", "warning");
+      } else if (backendMessage === "Invalid email format.") {
+        Swal.fire("Error", "El correo tiene un formato inválido.", "warning");
+      } else {
+        Swal.fire("Error", "No se pudo guardar el administrador.", "error");
+      }
     }
   };
 
@@ -57,7 +73,11 @@ const useDataAdmin = () => {
     if (result.isConfirmed) {
       try {
         await axios.delete(`${API_URL}/administrators/${id}`);
-        Swal.fire("¡Eliminado!", "El administrador ha sido eliminado.", "success");
+        Swal.fire(
+          "¡Eliminado!",
+          "El administrador ha sido eliminado.",
+          "success"
+        );
         fetchAdmins();
       } catch (error) {
         console.error("Error al eliminar administrador:", error);

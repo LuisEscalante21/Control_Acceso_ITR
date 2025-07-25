@@ -66,6 +66,7 @@ Para que todo funcione correctamente es necesario usar la versión de python 3.1
 ***Software adicional:***
 
 [CMake](https://cmake.org/)
+
 [Visual Studio IDE](https://visualstudio.microsoft.com/es/vs/features/cplusplus/)
 
 #### Instalar dependencias
@@ -101,7 +102,7 @@ python App.py
 - nodemon ^3.1.10
 
 ***Interpretador de javascript en el visual***
-[Nodemon](https://nodejs.org/en)
+[Node](https://nodejs.org/en)
 
 **Instalar depedencias:**
 ```bash
@@ -110,7 +111,7 @@ npm i
 
 **Ejecutar consola:**
 ````bash
-node index.js
+npm run dev
 ````
 
 ### 3. **Frontend (React)**:

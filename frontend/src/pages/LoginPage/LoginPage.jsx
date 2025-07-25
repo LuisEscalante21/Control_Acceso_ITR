@@ -1,16 +1,16 @@
-import '../../styles/LoginPage.css';
-import Swal from 'sweetalert2';
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import LogoRedondo from '../../img/logo_redondo.png';
+import "../../styles/LoginPage.css";
+import Swal from "sweetalert2";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import LogoRedondo from "../../img/logo_redondo.png";
 
 const BASE = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${BASE}${PORT}/api`;
 
 export const LoginPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -37,7 +37,13 @@ export const LoginPage = () => {
           }
         }
       } catch (error) {
-        console.log("Usuario no autenticado o error al verificar sesión:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error de autenticación",
+          text: `Usuario no autenticado o error al verificar sesión: ${
+            error.message || error
+          }`,
+        });
       }
     };
 
@@ -49,53 +55,55 @@ export const LoginPage = () => {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/login`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
-        credentials: 'include',
+        credentials: "include",
       });
 
       const data = await response.json();
 
       if (response.status === 403) {
         Swal.fire({
-          icon: 'warning',
-          title: 'Usuario inactivo',
-          text: 'Tu cuenta está inactiva. Por favor, contacta al administrador.',
+          icon: "warning",
+          title: "Usuario inactivo",
+          text: "Tu cuenta está inactiva. Por favor, contacta al administrador.",
         });
         return;
       }
 
       if (!response.ok) {
-        throw new Error(data.message || 'Error en la solicitud. Verifica tus credenciales.');
+        throw new Error(
+          data.message || "Error en la solicitud. Verifica tus credenciales."
+        );
       }
 
-      if (data.message === 'login successful') {
+      if (data.message === "login successful") {
         Swal.fire({
-          icon: 'success',
-          title: '¡Inicio de sesión exitoso!',
+          icon: "success",
+          title: "¡Inicio de sesión exitoso!",
           text: `Bienvenido, ${data.userType}`,
-          timer: 1500,
+          timer: 1900,
           showConfirmButton: false,
         });
 
         // Redirigir según el rol
-        if (data.userType === 'Admin') {
-          navigate('/admin-dashboard');
-        } else if (data.userType === 'Coordinator') {
-          navigate('/coordinator-dashboard');
-        } else if (data.userType === 'Employee') {
-          navigate('/employee-dashboard');
+        if (data.userType === "Admin") {
+          navigate("/admin-dashboard");
+        } else if (data.userType === "Coordinator") {
+          navigate("/coordinator-dashboard");
+        } else if (data.userType === "Employee") {
+          navigate("/employee-dashboard");
         }
       }
     } catch (error) {
-      console.error('Error:', error);
       Swal.fire({
-        icon: 'error',
-        title: 'Error al iniciar sesión',
-        text: error.message || 'Ocurrió un error. Inténtalo de nuevo más tarde.',
+        icon: "error",
+        title: "Error al iniciar sesión",
+        text:
+          error.message || "Ocurrió un error. Inténtalo de nuevo más tarde.",
       });
     } finally {
       setLoading(false);
@@ -112,7 +120,8 @@ export const LoginPage = () => {
             className="logo"
           />
           <h1 className="title">
-            Bienvenido al Sistema de Control<br />
+            Bienvenido al Sistema de Control
+            <br />
             de Acceso ITR
           </h1>
         </div>
@@ -153,7 +162,7 @@ export const LoginPage = () => {
           </div>
 
           <button type="submit" className="login-button" disabled={loading}>
-            {loading ? 'Cargando...' : <b>Iniciar sesión</b>}
+            {loading ? "Cargando..." : <b>Iniciar sesión</b>}
           </button>
         </form>
 
@@ -163,7 +172,7 @@ export const LoginPage = () => {
           </b>
           <b>
             <p>
-              del{' '}
+              del{" "}
               <a
                 href="https://www.ricaldone.edu.sv/"
                 className="highlight"

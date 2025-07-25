@@ -1,5 +1,6 @@
 import employeesModel from "../models/Employees.js";
 import bcryptjs from "bcryptjs";
+import { emailExistsInAnyCollection } from "../../src/utils/validationUsers.js"; 
 
 const employeesController = {};
 
@@ -39,8 +40,16 @@ employeesController.updateEmployees = async (req, res) => {
       IdTeam,
       status,
       address,
-      photo, // <-- Agrega este campo
+      photo,
     } = req.body;
+
+    const employeeId = req.params.id;
+
+    // Validar email único globalmente
+    const emailExists = await emailExistsInAnyCollection(email, employeeId);
+    if (emailExists) {
+      return res.status(400).json({ message: "Email already exists in the system" });
+    }
 
     // Preparar datos a actualizar
     const updatedData = {
@@ -55,7 +64,7 @@ employeesController.updateEmployees = async (req, res) => {
       IdTeam,
       status,
       address,
-      photo, // <-- Agrega este campo
+      photo,
     };
 
     // Si se incluye nueva contraseña, hashearla
@@ -65,7 +74,7 @@ employeesController.updateEmployees = async (req, res) => {
     }
 
     const updatedEmployee = await employeesModel.findByIdAndUpdate(
-      req.params.id,
+      employeeId,
       updatedData,
       { new: true }
     );

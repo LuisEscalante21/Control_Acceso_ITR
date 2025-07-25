@@ -4,7 +4,7 @@ import jsonwebtoken from "jsonwebtoken";
 import { config } from "../config.js";
 import { v2 as cloudinary } from "cloudinary";
 import validator from "validator"; 
-
+import { emailExistsInAnyCollection } from "../../src/utils/validationUsers.js";
 // Configurar cloudinary
 cloudinary.config({
   cloud_name: config.cloudinary.cloudinary_name,
@@ -59,36 +59,17 @@ registerAdministratorsController.register = async (req, res) => {
       return res.status(400).json({ message: "Invalid telephone format." });
     }
 
-
     // Validar formato de DUI (12345678-9)
     const duiRegex = /^\d{8}-\d$/;
     if (!duiRegex.test(DUI)) {
       return res.status(400).json({ message: "Invalid DUI format." });
     }
 
-    // Verificar unicidad de email
-    const existEmail = await Administrator.findOne({ email });
-    if (existEmail) {
-      return res.status(400).json({ message: "Email already exists." });
+    // ✅ Verificar email global
+    const emailExists = await emailExistsInAnyCollection(email);
+    if (emailExists) {
+      return res.status(400).json({ message: "Email already exists in the system." });
     }
-
-    // Verificar unicidad de teléfono
-    const existPhone = await Administrator.findOne({ telephone });
-    if (existPhone) {
-      return res.status(400).json({ message: "Telephone already exists." });
-    }
-
-    // Verificar unicidad de DUI
-    const existDUI = await Administrator.findOne({ DUI });
-    if (existDUI) {
-      return res.status(400).json({ message: "DUI already exists." });
-    }
-
-     // Verifica si existe el administrador con ese email
-     const existAdmin = await Administrator.findOne({ email });
-     if (existAdmin) {
-       return res.status(400).json({ message: "coordinator already exists" });
-     }
 
     const passwordHash = await bcryptjs.hash(password, 10);
 

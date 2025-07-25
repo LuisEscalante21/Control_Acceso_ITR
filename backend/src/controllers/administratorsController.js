@@ -1,6 +1,8 @@
-const administratorsController = {};
 import administratorsModel from "../models/Administrators.js";
 import bcryptjs from "bcryptjs";
+import { emailExistsInAnyCollection } from "../../src/utils/validationUsers.js"; 
+
+const administratorsController = {};
 
 // S E L E C T
 administratorsController.getAdministrators = async (req, res) => {
@@ -12,14 +14,16 @@ administratorsController.getAdministrators = async (req, res) => {
   }
 };
 
-// D E L E T E
+// D E L E T E (corregido)
 administratorsController.deleteAdministrator = async (req, res) => {
   try {
-    await administratorsModel.findById(req.params.id);
-    res.status(200).json(administrator);
-  }
-  catch (error) {
-    return res.status(500).json({ message: "Error deleted administrator", error });
+    const administrator = await administratorsModel.findByIdAndDelete(req.params.id);
+    if (!administrator) {
+      return res.status(404).json({ message: "Administrator not found" });
+    }
+    res.status(200).json({ message: "Administrator deleted", administrator });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting administrator", error });
   }
 };
 
@@ -42,6 +46,14 @@ administratorsController.updateAdministrator = async (req, res) => {
       photo,
     } = req.body;
 
+    const adminId = req.params.id;
+
+    // Validar email globalmente
+    const emailExists = await emailExistsInAnyCollection(email, adminId);
+    if (emailExists) {
+      return res.status(400).json({ message: "Email already exists in the system" });
+    }
+
     const updatedData = {
       numEmpleado,
       names,
@@ -63,7 +75,7 @@ administratorsController.updateAdministrator = async (req, res) => {
     }
 
     const updatedAdministrator = await administratorsModel.findByIdAndUpdate(
-      req.params.id,
+      adminId,
       updatedData,
       { new: true }
     );
@@ -72,11 +84,13 @@ administratorsController.updateAdministrator = async (req, res) => {
       return res.status(404).json({ message: "Administrator not found" });
     }
 
-    res.status(200).json({ message: "Administrator updated", administrator: updatedAdministrator });
+    res.status(200).json({
+      message: "Administrator updated",
+      administrator: updatedAdministrator,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error updating administrator", error });
   }
 };
-
 
 export default administratorsController;

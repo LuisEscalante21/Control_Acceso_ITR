@@ -3,6 +3,8 @@ import bcryptjs from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
 import { config } from "../config.js";
 import { v2 as cloudinary } from "cloudinary";
+import validator from "validator";
+import { emailExistsInAnyCollection } from "../../src/utils/validationUsers.js";
 
 // Configurar cloudinary
 cloudinary.config({
@@ -31,12 +33,16 @@ registerEmployeesController.register = async (req, res) => {
       address,
     } = req.body;
 
-    if (!numEmpleado || !names || !surnames || !DUI || !birthday || !telephone || !email || !password || !hireDate || !IdTeam || !status || !address) {
-      return res.json({ message: "all fields are required" });
+    // Validación básica
+    if (
+      !numEmpleado || !names || !surnames || !DUI || !birthday ||
+      !telephone || !email || !password || !hireDate || !IdTeam || !status || !address
+    ) {
+      return res.status(400).json({ message: "All fields are required." });
     }
 
-     // Validar formato de email
-     if (!validator.isEmail(email)) {
+    // Validar formato de email
+    if (!validator.isEmail(email)) {
       return res.status(400).json({ message: "Invalid email format." });
     }
 
@@ -46,35 +52,22 @@ registerEmployeesController.register = async (req, res) => {
       return res.status(400).json({ message: "Invalid telephone format." });
     }
 
-
     // Validar formato de DUI (12345678-9)
     const duiRegex = /^\d{8}-\d$/;
     if (!duiRegex.test(DUI)) {
       return res.status(400).json({ message: "Invalid DUI format." });
     }
 
-    // Verificar unicidad de email
-    const existEmail = await Administrator.findOne({ email });
-    if (existEmail) {
-      return res.status(400).json({ message: "Email already exists." });
+    // ✅ Verificar que el email no exista en ninguna colección
+    const emailExists = await emailExistsInAnyCollection(email);
+    if (emailExists) {
+      return res.status(400).json({ message: "Email already exists in the system." });
     }
 
-    // Verificar unicidad de teléfono
-    const existPhone = await Administrator.findOne({ telephone });
-    if (existPhone) {
-      return res.status(400).json({ message: "Telephone already exists." });
-    }
-
-    // Verificar unicidad de DUI
-    const existDUI = await Administrator.findOne({ DUI });
-    if (existDUI) {
-      return res.status(400).json({ message: "DUI already exists." });
-    }
-
-    // Verifica si existe el empleado con ese email
+    // Verificar si el empleado ya existe por email (opcional, ya cubierto por la validación global)
     const existEmployee = await Employee.findOne({ email });
     if (existEmployee) {
-      return res.status(400).json({ message: "employee already exists" });
+      return res.status(400).json({ message: "Employee already exists." });
     }
 
     // Hashea la contraseña
@@ -90,7 +83,7 @@ registerEmployeesController.register = async (req, res) => {
       photoUrl = result.secure_url;
     }
 
-    // Crea el nuevo empleado con todos los campos
+    // Crear nuevo empleado
     const newEmployee = new Employee({
       numEmpleado,
       names,
@@ -107,10 +100,9 @@ registerEmployeesController.register = async (req, res) => {
       photo: photoUrl,
     });
 
-    // Guarda en base de datos
     await newEmployee.save();
 
-    // Genera token JWT y lo envía en cookie
+    // Generar token JWT
     jsonwebtoken.sign(
       { id: newEmployee._id },
       config.JWT.secret,
@@ -121,11 +113,16 @@ registerEmployeesController.register = async (req, res) => {
       }
     );
 
-    // Envía respuesta de éxito
-    res.status(200).json({ message: "employee saved" });
+    res.status(201).json({
+      message: "Employee registered successfully.",
+      employee: newEmployee,
+    });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "server error" });
+    res.status(500).json({
+      message: "Error registering employee",
+      error: error.message,
+    });
   }
 };
 

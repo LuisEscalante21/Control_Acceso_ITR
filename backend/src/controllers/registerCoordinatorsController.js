@@ -3,6 +3,8 @@ import bcryptjs from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
 import { config } from "../config.js";
 import { v2 as cloudinary } from "cloudinary";
+import validator from "validator";
+import { emailExistsInAnyCollection } from "../../src/utils/validationUsers.js";
 
 // Configurar cloudinary
 cloudinary.config({
@@ -16,7 +18,6 @@ const registerCoordinatorsController = {};
 // I N S E R T
 registerCoordinatorsController.register = async (req, res) => {
   try {
-
     const {
       numEmpleado,
       names,
@@ -29,16 +30,19 @@ registerCoordinatorsController.register = async (req, res) => {
       hireDate,
       IdTeam,
       status,
-      address
+      address,
     } = req.body;
 
-    if (!numEmpleado || !names || !surnames || !DUI || !birthday ||
-        !telephone || !email || !password || !hireDate || !IdTeam || !status || !address) {
-      return res.json(500)({ message: "all fields are required" });
+    // Validar campos requeridos
+    if (
+      !numEmpleado || !names || !surnames || !DUI || !birthday ||
+      !telephone || !email || !password || !hireDate || !IdTeam || !status || !address
+    ) {
+      return res.status(400).json({ message: "All fields are required." });
     }
 
-     // Validar formato de email
-     if (!validator.isEmail(email)) {
+    // Validar formato de email
+    if (!validator.isEmail(email)) {
       return res.status(400).json({ message: "Invalid email format." });
     }
 
@@ -48,35 +52,16 @@ registerCoordinatorsController.register = async (req, res) => {
       return res.status(400).json({ message: "Invalid telephone format." });
     }
 
-
     // Validar formato de DUI (12345678-9)
     const duiRegex = /^\d{8}-\d$/;
     if (!duiRegex.test(DUI)) {
       return res.status(400).json({ message: "Invalid DUI format." });
     }
 
-    // Verificar unicidad de email
-    const existEmail = await Administrator.findOne({ email });
-    if (existEmail) {
-      return res.status(400).json({ message: "Email already exists." });
-    }
-
-    // Verificar unicidad de teléfono
-    const existPhone = await Administrator.findOne({ telephone });
-    if (existPhone) {
-      return res.status(400).json({ message: "Telephone already exists." });
-    }
-
-    // Verificar unicidad de DUI
-    const existDUI = await Administrator.findOne({ DUI });
-    if (existDUI) {
-      return res.status(400).json({ message: "DUI already exists." });
-    }
-
-    // Verifica si existe el coordinador
-    const existCoordinator = await Coordinator.findOne({ email });
-    if (existCoordinator) {
-      return res.status(400).json({ message: "coordinator already exists" });
+    // ✅ Verificar que el email no exista en ninguna colección
+    const emailExists = await emailExistsInAnyCollection(email);
+    if (emailExists) {
+      return res.status(400).json({ message: "Email already exists in the system." });
     }
 
     const passwordHash = await bcryptjs.hash(password, 10);
@@ -106,6 +91,7 @@ registerCoordinatorsController.register = async (req, res) => {
       address,
       photo: photoUrl,
     });
+
     await newCoordinator.save();
 
     jsonwebtoken.sign(
@@ -117,14 +103,15 @@ registerCoordinatorsController.register = async (req, res) => {
         res.cookie("authToken", token);
       }
     );
-     res.status(201).json({
-      message: "coordinator registered successfully",
+
+    res.status(201).json({
+      message: "Coordinator registered successfully.",
       coordinator: newCoordinator,
     });
   } catch (error) {
     console.log(error);
     res.status(500).json({
-      message: "error registering coordinator",
+      message: "Error registering coordinator",
       error: error.message,
     });
   }

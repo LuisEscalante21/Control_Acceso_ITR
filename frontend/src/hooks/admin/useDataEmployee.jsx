@@ -28,7 +28,11 @@ const useDataEmployee = () => {
       if (idToUpdate) {
         // Actualizar empleado
         await axios.put(`${API_URL}/employee/${idToUpdate}`, employeeData);
-        Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
+        Swal.fire(
+          "¡Actualizado!",
+          "El empleado ha sido actualizado.",
+          "success"
+        );
       } else {
         // Crear empleado
         await axios.post(`${API_URL}/registerEmployees`, employeeData);
@@ -37,8 +41,15 @@ const useDataEmployee = () => {
       await fetchEmployees();
       handleCloseForm();
     } catch (error) {
-      console.error("Error al guardar/actualizar empleado:", error);
-      Swal.fire("Error", "No se pudo guardar el empleado.", "error");
+      const backendMessage = error?.response?.data?.message;
+
+      if (backendMessage === "Email already exists.") {
+        Swal.fire("Error", "Este correo ya está en uso.", "warning");
+      } else if (backendMessage === "Invalid email format.") {
+        Swal.fire("Error", "El correo tiene un formato inválido.", "warning");
+      } else {
+        Swal.fire("Error", "No se pudo guardar el administrador.", "error");
+      }
     }
   };
 

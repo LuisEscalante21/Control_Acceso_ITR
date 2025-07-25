@@ -1,24 +1,25 @@
-const coordinatorsController = {};
 import coordinatorsModel from "../models/Coordinators.js";
 import bcryptjs from "bcryptjs";
+import { emailExistsInAnyCollection } from "../../src/utils/validationUsers.js";
+
+const coordinatorsController = {};
 
 // S E L E C T
 coordinatorsController.getCoordinators = async (req, res) => {
   try {
     const coordinators = await coordinatorsModel.find();
     res.status(200).json(coordinators);
-  }
-  catch (error) {
+  } catch (error) {
     res.status(500).json({ message: "Error fetching coordinators", error });
   }
 };
 
 // D E L E T E
 coordinatorsController.deleteCoordinator = async (req, res) => {
-  try{
+  try {
     await coordinatorsModel.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: "Coordinator deleted" });
-  }catch (error) {
+  } catch (error) {
     res.status(500).json({ message: "Error deleting coordinator", error });
   }
 };
@@ -26,7 +27,6 @@ coordinatorsController.deleteCoordinator = async (req, res) => {
 // U P D A T E
 coordinatorsController.updateCoordinator = async (req, res) => {
   try {
-    // Desestructura los campos del body
     const {
       numEmpleado,
       names,
@@ -40,8 +40,16 @@ coordinatorsController.updateCoordinator = async (req, res) => {
       IdTeam,
       status,
       address,
-      photo, // <-- Agrega este campo
+      photo,
     } = req.body;
+
+    const coordinatorId = req.params.id;
+
+    // Validar email único en las 3 colecciones (excluyendo el actual)
+    const emailExists = await emailExistsInAnyCollection(email, coordinatorId);
+    if (emailExists) {
+      return res.status(400).json({ message: "Email already exists in the system" });
+    }
 
     // Prepara los datos a actualizar
     const updatedData = {
@@ -56,7 +64,7 @@ coordinatorsController.updateCoordinator = async (req, res) => {
       IdTeam,
       status,
       address,
-      photo, // <-- Agrega este campo
+      photo,
     };
 
     // Si se incluye nueva contraseña, hashearla
@@ -66,7 +74,7 @@ coordinatorsController.updateCoordinator = async (req, res) => {
     }
 
     const updatedCoordinator = await coordinatorsModel.findByIdAndUpdate(
-      req.params.id,
+      coordinatorId,
       updatedData,
       { new: true }
     );

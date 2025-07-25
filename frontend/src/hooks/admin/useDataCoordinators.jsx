@@ -18,7 +18,11 @@ const useDataCoordinators = () => {
       setCoordinators(res.data);
     } catch (error) {
       console.error("Error al obtener coordinadores:", error);
-      Swal.fire("Error", "No se pudo obtener la lista de coordinadores.", "error");
+      Swal.fire(
+        "Error",
+        "No se pudo obtener la lista de coordinadores.",
+        "error"
+      );
     }
   };
 
@@ -29,8 +33,15 @@ const useDataCoordinators = () => {
 
       if (coordinatorId) {
         // Actualizar coordinador
-        await axios.put(`${API_URL}/coordinators/${coordinatorId}`, coordinatorData);
-        Swal.fire("¡Actualizado!", "El coordinador ha sido actualizado.", "success");
+        await axios.put(
+          `${API_URL}/coordinators/${coordinatorId}`,
+          coordinatorData
+        );
+        Swal.fire(
+          "¡Actualizado!",
+          "El coordinador ha sido actualizado.",
+          "success"
+        );
       } else {
         // Crear coordinador
         await axios.post(`${API_URL}/registerCoordinators`, coordinatorData);
@@ -40,8 +51,15 @@ const useDataCoordinators = () => {
       await fetchCoordinators();
       handleCloseForm();
     } catch (error) {
-      console.error("Error al guardar/actualizar coordinador:", error);
-      Swal.fire("Error", "No se pudo guardar el coordinador.", "error");
+      const backendMessage = error?.response?.data?.message;
+
+      if (backendMessage === "Email already exists.") {
+        Swal.fire("Error", "Este correo ya está en uso.", "warning");
+      } else if (backendMessage === "Invalid email format.") {
+        Swal.fire("Error", "El correo tiene un formato inválido.", "warning");
+      } else {
+        Swal.fire("Error", "No se pudo guardar el administrador.", "error");
+      }
     }
   };
 
@@ -59,7 +77,11 @@ const useDataCoordinators = () => {
     if (result.isConfirmed) {
       try {
         await axios.delete(`${API_URL}/coordinators/${id}`);
-        Swal.fire("¡Eliminado!", "El coordinador ha sido eliminado.", "success");
+        Swal.fire(
+          "¡Eliminado!",
+          "El coordinador ha sido eliminado.",
+          "success"
+        );
         await fetchCoordinators();
       } catch (error) {
         console.error("Error al eliminar coordinador:", error);
