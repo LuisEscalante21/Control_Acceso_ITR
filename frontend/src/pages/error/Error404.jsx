@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import "../../styles/error/ErrorPage.css"; 
+import "../../styles/error/Error404.css"; 
 import errorImage from "../../img/404.jpg";
 
-const ErrorPage = () => {
+const Error404 = () => {
   const navigate = useNavigate();
 
   return (
@@ -27,4 +27,4 @@ const ErrorPage = () => {
   );
 };
 
-export default ErrorPage;
+export default Error404;

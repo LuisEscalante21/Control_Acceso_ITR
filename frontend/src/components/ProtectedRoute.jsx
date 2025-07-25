@@ -1,36 +1,38 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import Error403 from "../pages/error/Error403"; // Asegúrate que el path sea correcto
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const [userRole, setUserRole] = useState(null);
-  const [isChecking, setIsChecking] = useState(true); 
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const response = await fetch("http://localhost:4000/api/checkAuth", {
           method: "GET",
-          credentials: "include", // importante para enviar la cookie
+          credentials: "include", // importante para enviar cookies
         });
 
         if (response.ok) {
           const data = await response.json();
-          setUserRole(data.user.userType);
+          setIsAuthenticated(true);
+          setUserRole(data.user.userType); // Ejemplo: "Admin", "Employee"
         } else {
-          setUserRole(null);
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error("Error verificando autenticación:", error);
-        setUserRole(null);
+        setIsAuthenticated(false);
       } finally {
-        setIsChecking(false); // termina verificación
+        setIsChecking(false);
       }
     };
 
     checkAuth();
   }, []);
 
-  // Mientras verifica sesión, muestra cargando
   if (isChecking) {
     return (
       <div style={{ textAlign: "center", marginTop: "2rem" }}>
@@ -39,12 +41,17 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  // Si no está autenticado o no tiene rol permitido
-  if (!userRole || !allowedRoles.includes(userRole)) {
+  // No autenticado → redirige a login
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si está autenticado y tiene rol permitido
+  // Autenticado pero sin rol permitido → muestra error 403
+  if (!allowedRoles.includes(userRole)) {
+    return <Error403 />;
+  }
+
+  // Todo bien → muestra el contenido protegido
   return children;
 };
 

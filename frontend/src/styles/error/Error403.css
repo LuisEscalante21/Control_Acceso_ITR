@@ -1,0 +1,73 @@
+.error403-container {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #fff;
+  padding: 20px;
+}
+
+.error403-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  padding: 40px 50px;
+  max-width: 420px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.error403-card:hover {
+  transform: translateY(-10px);
+}
+
+.error403-icon {
+  width: 80px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 5px #ffd700);
+}
+
+.error403-code {
+  font-size: 7rem;
+  margin: 0;
+  font-weight: 900;
+  letter-spacing: 5px;
+}
+
+.error403-title {
+  font-size: 1.8rem;
+  margin: 10px 0 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.error403-message {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 30px;
+  color: #e0dede;
+}
+
+.error403-button {
+  background: #ffd700;
+  border: none;
+  color: #4a2c00;
+  padding: 12px 30px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(255, 215, 0, 0.5);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.error403-button:hover {
+  background: #ffec70;
+  box-shadow: 0 8px 25px rgba(255, 236, 112, 0.8);
+}
