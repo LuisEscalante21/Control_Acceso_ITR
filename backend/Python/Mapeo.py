@@ -113,6 +113,8 @@ def mapeo():
     name = request.form.get('name')
     employee_code = request.form.get('employee_code')
     schedule_id = request.form.get('schedule_id')
+    gender = request.form.get('gender')
+    area_id = request.form.get('area_id')
     image = request.files['image']
 
     if not name:
@@ -121,6 +123,10 @@ def mapeo():
         return jsonify({'status': 'error', 'message': 'El código de empleado es obligatorio'}), 400
     if not schedule_id:
         return jsonify({'status': 'error', 'message': 'El horario es obligatorio'}), 400
+    if not gender:
+        return jsonify({'status': 'error', 'message': 'El género es obligatorio'}), 400
+    if not area_id:
+        return jsonify({'status': 'error', 'message': 'El área es obligatoria'}), 400
     if image.filename == '':
         return jsonify({'status': 'error', 'message': 'La imagen es obligatoria'}), 400
     if not allowed_file(image.filename):
@@ -129,7 +135,6 @@ def mapeo():
     try:
         upload_result = upload(image, folder="rostros")
         image_url = upload_result.get("secure_url")
-
         if not image_url:
             return jsonify({'status': 'error', 'message': 'No se obtuvo URL de la imagen'}), 500
     except Exception as e:
@@ -154,11 +159,14 @@ def mapeo():
         'encoding': codificacion.tolist(),
         'name': name,
         'employee_code': employee_code,
-        'schedule_id': schedule_id
+        'schedule_id': schedule_id,
+        'gender': gender,
+        'area_id': area_id
     }
 
     coleccion_de_caras.insert_one(documento)
-    faiss_index.add_face(codificacion, employee_code)
+    faiss_index.add_face(codificacion, employee_code, gender, area_id)
+
 
     return jsonify({
         'status': 'success',
@@ -168,16 +176,18 @@ def mapeo():
     }), 200
 
 
-# Endpoint para actualizar un rostro
+# Endpoint para actualizar un rostro# Endpoint para actualizar un rostro
 @app.route('/faces/<id>', methods=['PUT'])
 @require_api_key(MAPEO_API_KEY)
 def actualizar_face(id):
     name = request.form.get('name')
     code = request.form.get('code')
     schedule_id = request.form.get('schedule_id')
+    gender = request.form.get('gender')
+    area_id = request.form.get('area_id')
     image = request.files.get('image')
 
-    if not name and not code and not schedule_id and not image:
+    if not name and not code and not schedule_id and not gender and not area_id and not image:
         return jsonify({'status': 'error', 'message': 'No se proporcionaron datos para actualizar'}), 400
 
     documento_anterior = coleccion_de_caras.find_one({'_id': ObjectId(id)})
@@ -192,7 +202,11 @@ def actualizar_face(id):
     if code:
         campos_a_actualizar['employee_code'] = code
     if schedule_id:
-        campos_a_actualizar['schedule_id'] = schedule_id 
+        campos_a_actualizar['schedule_id'] = schedule_id
+    if gender:
+        campos_a_actualizar['gender'] = gender
+    if area_id:
+        campos_a_actualizar['area_id'] = area_id
 
     nuevo_codigo = code if code else codigo_anterior
 
@@ -231,14 +245,21 @@ def actualizar_face(id):
     )
 
     if resultado.matched_count == 1:
-        if codigo_anterior:
+        # Actualizar índice FAISS solo si cambia el encoding
+        if codigo_anterior and 'encoding' in campos_a_actualizar:
             faiss_index.remove_face(codigo_anterior)
-        if 'encoding' in campos_a_actualizar:
-            faiss_index.add_face(np.array(campos_a_actualizar['encoding']), nuevo_codigo)
+
+            faiss_index.add_face(
+                np.array(campos_a_actualizar['encoding']),
+                nuevo_codigo,
+                gender=campos_a_actualizar.get('gender', documento_anterior.get('gender')),
+                area_id=campos_a_actualizar.get('area_id', documento_anterior.get('area_id'))
+            )
 
         return jsonify({'status': 'success', 'message': 'Rostro actualizado correctamente'}), 200
     else:
         return jsonify({'status': 'error', 'message': 'No se encontró el rostro'}), 404
+
 
 
 # Endpoint para obtener los rostros

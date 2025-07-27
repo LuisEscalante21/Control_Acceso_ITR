@@ -6,7 +6,7 @@ class FaissFaceIndex:
     def __init__(self, dim=128):
         self.dim = dim
         self.index = faiss.IndexFlatL2(self.dim)
-        self.codigo_list = []
+        self.metadata_list = []  # Guarda employee_code, gender y area_id
 
     def _normalize(self, vector):
         norm = np.linalg.norm(vector)
@@ -14,7 +14,7 @@ class FaissFaceIndex:
 
     def load_encodings(self, collection):
         self.index.reset()
-        self.codigo_list.clear()
+        self.metadata_list.clear()
 
         encodings = []
         for doc in collection.find({"encoding": {"$type": "array"}}):
@@ -23,8 +23,12 @@ class FaissFaceIndex:
                 if enc.shape[0] == self.dim:
                     enc = self._normalize(enc)
                     encodings.append(enc)
-                    codigo = doc.get("employee_code", str(doc["_id"]))
-                    self.codigo_list.append(codigo)
+                    metadata = {
+                        "employee_code": doc.get("employee_code", str(doc["_id"])),
+                        "gender": doc.get("gender", None),
+                        "area_id": doc.get("area_id", None)
+                    }
+                    self.metadata_list.append(metadata)
             except Exception as e:
                 print(f"[ERROR] Documento inválido en Mongo: {e}")
 
@@ -44,36 +48,37 @@ class FaissFaceIndex:
         d0 = distances[0][0]
         i0 = indices[0][0]
 
-        # Si cumple con el threshold y no hay otro encoding muy cercano (para evitar ambigüedad)
         if d0 < threshold and (distances[0][1] - d0 > min_diff):
-            matched_codigo = self.codigo_list[i0]
-            return matched_codigo, d0
+            metadata = self.metadata_list[i0]
+            return metadata, d0
         else:
             return None, None
 
-    def add_face(self, encoding, codigo_str):
+    def add_face(self, encoding, employee_code, gender=None, area_id=None):
         encoding = np.array([self._normalize(encoding)], dtype='float32')
         self.index.add(encoding)
-        self.codigo_list.append(str(codigo_str))
+        self.metadata_list.append({
+            "employee_code": str(employee_code),
+            "gender": gender,
+            "area_id": area_id
+        })
 
-    def remove_face(self, codigo_str):
-        if codigo_str not in self.codigo_list:
+    def remove_face(self, employee_code):
+        idx = next((i for i, meta in enumerate(self.metadata_list)
+                    if meta["employee_code"] == employee_code), None)
+        if idx is None:
+            print(f"[FAISS] No se encontró el código {employee_code} en el índice.")
             return False
 
-        idx = self.codigo_list.index(codigo_str)
-        self.codigo_list.pop(idx)
+        self.metadata_list.pop(idx)
 
-        if self.index.ntotal == 0:
-            print(f"[FAISS] Índice vacío, nada que eliminar.")
-            return True
-
-        encodings_flat = self.index.reconstruct_n(0, self.index.ntotal)
-        encodings = np.reshape(encodings_flat, (self.index.ntotal, self.dim))
+        encodings = self.index.reconstruct_n(0, self.index.ntotal)
+        encodings = np.reshape(encodings, (self.index.ntotal, self.dim))
         new_encodings = np.delete(encodings, idx, axis=0)
 
         self.index.reset()
-        if new_encodings.shape[0] > 0:
+        if len(new_encodings) > 0:
             self.index.add(new_encodings)
 
-        print(f"[FAISS] Rostro con código {codigo_str} eliminado del índice.")
+        print(f"[FAISS] Rostro con código {employee_code} eliminado del índice.")
         return True

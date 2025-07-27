@@ -124,6 +124,7 @@ loginController.login = async (req, res) => {
         res.cookie(
           "userInfo",
           JSON.stringify({
+            _id: userFound._id,
             userType,
             fullName: tokenPayload.fullName,
             idTeam: tokenPayload.idTeam,

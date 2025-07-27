@@ -35,7 +35,6 @@ const useDataAccess = () => {
 const fetchEmployeeById = async (id_Employee) => {
   try {
     const res = await axios.get(`${EMPLOYEE_API_URL}/${id_Employee}`);
-    console.log("Empleado:", id_Employee, res.data);
     return res.data;
   } catch (error) {
     console.warn("No se pudo obtener empleado", id_Employee);

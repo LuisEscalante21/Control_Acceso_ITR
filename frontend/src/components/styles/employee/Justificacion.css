@@ -1,0 +1,131 @@
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.justify-form {
+  background: #ffffff;
+  width: 100%;
+  max-width: 500px;
+  padding: 2rem;
+  border-radius: 12px;
+  position: relative;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.justify-form h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #1d3557;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.justify-form label {
+  display: block;
+  font-weight: 500;
+  margin: 0.75rem 0 0.25rem;
+  color: #333;
+}
+
+/* Estilo compartido para input, date, time y textarea */
+.justify-form input[type="text"],
+.justify-form input[type="date"],
+.justify-form input[type="time"],
+.justify-form textarea {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background-color: #f9f9f9;
+  box-sizing: border-box;
+}
+
+.justify-form textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.error {
+  color: #e63946;
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+}
+
+.custom-file-upload {
+  display: inline-block;
+  padding: 0.6rem 1rem;
+  margin-top: 0.5rem;
+  background-color: #457b9d;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.custom-file-upload:hover {
+  background-color: #1d3557;
+}
+
+.custom-file-upload input {
+  display: none;
+}
+
+.preview {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.preview img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.submit-btn {
+  display: block;
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 0.75rem;
+  font-size: 1rem;
+  background-color: #1d3557;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.submit-btn:hover {
+  background-color: #16324f;
+}
+
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 1.4rem;
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.close-btn:hover {
+  color: #e63946;
+}

@@ -10,20 +10,46 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   const [name, setName] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
   const [selectedScheduleId, setSelectedScheduleId] = useState("");
+  const [gender, setGender] = useState("");
+  const [areaId, setAreaId] = useState("");
+  const [areas, setAreas] = useState([]);
+  const [loadingAreas, setLoadingAreas] = useState(true);
 
-  // Traer horarios con tu hook
+  // Obtener horarios desde tu custom hook
   const { schedules } = useDataSchedules();
 
+  // Cargar áreas desde tu API
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        const res = await fetch("http://localhost:4000/api/teams");
+        const data = await res.json();
+        setAreas(data);
+      } catch (err) {
+        console.error("Error al cargar áreas:", err);
+        setAreas([]);
+      } finally {
+        setLoadingAreas(false);
+      }
+    };
+    fetchAreas();
+  }, []);
+
+  // Setear datos si estamos en modo edición
   useEffect(() => {
     if (mode === "edit" && face) {
       setName(face.name || "");
       setEmployeeCode(face.employee_code || "");
       setSelectedScheduleId(face.schedule_id || "");
+      setGender(face.gender || "");
+      setAreaId(face.area_id || "");
       setNewFile(null);
     } else {
       setName("");
       setEmployeeCode("");
       setSelectedScheduleId("");
+      setGender("");
+      setAreaId("");
       setNewFile(null);
     }
   }, [mode, face]);
@@ -32,6 +58,8 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     setName("");
     setEmployeeCode("");
     setSelectedScheduleId("");
+    setGender("");
+    setAreaId("");
     setNewFile(null);
     onClose();
   };
@@ -41,11 +69,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      return Swal.fire(
-        "Archivo inválido",
-        "Selecciona una imagen válida.",
-        "error"
-      );
+      return Swal.fire("Archivo inválido", "Selecciona una imagen válida.", "error");
     }
 
     setNewFile(file);
@@ -64,19 +88,19 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
       !name.trim() ||
       !employeeCode.trim() ||
       !selectedScheduleId ||
+      !gender ||
+      !areaId ||
       (mode === "add" && !newFile)
     ) {
-      return Swal.fire(
-        "Campos incompletos",
-        "Completa todos los campos y selecciona un horario.",
-        "warning"
-      );
+      return Swal.fire("Campos incompletos", "Completa todos los campos requeridos.", "warning");
     }
 
     const data = new FormData();
     data.append("name", name.trim());
     data.append("employee_code", employeeCode.trim());
-    data.append("schedule_id", selectedScheduleId); 
+    data.append("schedule_id", selectedScheduleId);
+    data.append("gender", gender);
+    data.append("area_id", areaId);
     if (newFile) {
       data.append("image", newFile);
     }
@@ -98,7 +122,6 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
 
         <h2>{mode === "edit" ? "Editar rostro" : "Agregar rostro"}</h2>
 
-        {/* Campo nombre */}
         <label>Nombres y Apellidos:</label>
         <input
           type="text"
@@ -107,7 +130,6 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           placeholder="Nombre completo"
         />
 
-        {/* Campo código de empleado */}
         <label>Código de empleado:</label>
         <input
           type="text"
@@ -116,12 +138,16 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           placeholder="Código"
         />
 
-        {/* Combobox para seleccionar horario - justo debajo del código */}
+        <label>Género:</label>
+        <select value={gender} onChange={(e) => setGender(e.target.value)}>
+          <option value="">Seleccione género</option>
+          <option value="masculino">Masculino</option>
+          <option value="femenino">Femenino</option>
+          <option value="otro">Otro</option>
+        </select>
+
         <label>Horario asociado:</label>
-        <select
-          value={selectedScheduleId || ""}
-          onChange={(e) => setSelectedScheduleId(e.target.value)}
-        >
+        <select value={selectedScheduleId} onChange={(e) => setSelectedScheduleId(e.target.value)}>
           <option value="">Selecciona un horario</option>
           {schedules.map((sch) => (
             <option key={sch._id} value={sch._id}>
@@ -130,7 +156,16 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           ))}
         </select>
 
-        {/* Opciones biométricas */}
+        <label>Área:</label>
+        <select value={areaId} onChange={(e) => setAreaId(e.target.value)} disabled={loadingAreas}>
+          <option value="">Seleccione un área</option>
+          {areas.map((area) => (
+            <option key={area._id} value={area._id}>
+              {area.name}
+            </option>
+          ))}
+        </select>
+
         <div className="biometric-options">
           <div className="option">
             <label htmlFor="file-input">

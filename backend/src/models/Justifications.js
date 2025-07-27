@@ -1,70 +1,41 @@
-import { Schema, model } from "mongoose";
+  import { Schema, model } from "mongoose";
 
-const justificationsSchema = new Schema(
-  {
-    numEmpleado: {
-      type: String,
-      require: true,
-      maxLength: 100,
-    },
-    names: {
-      type: String,
-      require: true,
-      maxLength: 100,
-    },
-    surnames: {
-      type: String,
-      require: true,
-      maxLength: 100,
-    },
-    DUI: {
+  const justificationSchema = new Schema(
+    {
+      userId: {
+        type: Schema.Types.ObjectId,
+        required: true,
+      },
+      userType: {
         type: String,
-        require: true,
-        maxLength: 100,
-    }, 
-    birthday: {
-      type: Date,
-      require: true,
-    },
-    telephone: {
+        enum: ["Employee", "Coordinator", "Administrator"],
+        required: true,
+      },
+      IdTeam: {
+        type: Schema.Types.ObjectId,
+        ref: "Teams",
+        required: true,
+      },
+      date: {
+        type: Date,
+        required: true,
+      },
+      arrivalTime: {
         type: String,
-        require: true,
-        min: 0,
-    },
-    email: {
-    type: String,
-    required: true,
-    maxLength: 100,
-    match: /^[a-zA-Z0-9._%+-]+@ricaldone\.edu\.sv$/
-    },
-    password: {
+        required: true,
+      },
+      reason: {
         type: String,
-        require: true,
-        maxLength: 100,
+        required: true,
+        maxLength: 500,
+      },
+      evidenceUrl: {
+        type: String, 
+      },
     },
-    hireDate: {
-      type: Date,
-      require: true,
-    },
-    department: {
-        type: String,
-        require: true,
-        maxLength: 100,
-    },
-    status: {
-        type: Boolean,
-        require: true,
-    },
-    address: {
-      type: String,
-      require: true,
-      maxLength: 200,
-    },
-  },
-  {
-    timestamps: true,
-    strict: false,
-  }
-);
+    {
+      timestamps: true,
+    }
+  );
 
-export default model("Justifications", justificationsSchema);
+  export default model("Justifications", justificationSchema);

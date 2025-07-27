@@ -1,0 +1,65 @@
+.access-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem 1.5rem;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px #00000012;
+  transition: all 0.3s ease;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  background: green;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.access-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #f2f2f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.access-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.access-avatar-icon {
+  color: #aaa;
+}
+
+.access-name {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.access-time {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #444;
+}
+
+.access-time img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
