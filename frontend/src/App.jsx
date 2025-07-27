@@ -1,6 +1,10 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+
+// Pages
 import LoginPage from "./pages/LoginPage/LoginPage";
+
+// Auth
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
 
@@ -17,15 +21,18 @@ import Rostros from "./pages/admin/Rostros.jsx";
 
 // Coordinator
 import CoordinatorDashboard from "./pages/coordinator/Dashboard.jsx";
+import HomeCoordinator from "./components/coordinator/home.jsx";
 import EmpleadosC from "./pages/coordinator/Empleados.jsx";
+import CoordinatorAccesos from "./pages/coordinator/Accesos.jsx";
 
 // Employee
 import EmployeeDashboard from "./pages/employee/Dashboard.jsx";
 import HomeEmployee from "./pages/employee/Home.jsx";
 
-// Error pages
+// Error Pages
 import Error403 from "./pages/error/Error403.jsx";
 import Error404 from "./pages/error/Error404.jsx";
+import Error503 from "./pages/error/Error503.jsx"; 
 
 import "./App.css";
 
@@ -33,9 +40,10 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Ruta raíz redirige al login */}
         <Route path="/" element={<Navigate to="/login" />} />
 
-        {/* Login solo si NO autenticado */}
+        {/* Login solo si NO está autenticado */}
         <Route
           path="/login"
           element={
@@ -45,7 +53,7 @@ function App() {
           }
         />
 
-        {/* Admin routes */}
+        {/* Rutas del administrador */}
         <Route
           path="/admin-dashboard/*"
           element={
@@ -67,7 +75,7 @@ function App() {
           <Route path="*" element={<Error404 />} />
         </Route>
 
-        {/* Coordinator routes */}
+        {/* Rutas del coordinador */}
         <Route
           path="/coordinator-dashboard/*"
           element={
@@ -77,15 +85,15 @@ function App() {
           }
         >
           <Route path="" element={<Navigate to="dashboard" />} />
-          <Route path="dashboard" element={<h1>Inicio Coordinador</h1>} />
-          <Route path="personal" element={<h1>Gestión de Empleados</h1>} />
-          <Route path="permisos" element={<h1>Gestión de Permisos</h1>} />
-          <Route path="historial" element={<h1>Historial de Accesos</h1>} />
+          <Route path="dashboard" element={<HomeCoordinator />} />
           <Route path="empleado" element={<EmpleadosC />} />
+          <Route path="permisos" element={<h1>Gestión de Permisos</h1>} />
+          <Route path="historial" element={<CoordinatorAccesos />} />
+
           <Route path="*" element={<Error404 />} />
         </Route>
 
-        {/* Employee routes */}
+        {/* Rutas del empleado */}
         <Route
           path="/employee-dashboard/*"
           element={
@@ -101,7 +109,10 @@ function App() {
           <Route path="*" element={<Error404 />} />
         </Route>
 
-        {/* Ruta para cualquier URL no encontrada */}
+        {/* Página 503 - uso para errores de respuestas del backend */}
+        <Route path="/503" element={<Error503 />} />
+
+        {/* Página para rutas no encontradas */}
         <Route path="*" element={<Error404 />} />
       </Routes>
     </Router>

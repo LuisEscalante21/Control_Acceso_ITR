@@ -14,7 +14,6 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 from Health import health_bp
 from faiss_index import FaissFaceIndex
-from Registro_acceso import registrar_acceso
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +29,8 @@ port = int(os.getenv("PORT_RECONOCIMIENTO", 5000))
 db_name = os.getenv("DB_NAME", "PTC_2025")
 collection_name = os.getenv("DB_COLLECTION", "faces")
 SCHEDULES_URL = "http://localhost:4000/api/schedules"
+ACCESS_API_URL = "http://localhost:4700/api/access"  # URL de la API de acceso
+ACCESS_API_KEY = os.getenv("API_ACCESS_KEY")        # API Key para acceso
 
 # Conexión Mongo
 mongo_client = MongoClient(mongo_uri)
@@ -107,6 +108,37 @@ def determinar_tipo_acceso(schedule, ahora):
         return "salida"
     return None
 
+def registrar_acceso_via_api(id_employee, tipo):
+    ahora = datetime.now()
+    headers = {
+        "Authorization": f"Bearer {ACCESS_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "id_Employee": id_employee,
+        "date": ahora.strftime("%Y-%m-%d")
+    }
+    if tipo == "entrada":
+        data["entry_time"] = ahora.isoformat()
+        data["entry_result"] = "Reconocido"
+    elif tipo == "salida":
+        data["exit_time"] = ahora.isoformat()
+        data["exit_result"] = "Reconocido"
+    else:
+        return False
+
+    try:
+        response = requests.post(ACCESS_API_URL, json=data, headers=headers, timeout=5)
+        if response.status_code in (200, 201):
+            print(f"Acceso registrado para {id_employee} tipo {tipo}")
+            return True
+        else:
+            print(f"Error API acceso: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        print(f"Excepción al registrar acceso: {e}")
+        return False
+
 def log():
     while True:
         time.sleep(2)
@@ -176,7 +208,7 @@ def generar_frames():
                             if schedule:
                                 tipo = determinar_tipo_acceso(schedule, datetime.now())
                                 if tipo:
-                                    registrar_acceso(matched_id, tipo=tipo)
+                                    registrar_acceso_via_api(matched_id, tipo)
 
                     color = (0, 255, 0)
                     label = f"{matched_id}"

@@ -4,57 +4,76 @@ import EmpleadoCard from "../../components/coordinator/Cards/employeeCard.jsx";
 import { Search, CirclePlus } from "lucide-react";
 import ModalEmpleado from "../../components/admin/PageModals/EmpleadosModal/NewEmpleadosModal.jsx";
 import EditEmpleadoModal from "../../components/admin/PageModals/EmpleadosModal/UpdateEmpleaods.jsx";
-import useEmployees from "../../hooks/coordinators/useDataEmployeeCoordinators.jsx";
+import useEmployees from "../../hooks/coordinators/useDataEmployee.jsx";
 
 const Empleados = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewEmpleado, setShowNewEmpleado] = useState(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
+  const [teamId, setTeamId] = useState(null);
 
-  const { employees, fetchEmployees, saveEmployee, deleteEmployee } = useEmployees();
+  const {
+    employeesByTeam,
+    fetchEmployeesByTeam,
+    saveEmployee,
+    deleteEmployee,
+  } = useEmployees();
 
   useEffect(() => {
-    fetchEmployees();
+    // Extraer el teamId desde la cookie `userInfo`
+    const userInfoCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("userInfo="));
+
+    if (userInfoCookie) {
+      try {
+        const userInfo = JSON.parse(decodeURIComponent(userInfoCookie.split("=")[1]));
+        if (userInfo?.idTeam) {
+          setTeamId(userInfo.idTeam);
+          fetchEmployeesByTeam(userInfo.idTeam);
+        }
+      } catch (err) {
+        console.error("Error al parsear userInfo cookie:", err);
+      }
+    }
   }, []);
 
   const filteredEmpleados = useMemo(() => {
-    return employees.filter((empleado) => {
+    return employeesByTeam.filter((empleado) => {
       const fullName = `${empleado.names} ${empleado.surnames}`.toLowerCase();
       return fullName.includes(searchTerm.toLowerCase());
     });
-  }, [searchTerm, employees]);
+  }, [searchTerm, employeesByTeam]);
 
   const handleSave = async (data, id) => {
     await saveEmployee(data, id);
     setSelectedEmpleado(null);
-    fetchEmployees();
+    if (teamId) fetchEmployeesByTeam(teamId);
   };
 
   const handleDelete = async (id) => {
     await deleteEmployee(id);
     setSelectedEmpleado(null);
-    fetchEmployees();
+    if (teamId) fetchEmployeesByTeam(teamId);
   };
 
   return (
     <>
       <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
         <h1 className="titulo">Gestión de Empleados</h1>
-        <div className="busqueda-bar-G" style={{}}>
-          <div className="buscador-G" style={{ }}>
+        <div className="busqueda-bar-G">
+          <div className="buscador-G">
             <Search className="search-icon" size={18} />
             <input
               type="text"
               placeholder="Buscar por nombres y apellidos"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{}}
             />
           </div>
           <button
             className="nuevo-empleado-btn-G"
             onClick={() => setShowNewEmpleado(true)}
-            style={{ }}
           >
             <CirclePlus size={20} />
             Nuevo Empleado
@@ -76,7 +95,9 @@ const Empleados = () => {
               />
             ))
           ) : (
-            <p style={{ padding: "20px", color: "#888" }}>No se encontraron empleados.</p>
+            <p style={{ padding: "20px", color: "#888" }}>
+              No se encontraron empleados.
+            </p>
           )}
         </div>
       </div>
@@ -94,7 +115,7 @@ const Empleados = () => {
             <ModalEmpleado
               tipo="empleado"
               onSaved={() => {
-                fetchEmployees();
+                if (teamId) fetchEmployeesByTeam(teamId);
                 setShowNewEmpleado(false);
               }}
               onClose={() => setShowNewEmpleado(false)}

@@ -8,15 +8,15 @@ const BASE = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${BASE}${PORT}/api`;
 
-export const LoginPage = () => {
+const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Verificar si ya hay una sesión activa
   useEffect(() => {
     const checkAuth = async () => {
+      setLoading(true);
       try {
         const response = await fetch(`${API_URL}/checkAuth`, {
           method: "GET",
@@ -27,7 +27,6 @@ export const LoginPage = () => {
           const data = await response.json();
           const userType = data.user.userType;
 
-          // Redirige automáticamente según el rol
           if (userType === "Admin") {
             navigate("/admin-dashboard");
           } else if (userType === "Coordinator") {
@@ -44,6 +43,8 @@ export const LoginPage = () => {
             error.message || error
           }`,
         });
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -89,7 +90,6 @@ export const LoginPage = () => {
           showConfirmButton: false,
         });
 
-        // Redirigir según el rol
         if (data.userType === "Admin") {
           navigate("/admin-dashboard");
         } else if (data.userType === "Coordinator") {
@@ -99,12 +99,20 @@ export const LoginPage = () => {
         }
       }
     } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Error al iniciar sesión",
-        text:
-          error.message || "Ocurrió un error. Inténtalo de nuevo más tarde.",
-      });
+      // Detectar error de red o 503
+      if (
+        error.message === "Failed to fetch" ||
+        error.message.includes("503")
+      ) {
+        navigate("/503");
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error al iniciar sesión",
+          text:
+            error.message || "Ocurrió un error. Inténtalo de nuevo más tarde.",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -142,6 +150,7 @@ export const LoginPage = () => {
               placeholder="Email"
               className="input-field"
               required
+              value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
@@ -157,6 +166,7 @@ export const LoginPage = () => {
               placeholder="Contraseña"
               className="input-field"
               required
+              value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>

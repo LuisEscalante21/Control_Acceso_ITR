@@ -1,75 +1,109 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
-const BASE = import.meta.env.VITE_BASE_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${BASE}${PORT}/api/access`;
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT_ACCESS;
+const API_URL = `${BASE_URL}${PORT}/api`;
 
-const useAccessControl = () => {
+const EMPLOYEE_API_URL = "http://localhost:4000/api/employee";
+
+const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
+
+const useDataAccess = () => {
   const [accessRecords, setAccessRecords] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [recordEdit, setRecordEdit] = useState(null);
+  const navigate = useNavigate();
 
-  // Obtener todos los registros de acceso
-  const fetchAccessRecords = async () => {
-    try {
-      const res = await axios.get(API_URL);
-      setAccessRecords(res.data);
-    } catch (error) {
-      console.error("Error al obtener registros de acceso:", error);
-      Swal.fire("Error", "No se pudo obtener los registros de acceso.", "error");
+  const handleNetworkError = (err) => {
+    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
+      navigate("/503");
+    } else {
+      console.error("Error:", err);
     }
   };
 
-  // Crear o actualizar registro de acceso
-  const saveAccessRecord = async (recordData) => {
+  const axiosConfig = {
+    headers: {
+      Authorization: `Bearer ${API_ACCESS_KEY}`,
+      "Content-Type": "application/json",
+    },
+  };
+
+// Obtener datos empleado por ID
+const fetchEmployeeById = async (id_Employee) => {
+  try {
+    const res = await axios.get(`${EMPLOYEE_API_URL}/${id_Employee}`);
+    console.log("Empleado:", id_Employee, res.data);
+    return res.data;
+  } catch (error) {
+    console.warn("No se pudo obtener empleado", id_Employee);
+    return null;
+  }
+};
+
+const fetchAccessRecords = async () => {
+  try {
+    const res = await axios.get(`${API_URL}/access`, axiosConfig);
+    const registros = res.data;
+
+    const registrosConEmpleado = await Promise.all(
+      registros.map(async (reg) => {
+        const empleado = await fetchEmployeeById(reg.id_Employee);
+        return {
+          ...reg,
+          employeeName: empleado
+            ? `${empleado.names} ${empleado.surnames}`
+            : "Empleado no encontrado",
+          employeeAvatar: empleado?.photo || null,
+        };
+      })
+    );
+
+    setAccessRecords(registrosConEmpleado);
+  } catch (error) {
+    handleNetworkError(error);
+    Swal.fire("Error", "No se pudo obtener la lista de accesos.", "error");
+  }
+};
+
+
+  const saveAccessRecord = async (data) => {
     try {
-      if (recordEdit) {
-        // Actualizar registro
-        await axios.put(`${API_URL}/${recordEdit._id}`, recordData);
-        Swal.fire("¡Actualizado!", "El registro de acceso ha sido actualizado.", "success");
-      } else {
-        // Crear registro
-        await axios.post(API_URL, recordData);
-        Swal.fire("¡Guardado!", "El registro de acceso ha sido creado.", "success");
-      }
-      fetchAccessRecords();
+      await axios.post(`${API_URL}/access`, data, axiosConfig);
+      Swal.fire("¡Guardado!", "El registro de acceso ha sido guardado.", "success");
+      await fetchAccessRecords();
       handleCloseForm();
     } catch (error) {
-      console.error("Error al guardar/actualizar registro:", error);
+      handleNetworkError(error);
       Swal.fire("Error", "No se pudo guardar el registro de acceso.", "error");
     }
   };
 
-  // Eliminar registro de acceso con confirmación
   const deleteAccessRecord = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
-      text: "¡Esta acción eliminará el registro de acceso!",
+      text: "Esta acción eliminará el registro de acceso.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
 
-    if (result.isConfirmed) {
-      try {
-        await axios.delete(`${API_URL}/${id}`);
-        Swal.fire("¡Eliminado!", "El registro de acceso ha sido eliminado.", "success");
-        fetchAccessRecords();
-      } catch (error) {
-        console.error("Error al eliminar registro:", error);
-        Swal.fire("Error", "No se pudo eliminar el registro de acceso.", "error");
-      }
+    if (!result.isConfirmed) return;
+
+    try {
+      await axios.delete(`${API_URL}/access/${id}`, axiosConfig);
+      Swal.fire("¡Eliminado!", "El registro de acceso ha sido eliminado.", "success");
+      await fetchAccessRecords();
+    } catch (error) {
+      handleNetworkError(error);
+      Swal.fire("Error", "No se pudo eliminar el registro de acceso.", "error");
     }
   };
 
-  // Cerrar formulario y limpiar edición
-  const handleCloseForm = () => {
-    setShowForm(false);
-    setRecordEdit(null);
-  };
+  const handleCloseForm = () => setShowForm(false);
 
   useEffect(() => {
     fetchAccessRecords();
@@ -77,15 +111,13 @@ const useAccessControl = () => {
 
   return {
     accessRecords,
-    showForm,
-    setShowForm,
-    recordEdit,
-    setRecordEdit,
     fetchAccessRecords,
     saveAccessRecord,
     deleteAccessRecord,
+    showForm,
+    setShowForm,
     handleCloseForm,
   };
 };
 
-export default useAccessControl;
+export default useDataAccess;

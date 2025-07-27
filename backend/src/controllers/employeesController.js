@@ -14,6 +14,41 @@ employeesController.getEmployees = async (req, res) => {
   }
 };
 
+// GET /employee/team/:teamId
+employeesController.getEmployeesByTeam = async (req, res) => {
+  const { teamId } = req.params;
+
+  try {
+    const employees = await employeesModel.find({ IdTeam: teamId });
+    res.status(200).json(employees);
+  } catch (error) {
+    console.error("Error al obtener empleados por equipo:", error);
+    res.status(500).json({
+      message: "Error al obtener empleados por coordinación",
+      error,
+    });
+  }
+};
+
+// GET /employee/:id
+employeesController.getEmployeeById = async (req, res) => {
+  const { id } = req.params;
+  
+  // Validar que sea ObjectId válido
+  if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+    return res.status(400).json({ message: "ID inválido" });
+  }
+
+  try {
+    const employee = await employeesModel.findById(id);
+    if (!employee) return res.status(404).json({ message: "Empleado no encontrado" });
+    res.status(200).json(employee);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching employee by ID", error });
+  }
+};
+
+
 // D E L E T E
 employeesController.deleteEmployees = async (req, res) => {
   try {

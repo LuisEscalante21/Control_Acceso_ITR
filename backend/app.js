@@ -1,7 +1,7 @@
 // Importo todo lo de la libreria de Express
 import express from "express";
 import bodyParser from "body-parser";
-import employeeRoutes from "./src/routes/employees.js"
+import employeeRoutes from "./src/routes/employeesRoute.js"
 import coordinatorsRoutes from "./src/routes/coordinatorsRoutes.js"
 import administratorsRoutes from "./src/routes/administratorsRoutes.js";
 import registerAdministratorsRoutes from "./src/routes/registerAdministrators.js";
@@ -14,7 +14,6 @@ import cors from 'cors';
 import authRoutes from "./src/routes/authRoutes.js";
 import registerCoordinatorsRoutes from "./src/routes/registerCoordinators.js";
 import teamsRoutes from "./src/routes/teamsRoutes.js";
-import AccessControl from "./src/routes/accessControlRoute.js";
 import ScheduleRoutes from "./src/routes/schedules.js";
 import swaggerUi from "swagger-ui-express";
 import fs from "fs";
@@ -57,7 +56,6 @@ app.use("/api/coordinators", coordinatorsRoutes); // Ruta para coordinadores
 app.use("/api/registerCoordinators", registerCoordinatorsRoutes); // Ruta para registrar coordinadores
 app.use("/api/administrators", administratorsRoutes); // Ruta para administradores
 app.use("/api/teams", teamsRoutes); // Ruta para las areas o departamentos
-app.use("/api/access", AccessControl);
 
 // Exporto la constante para poder usar express en otros archivos
 export default app;

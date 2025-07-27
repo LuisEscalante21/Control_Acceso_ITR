@@ -52,7 +52,7 @@
 .docente-info {
   display: flex;
   align-items: center;
-  gap: 12px; /* 👈 Espacio entre ícono, imagen y texto */
+  gap: 12px; 
   width: 100%;
 }
 

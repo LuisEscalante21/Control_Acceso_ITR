@@ -5,6 +5,7 @@ import "../../../../styles/Admin/Empleados.css";
 import Icon from "../../../assets/icon.jpg";
 import { Pencil, Trash2 } from "lucide-react";
 
+// Convierte una fecha a formato yyyy-mm-dd para input[type="date"]
 const toInputDateFormat = (date) => {
   if (!date) return "";
   const d = new Date(date);
@@ -17,11 +18,16 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
   const { register, handleSubmit, reset } = useForm();
   const [editMode, setEditMode] = useState(false);
 
+  // Cada vez que cambia el empleado seleccionado, resetea el formulario y sale del modo edición
   useEffect(() => {
-    reset({ ...empleado });
+    reset({
+      ...empleado,
+      birthday: toInputDateFormat(empleado?.birthday),
+    });
     setEditMode(false);
   }, [empleado, reset]);
 
+  // Al enviar el formulario, llama a onSave con los datos y el _id del empleado
   const onSubmit = async (data) => {
     await onSave(data, empleado._id);
     Swal.fire("Actualizado", "El empleado ha sido actualizado exitosamente.", "success");
@@ -29,6 +35,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
     onClose();
   };
 
+  // Confirmar y eliminar empleado
   const handleDelete = () => {
     Swal.fire({
       title: "¿Eliminar empleado?",
@@ -40,6 +47,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
     }).then((result) => {
       if (result.isConfirmed) {
         onDelete(empleado._id);
+        onClose();
       }
     });
   };
@@ -49,25 +57,44 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
   return (
     <div className="modal-overlay active">
       <div className="cvcard-modal cvcard-modal-scroll">
-        <button className="close-modal" onClick={onClose}>×</button>
+        <button className="close-modal" onClick={onClose} aria-label="Cerrar modal">×</button>
+
         <div className="cvcard-header">
-          <img src={empleado.photo || Icon} alt="Avatar" className="cvcard-avatar" />
+          <img
+            src={empleado.photo || Icon}
+            alt="Avatar"
+            className="cvcard-avatar"
+          />
           <div className="cvcard-nombre">{empleado.names} {empleado.surnames}</div>
         </div>
+
         <div className="cvcard-info">
           <div className="cvcard-info-title-row">
             <span className="cvcard-info-title">Información personal</span>
             {!editMode && (
               <span className="cvcard-actions">
-                <button className="cvcard-action-btn" onClick={() => setEditMode(true)} title="Editar">
+                <button
+                  className="cvcard-action-btn"
+                  onClick={() => setEditMode(true)}
+                  title="Editar"
+                  aria-label="Editar empleado"
+                  type="button"
+                >
                   <Pencil size={22} />
                 </button>
-                <button className="cvcard-action-btn" onClick={handleDelete} title="Eliminar">
+                <button
+                  className="cvcard-action-btn"
+                  onClick={handleDelete}
+                  title="Eliminar"
+                  aria-label="Eliminar empleado"
+                  type="button"
+                >
                   <Trash2 size={22} />
                 </button>
               </span>
             )}
           </div>
+
           {!editMode ? (
             <>
               <div className="cvcard-info-group">
@@ -75,65 +102,76 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                 <span className="cvcard-value">{empleado.names} {empleado.surnames}</span>
               </div>
               <div className="cvcard-info-group">
-                <span className="cvcard-label">Correo electrónico:</span>
+                <span className="cvcard-label">Correo electrónico</span>
                 <span className="cvcard-value">{empleado.email}</span>
               </div>
               <div className="cvcard-info-group">
-                <span className="cvcard-label">Número telefónico:</span>
+                <span className="cvcard-label">Número telefónico</span>
                 <span className="cvcard-value">{empleado.telephone}</span>
               </div>
               <div className="cvcard-info-group">
-                <span className="cvcard-label">Dirección de residencia:</span>
+                <span className="cvcard-label">Dirección de residencia</span>
                 <span className="cvcard-value">{empleado.address}</span>
               </div>
               <div className="cvcard-info-group">
-                <span className="cvcard-label">Código de empleado:</span>
+                <span className="cvcard-label">Código de empleado</span>
                 <span className="cvcard-value">{empleado.numEmpleado}</span>
               </div>
               <div className="cvcard-info-group">
-                <span className="cvcard-label">DUI:</span>
+                <span className="cvcard-label">DUI</span>
                 <span className="cvcard-value">{empleado.DUI}</span>
               </div>
               <div className="cvcard-info-group">
-                <span className="cvcard-label">Fecha de nacimiento:</span>
+                <span className="cvcard-label">Fecha de nacimiento</span>
                 <span className="cvcard-value">{toInputDateFormat(empleado.birthday)}</span>
               </div>
             </>
           ) : (
-            <form className="cvcard-form" onSubmit={handleSubmit(onSubmit)} style={{ width: "100%", marginTop: 10 }}>
+            <form
+              className="cvcard-form"
+              onSubmit={handleSubmit(onSubmit)}
+              style={{ width: "100%", marginTop: 10 }}
+              noValidate
+            >
               <div className="form-field">
-                <label>Código de empleado:</label>
-                <input {...register("numEmpleado", { required: true })} />
+                <label htmlFor="numEmpleado">Código de empleado:</label>
+                <input id="numEmpleado" {...register("numEmpleado", { required: true })} />
               </div>
               <div className="form-field">
-                <label>Nombres:</label>
-                <input {...register("names", { required: true })} />
+                <label htmlFor="names">Nombres:</label>
+                <input id="names" {...register("names", { required: true })} />
               </div>
               <div className="form-field">
-                <label>Apellidos:</label>
-                <input {...register("surnames", { required: true })} />
+                <label htmlFor="surnames">Apellidos:</label>
+                <input id="surnames" {...register("surnames", { required: true })} />
               </div>
               <div className="form-field">
-                <label>Correo electrónico:</label>
-                <input type="email" {...register("email", { required: true })} />
+                <label htmlFor="email">Correo electrónico:</label>
+                <input id="email" type="email" {...register("email", { required: true })} />
               </div>
               <div className="form-field">
-                <label>Número telefónico:</label>
-                <input {...register("telephone", { required: true })} />
+                <label htmlFor="telephone">Número telefónico:</label>
+                <input id="telephone" {...register("telephone", { required: true })} />
               </div>
               <div className="form-field">
-                <label>Dirección de residencia:</label>
-                <input {...register("address", { required: true })} />
+                <label htmlFor="address">Dirección de residencia:</label>
+                <input id="address" {...register("address", { required: true })} />
               </div>
               <div className="form-field">
-                <label>DUI:</label>
-                <input {...register("DUI", { required: true })} />
+                <label htmlFor="DUI">DUI:</label>
+                <input id="DUI" {...register("DUI", { required: true })} />
               </div>
               <div className="form-field">
-                <label>Fecha de nacimiento:</label>
-                <input type="date" {...register("birthday", { required: true })} />
+                <label htmlFor="birthday">Fecha de nacimiento:</label>
+                <input
+                  id="birthday"
+                  type="date"
+                  {...register("birthday", { required: true })}
+                />
               </div>
-              <button type="submit" className="btn-guardar">ACTUALIZAR</button>
+              <button type="submit" className="btn-guardar">
+                ACTUALIZAR
+              </button>
             </form>
           )}
         </div>

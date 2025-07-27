@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
 const BASE = import.meta.env.VITE_BASE_URL;
@@ -10,43 +11,40 @@ const useDataAdmin = () => {
   const [admins, setAdmins] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [adminEdit, setAdminEdit] = useState(null);
+  const navigate = useNavigate();
 
-  // Obtener todos los administradores
+  const handleNetworkError = (error) => {
+    if (!error.response || error.code === "ERR_NETWORK" || error.response?.status === 503) {
+      navigate("/503");
+    } else {
+      console.error("Error:", error);
+    }
+  };
+
   const fetchAdmins = async () => {
     try {
       const res = await axios.get(`${API_URL}/administrators`);
       setAdmins(res.data);
     } catch (error) {
-      console.error("Error al obtener administradores:", error);
-      Swal.fire(
-        "Error",
-        "No se pudo obtener la lista de administradores.",
-        "error"
-      );
+      handleNetworkError(error);
+      Swal.fire("Error", "No se pudo obtener la lista de administradores.", "error");
     }
   };
 
-  // Crear o actualizar administrador
-  // Crear o actualizar administrador
   const saveAdmin = async (adminData, adminId = null) => {
     try {
       if (adminId) {
-        // Actualizar administrador
         await axios.put(`${API_URL}/administrators/${adminId}`, adminData);
-        Swal.fire(
-          "¡Actualizado!",
-          "El administrador ha sido actualizado.",
-          "success"
-        );
+        Swal.fire("¡Actualizado!", "El administrador ha sido actualizado.", "success");
       } else {
-        // Crear administrador
         await axios.post(`${API_URL}/registerAdministrators`, adminData);
         Swal.fire("¡Guardado!", "El administrador ha sido creado.", "success");
       }
 
-      fetchAdmins(); // Actualizar lista
+      fetchAdmins();
       handleCloseForm();
     } catch (error) {
+      handleNetworkError(error);
       const backendMessage = error?.response?.data?.message;
 
       if (backendMessage === "Email already exists.") {
@@ -59,7 +57,6 @@ const useDataAdmin = () => {
     }
   };
 
-  // Eliminar administrador con confirmación
   const deleteAdmin = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -73,20 +70,15 @@ const useDataAdmin = () => {
     if (result.isConfirmed) {
       try {
         await axios.delete(`${API_URL}/administrators/${id}`);
-        Swal.fire(
-          "¡Eliminado!",
-          "El administrador ha sido eliminado.",
-          "success"
-        );
+        Swal.fire("¡Eliminado!", "El administrador ha sido eliminado.", "success");
         fetchAdmins();
       } catch (error) {
-        console.error("Error al eliminar administrador:", error);
+        handleNetworkError(error);
         Swal.fire("Error", "No se pudo eliminar el administrador.", "error");
       }
     }
   };
 
-  // Cerrar formulario y limpiar edición
   const handleCloseForm = () => {
     setShowForm(false);
     setAdminEdit(null);

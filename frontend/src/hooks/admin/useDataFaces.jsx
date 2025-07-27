@@ -1,13 +1,16 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
+// Variables de entorno
 const BASE_URL = "http://localhost:4500";
 const API_KEY = import.meta.env.VITE_MAPEO_API_KEY;
 
 const useDataFace = () => {
   const [faces, setFaces] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const navigate = useNavigate();
 
   const axiosConfig = {
     headers: {
@@ -15,11 +18,20 @@ const useDataFace = () => {
     },
   };
 
+  const handleNetworkError = (error) => {
+    if (!error.response || error.code === "ERR_NETWORK" || error.response?.status === 503) {
+      navigate("/503");
+    } else {
+      console.error("Error:", error);
+    }
+  };
+
   const fetchFaces = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/faces`, axiosConfig);
       setFaces(Array.isArray(res.data.faces) ? res.data.faces : []);
     } catch (error) {
+      handleNetworkError(error);
       Swal.fire("Error", "No se pudo obtener la lista de rostros.", "error");
     }
   };
@@ -61,6 +73,7 @@ const useDataFace = () => {
       handleCloseForm();
     } catch (error) {
       Swal.close();
+      handleNetworkError(error);
       Swal.fire(
         "Error",
         error?.response?.data?.message || "No se pudo guardar el rostro.",
@@ -106,6 +119,7 @@ const useDataFace = () => {
       handleCloseForm();
     } catch (error) {
       Swal.close();
+      handleNetworkError(error);
       Swal.fire(
         "Error",
         error?.response?.data?.message || "No se pudo actualizar el rostro.",
@@ -131,6 +145,7 @@ const useDataFace = () => {
       Swal.fire("¡Eliminado!", "El rostro ha sido eliminado.", "success");
       fetchFaces();
     } catch (error) {
+      handleNetworkError(error);
       Swal.fire("Error", "No se pudo eliminar el rostro.", "error");
     }
   };

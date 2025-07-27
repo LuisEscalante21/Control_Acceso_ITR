@@ -157,8 +157,6 @@ def mapeo():
         'schedule_id': schedule_id
     }
 
-    print(">>> Documento a insertar en MongoDB:", documento)
-
     coleccion_de_caras.insert_one(documento)
     faiss_index.add_face(codificacion, employee_code)
 
@@ -194,7 +192,7 @@ def actualizar_face(id):
     if code:
         campos_a_actualizar['employee_code'] = code
     if schedule_id:
-        campos_a_actualizar['schedule_id'] = schedule_id  # 👈 nuevo campo
+        campos_a_actualizar['schedule_id'] = schedule_id 
 
     nuevo_codigo = code if code else codigo_anterior
 
