@@ -39,7 +39,7 @@ app.use(cookieParser());
 
 //Traemos el archivo json
 const swaggerDocument = JSON.parse(
-  fs.readFileSync(path.resolve("./Api.json"), "utf-8")
+  fs.readFileSync(path.resolve("./Documentacion.json"), "utf-8")
 );
 
 // Ruta para acceder a la documentación de la API

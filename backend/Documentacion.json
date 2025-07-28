@@ -1,0 +1,1430 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "API Gestión Personal & Reconocimiento Facial",
+    "description": "API para registro y gestión de Coordinadores, Empleados, Horarios, Equipos,\nPermisos, Autenticación, y servicios de mapeo y reconocimiento facial.\n",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://virtserver.swaggerhub.com/institutotcnicorical-acf/Documentacion_Control_Acceso/1.0.0",
+      "description": "SwaggerHub API Auto Mocking"
+    },
+    {
+      "url": "https://virtserver.swaggerhub.com/ttttt-1e9/Control-Acceso/1.0.0",
+      "description": "SwaggerHub API Auto Mocking"
+    },
+    {
+      "url": "http://localhost:4000/api"
+    },
+    {
+      "url": "http://localhost:5000/api"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/coordinators": {
+      "get": {
+        "tags": [
+          "Coordinators"
+        ],
+        "summary": "Obtener lista de coordinadores",
+        "responses": {
+          "200": {
+            "description": "Lista de coordinadores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Coordinator"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/coordinators/{id}": {
+      "get": {
+        "tags": [
+          "Coordinators"
+        ],
+        "summary": "Obtener coordinador por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coordinador encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Coordinator"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Coordinador no encontrado"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Coordinators"
+        ],
+        "summary": "Actualizar coordinador por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Coordinator"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Coordinador actualizado"
+          },
+          "404": {
+            "description": "Coordinador no encontrado"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Coordinators"
+        ],
+        "summary": "Eliminar coordinador por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coordinador eliminado"
+          },
+          "404": {
+            "description": "Coordinador no encontrado"
+          }
+        }
+      }
+    },
+    "/registerCoordinators": {
+      "post": {
+        "tags": [
+          "Registrar coordinadores"
+        ],
+        "summary": "Registrar un nuevo coordinador",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Coordinator"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Coordinador registrado"
+          },
+          "400": {
+            "description": "Error en la solicitud"
+          }
+        }
+      }
+    },
+    "/employees": {
+      "get": {
+        "tags": [
+          "Employees"
+        ],
+        "summary": "Obtener lista de empleados",
+        "responses": {
+          "200": {
+            "description": "Lista de empleados",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Employee"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/employees/{id}": {
+      "get": {
+        "tags": [
+          "Employees"
+        ],
+        "summary": "Obtener empleado por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Empleado encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Employee"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Empleado no encontrado"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Employees"
+        ],
+        "summary": "Actualizar empleado por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Employee"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Empleado actualizado"
+          },
+          "404": {
+            "description": "Empleado no encontrado"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Employees"
+        ],
+        "summary": "Eliminar empleado por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Empleado eliminado"
+          },
+          "404": {
+            "description": "Empleado no encontrado"
+          }
+        }
+      }
+    },
+    "/registerEmployees": {
+      "post": {
+        "tags": [
+          "Registrar empleados"
+        ],
+        "summary": "Registrar un nuevo empleado",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Employee"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Empleado registrado"
+          },
+          "400": {
+            "description": "Error en la solicitud"
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login de usuario",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Login exitoso con token JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciales inválidas"
+          }
+        }
+      }
+    },
+    "/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout de usuario",
+        "responses": {
+          "200": {
+            "description": "Logout exitoso"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/permissions": {
+      "get": {
+        "tags": [
+          "Permisos"
+        ],
+        "summary": "Obtener permisos del usuario (propios, equipo, globales)",
+        "responses": {
+          "200": {
+            "description": "Lista de permisos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Permission"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "Crear un nuevo permiso",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/permissions_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Permiso creado"
+          },
+          "400": {
+            "description": "Error en la solicitud"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/permissions/{id}": {
+      "put": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "Actualizar estado o detalles de un permiso",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/permissions_id_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Permiso actualizado"
+          },
+          "404": {
+            "description": "Permiso no encontrado"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/registerAdministrators": {
+      "post": {
+        "tags": [
+          "Registrar administradores"
+        ],
+        "summary": "Registrar un nuevo administrador",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/registerAdministrators_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Administrador registrado"
+          },
+          "400": {
+            "description": "Error en la solicitud"
+          }
+        }
+      }
+    },
+    "/schedules": {
+      "get": {
+        "tags": [
+          "Horarios"
+        ],
+        "summary": "Obtener todos los horarios",
+        "responses": {
+          "200": {
+            "description": "Lista de horarios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Schedule"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Crear un nuevo horario",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Schedule"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Horario creado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/schedules/{id}": {
+      "put": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Actualizar horario por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Schedule"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Horario actualizado"
+          },
+          "404": {
+            "description": "Horario no encontrado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Eliminar horario por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Horario eliminado correctamente"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/teams": {
+      "get": {
+        "tags": [
+          "Areas"
+        ],
+        "summary": "Obtener todos los equipos",
+        "responses": {
+          "200": {
+            "description": "Lista de equipos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Team"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Teams"
+        ],
+        "summary": "Crear nuevo equipo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Team"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Equipo creado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/teams/{id}": {
+      "put": {
+        "tags": [
+          "Teams"
+        ],
+        "summary": "Actualizar equipo por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Team"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Equipo actualizado"
+          },
+          "404": {
+            "description": "Equipo no encontrado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Teams"
+        ],
+        "summary": "Eliminar equipo por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Equipo eliminado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/mapeo": {
+      "post": {
+        "tags": [
+          "Mapeo de rostros"
+        ],
+        "summary": "Mapear y registrar rostro",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/mapeo_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rostro guardado exitosamente"
+          },
+          "400": {
+            "description": "Error en la solicitud"
+          },
+          "401": {
+            "description": "API Key faltante o inválida"
+          },
+          "403": {
+            "description": "API Key inválida"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        },
+        "security": []
+      }
+    },
+    "/faces": {
+      "get": {
+        "tags": [
+          "Face Mapping"
+        ],
+        "summary": "Listar todos los rostros",
+        "responses": {
+          "200": {
+            "description": "Lista de rostros"
+          },
+          "401": {
+            "description": "API Key faltante o inválida"
+          },
+          "403": {
+            "description": "API Key inválida"
+          }
+        },
+        "security": []
+      }
+    },
+    "/faces/{id}": {
+      "put": {
+        "tags": [
+          "Face Mapping"
+        ],
+        "summary": "Actualizar un rostro",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/faces_id_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rostro actualizado correctamente"
+          },
+          "400": {
+            "description": "Error en la solicitud"
+          },
+          "401": {
+            "description": "API Key faltante o inválida"
+          },
+          "403": {
+            "description": "API Key inválida"
+          },
+          "404": {
+            "description": "Rostro no encontrado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        },
+        "security": []
+      },
+      "delete": {
+        "tags": [
+          "Face Mapping"
+        ],
+        "summary": "Eliminar un rostro",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del recurso",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rostro eliminado correctamente"
+          },
+          "401": {
+            "description": "API Key faltante o inválida"
+          },
+          "403": {
+            "description": "API Key inválida"
+          },
+          "404": {
+            "description": "Rostro no encontrado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        },
+        "security": []
+      }
+    },
+    "/videoCapture": {
+      "get": {
+        "tags": [
+          "Reconocimiento"
+        ],
+        "summary": "Stream de video para reconocimiento facial en tiempo real",
+        "responses": {
+          "200": {
+            "description": "Stream de video en formato multipart/x-mixed-replace"
+          },
+          "401": {
+            "description": "API Key faltante o inválida"
+          },
+          "403": {
+            "description": "API Key inválida"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        },
+        "security": []
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Verifica el estado del servicio",
+        "responses": {
+          "200": {
+            "description": "Servicio activo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inline_response_200"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/administrators": {
+      "get": {
+        "tags": [
+          "Administrators"
+        ],
+        "summary": "Obtener lista de administradores",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/administrators/{id}": {
+      "get": {
+        "tags": [
+          "Administrators"
+        ],
+        "summary": "Obtener administrador por ID",
+        "operationId": "get-administrators-id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Administrador no encontrado"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Administrators"
+        ],
+        "summary": "Actualizar administrador por ID",
+        "operationId": "put-administrators-id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Coordinator"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Administrador actualizado"
+          },
+          "404": {
+            "description": "Administrador no encontrado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Administrators"
+        ],
+        "summary": "Eliminar administrador por ID",
+        "operationId": "delete-administrators-id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Administrador eliminado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Coordinator": {
+        "required": [
+          "DUI",
+          "IdTeam",
+          "address",
+          "birthday",
+          "email",
+          "hireDate",
+          "names",
+          "numEmpleado",
+          "password",
+          "status",
+          "surnames",
+          "telephone"
+        ],
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "numEmpleado": {
+            "type": "string",
+            "example": "C001"
+          },
+          "names": {
+            "type": "string",
+            "example": "Juan"
+          },
+          "surnames": {
+            "type": "string",
+            "example": "Perez"
+          },
+          "DUI": {
+            "type": "string",
+            "example": "12345678-9"
+          },
+          "birthday": {
+            "type": "string",
+            "format": "date",
+            "example": "1990-01-01"
+          },
+          "telephone": {
+            "type": "string",
+            "example": "1234-5678"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "juan.perez@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "mypassword"
+          },
+          "hireDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2023-01-01"
+          },
+          "IdTeam": {
+            "type": "string",
+            "example": "teamid123"
+          },
+          "status": {
+            "type": "boolean",
+            "example": true
+          },
+          "address": {
+            "type": "string",
+            "example": "123 Main St"
+          },
+          "photo": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://res.cloudinary.com/yourcloud/image/upload/coordinators/photo.jpg"
+          }
+        }
+      },
+      "Employee": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Coordinator"
+          }
+        ]
+      },
+      "Schedule": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "name": {
+            "type": "string",
+            "example": "Horario Matutino"
+          },
+          "Lunes": {
+            "type": "string",
+            "example": "08:00-17:00"
+          },
+          "Martes": {
+            "type": "string",
+            "example": "08:00-17:00"
+          },
+          "Miercoles": {
+            "type": "string",
+            "example": "08:00-17:00"
+          },
+          "Jueves": {
+            "type": "string",
+            "example": "08:00-17:00"
+          },
+          "Viernes": {
+            "type": "string",
+            "example": "08:00-17:00"
+          },
+          "Sabado": {
+            "type": "string",
+            "example": "Off"
+          },
+          "Domingo": {
+            "type": "string",
+            "example": "Off"
+          }
+        }
+      },
+      "Team": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "name": {
+            "type": "string",
+            "example": "Equipo A"
+          }
+        }
+      },
+      "FaceMapping": {
+        "required": [
+          "employee_code",
+          "image",
+          "name",
+          "schedule_id"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Juan Perez"
+          },
+          "employee_code": {
+            "type": "string",
+            "example": "E001"
+          },
+          "schedule_id": {
+            "type": "string",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "image": {
+            "type": "string",
+            "description": "Imagen para subir y mapear",
+            "format": "binary"
+          }
+        }
+      },
+      "FaceDocument": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "name": {
+            "type": "string",
+            "example": "Juan Perez"
+          },
+          "employee_code": {
+            "type": "string",
+            "example": "E001"
+          },
+          "schedule_id": {
+            "type": "string",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "image_url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://res.cloudinary.com/rostros/image/upload/v1/rostros/imagen.jpg"
+          },
+          "encoding": {
+            "type": "array",
+            "description": "Vector de codificación facial FAISS",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "Permission": {
+        "required": [
+          "description",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "name": {
+            "type": "string",
+            "example": "Acceso Administrativo"
+          },
+          "description": {
+            "type": "string",
+            "example": "Permite acceso a funciones administrativas"
+          },
+          "status": {
+            "type": "boolean",
+            "example": true
+          },
+          "assignedTo": {
+            "type": "string",
+            "description": "ID de usuario o equipo asignado (puede ser null)",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "scope": {
+            "type": "string",
+            "description": "Ámbito: 'personal', 'equipo' o 'global'",
+            "example": "personal"
+          }
+        }
+      },
+      "LoginRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "usuario@empresa.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "mypassword"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "permissions_body": {
+        "required": [
+          "description",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Acceso a Nómina"
+          },
+          "description": {
+            "type": "string",
+            "example": "Permite gestionar la nómina"
+          },
+          "assignedTo": {
+            "type": "string",
+            "description": "ID de usuario o equipo asignado",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "scope": {
+            "type": "string",
+            "example": "personal",
+            "enum": [
+              "personal",
+              "equipo",
+              "global"
+            ]
+          }
+        }
+      },
+      "permissions_id_body": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "boolean",
+            "example": false
+          },
+          "description": {
+            "type": "string",
+            "example": "Actualización de descripción"
+          }
+        }
+      },
+      "registerAdministrators_body": {
+        "required": [
+          "email",
+          "name",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "admin@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "securepassword"
+          },
+          "name": {
+            "type": "string",
+            "example": "Administrador Principal"
+          }
+        }
+      },
+      "mapeo_body": {
+        "required": [
+          "employee_code",
+          "image",
+          "name",
+          "schedule_id"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Juan Perez"
+          },
+          "employee_code": {
+            "type": "string",
+            "example": "E001"
+          },
+          "schedule_id": {
+            "type": "string",
+            "example": "64f7a123bcae8a1b23456789"
+          },
+          "image": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "faces_id_body": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "inline_response_200": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          }
+        }
+      }
+    },
+    "parameters": {
+      "idParam": {
+        "name": "id",
+        "in": "path",
+        "description": "ID del recurso",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
