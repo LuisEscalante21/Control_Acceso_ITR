@@ -22,7 +22,7 @@ permissionsController.InsertPermission = async (req, res) => {
       createdBy: user._id,
     };
 
-    // Validaciones generales
+    // Validaciones comunes
     if (!permissionData.applicationDay) {
       return res.status(400).json({ message: "El día de solicitud es obligatorio." });
     }
@@ -31,35 +31,55 @@ permissionsController.InsertPermission = async (req, res) => {
       return res.status(400).json({ message: "El campo Discount debe ser booleano." });
     }
 
-    if (permissionData.Discount && (typeof permissionData.quantityDiscount !== "number" || permissionData.quantityDiscount < 0)) {
+    if (
+      permissionData.Discount &&
+      (typeof permissionData.quantityDiscount !== "number" || permissionData.quantityDiscount < 0)
+    ) {
       return res.status(400).json({ message: "Cantidad de descuento inválida." });
     }
 
-    // Validaciones por tipo de permiso
+    //====================== Validaciones por tipo de permiso ======================
+
     if (permissionType === "minor") {
-      if (!permissionData.permissionDate || !permissionData.startTime || !permissionData.endTime) {
+      if (
+        !permissionData.permissionDate ||
+        !permissionData.startTime ||
+        !permissionData.endTime
+      ) {
         return res.status(400).json({ message: "Campos requeridos para permiso menor faltantes." });
       }
     }
 
     if (permissionType === "major") {
-      if (!permissionData.permissionDateFrom || !permissionData.permissionDateTo) {
+      if (
+        !permissionData.permissionDateFrom ||
+        !permissionData.permissionDateTo
+      ) {
         return res.status(400).json({ message: "Fechas requeridas para permiso mayor." });
       }
-      if (!permissionData.requestLetter || !Array.isArray(permissionData.supportingDocuments) || permissionData.supportingDocuments.length === 0) {
-        return res.status(400).json({ message: "Carta y documentos requeridos para permiso mayor." });
+
+      if (
+        !permissionData.reason &&
+        !permissionData.supportingDocument
+      ) {
+        return res.status(400).json({ message: "Debe proporcionar una razón o documento para permiso mayor." });
       }
     }
 
     if (permissionType === "incapacity") {
-      if (!permissionData.sickLeaveDateFrom || !permissionData.sickLeaveDateTo) {
+      if (
+        !permissionData.sickLeaveDateFrom ||
+        !permissionData.sickLeaveDateTo
+      ) {
         return res.status(400).json({ message: "Fechas requeridas para incapacidad." });
       }
+
       if (!permissionData.incapacityType || !permissionData.illnessType) {
         return res.status(400).json({ message: "Tipo de incapacidad y enfermedad requeridos." });
       }
-      if (!permissionData.sickLeaveDocument) {
-        return res.status(400).json({ message: "Documento de incapacidad requerido." });
+
+      if (!permissionData.supportingDocument) {
+        return res.status(400).json({ message: "Documento de respaldo requerido para incapacidad." });
       }
     }
 
@@ -72,6 +92,7 @@ permissionsController.InsertPermission = async (req, res) => {
     res.status(500).json({ message: "Error interno al crear permiso" });
   }
 };
+
 
 // Obtener permisos propios
 permissionsController.getMyPermissions = async (req, res) => {
@@ -137,19 +158,31 @@ permissionsController.updateStatus = async (req, res) => {
       return res.status(404).json({ message: "Permiso no encontrado" });
     }
 
+    // Validar que el permiso no haya sido gestionado aún
+    if (permission.status !== "pending") {
+      return res.status(400).json({ message: "Este permiso ya fue gestionado" });
+    }
+
+    // Coordinadores solo pueden modificar permisos de su equipo y no los suyos
     if (user.userType === "Coordinator") {
-      if (permission.idTeam !== user.IdTeam || permission.employeeNumber === user.numEmpleado) {
+      if (
+        permission.idTeam?.toString() !== user.IdTeam?.toString() ||
+        permission.employeeNumber === user.numEmpleado
+      ) {
         return res.status(403).json({ message: "No autorizado para modificar este permiso" });
       }
     } else if (user.userType !== "Admin") {
       return res.status(403).json({ message: "Acceso denegado" });
     }
 
-    const updated = await PermissionsModel.findByIdAndUpdate(
-      id,
-      { status, supervisorComments },
-      { new: true }
-    );
+    // Preparar actualización
+    const update = {
+      status,
+      supervisorComments,
+      actionBy: user.fullName,
+    };
+
+    const updated = await PermissionsModel.findByIdAndUpdate(id, update, { new: true });
 
     res.json({ message: "Estado del permiso actualizado", data: updated });
   } catch (error) {
@@ -157,5 +190,30 @@ permissionsController.updateStatus = async (req, res) => {
     res.status(500).json({ message: "Error al actualizar permiso" });
   }
 };
+
+// Eliminar todos los permisos (solo Admin)
+permissionsController.clearAllPermissions = async (req, res) => {
+  try {
+    const user = req.user;
+    const { confirm } = req.query;
+
+    // Validar rol
+    if (user.userType !== "Admin") {
+      return res.status(403).json({ message: "No autorizado. Solo administradores pueden realizar esta acción." });
+    }
+
+    // Validar confirmación explícita
+    if (confirm !== "REMOVE") {
+      return res.status(400).json({ message: 'Confirmación inválida. Debe proporcionar ?confirm=REMOVE para ejecutar esta acción.' });
+    }
+
+    await PermissionsModel.deleteMany({});
+    res.json({ message: "REMOVE: Todos los permisos han sido eliminados correctamente." });
+  } catch (error) {
+    console.error("Error al eliminar permisos:", error);
+    res.status(500).json({ message: "Error del servidor al eliminar todos los permisos." });
+  }
+};
+
 
 export default permissionsController;

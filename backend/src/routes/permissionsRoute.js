@@ -29,4 +29,9 @@ router
   .route("/:id/status")
   .patch(verifyToken, permissionsController.updateStatus);
 
+// Eliminar permiso (solo Coordinador o Admin)
+router
+  .route("/:id")
+  .delete(verifyToken, permissionsController.clearAllPermissions);
+
 export default router;

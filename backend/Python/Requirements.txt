@@ -11,4 +11,5 @@ dlib
 flask-cors
 cloudinary
 faiss-cpu
-bson
+cmake
+requests
