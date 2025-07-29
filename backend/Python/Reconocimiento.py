@@ -25,7 +25,7 @@ load_dotenv(dotenv_path)
 # Variables de entorno
 RECONOCIMIENTO_API_KEY = os.getenv("RECONOCIMIENTO_API_KEY")
 mongo_uri = os.getenv("DB_URI")
-port = int(os.getenv("PORT_RECONOCIMIENTO", 5000))
+port = int(os.getenv("PORT_RECONOCIMIENTO"))
 db_name = os.getenv("DB_NAME", "PTC_2025")
 collection_name = os.getenv("DB_COLLECTION", "faces")
 SCHEDULES_URL = "http://localhost:4000/api/schedules"
