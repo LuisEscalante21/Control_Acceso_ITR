@@ -79,7 +79,7 @@ const ViewScheduleModal = ({ schedule, onClose, onEdit, onDelete }) => {
                           <input
                             className="readonly-time"
                             type="text"
-                            value={data[turno]?.start || ""}
+                            value={data[turno]?.start || "--:--"}
                             readOnly
                           />
                           <span className="am-pm">{formatAMPM(data[turno]?.start)}</span>
@@ -91,7 +91,7 @@ const ViewScheduleModal = ({ schedule, onClose, onEdit, onDelete }) => {
                           <input
                             className="readonly-time"
                             type="text"
-                            value={data[turno]?.end || ""}
+                            value={data[turno]?.end || "--:--"}
                             readOnly
                           />
                           <span className="am-pm">{formatAMPM(data[turno]?.end)}</span>
