@@ -3,6 +3,7 @@ import CoordinatorsModel from "../models/Coordinators.js";
 import AdministratorsModel from "../models/Administrators.js";
 import bcryptjs from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
+import CryptoJS from "crypto-js";       
 import { config } from "../config.js";
 import parseExpirationToMs from "../utils/parseExpirationToMs.js";
 
@@ -16,7 +17,7 @@ loginController.login = async (req, res) => {
     let userType;
     let tokenPayload = {};
 
-    // 1. Validar admin hardcoded en .env
+    // Validar admin hardcoded en .env
     if (email === config.emailAdmin.email && password === config.emailAdmin.password) {
       userType = "Admin";
       userFound = {
@@ -28,57 +29,41 @@ loginController.login = async (req, res) => {
         photo: null,
       };
     } else {
-      // 2. Buscar admin en BD
+      // Buscar admin, coordinator, empleado en BD...
       userFound = await AdministratorsModel.findOne({ email });
-      if (userFound) {
-        userType = "Admin";
-      } else {
-        // 3. Buscar coordinator en BD
+      if (userFound) userType = "Admin";
+      else {
         userFound = await CoordinatorsModel.findOne({ email });
-        if (userFound) {
-          userType = "Coordinator";
-        } else {
-          // 4. Buscar empleado en BD
+        if (userFound) userType = "Coordinator";
+        else {
           userFound = await EmployeesModel.findOne({ email });
-          if (userFound) {
-            userType = "Employee";
-          }
+          if (userFound) userType = "Employee";
         }
       }
 
-      // Si no encontró usuario en ninguna colección
-      if (!userFound) {
-        return res.status(401).json({ message: "Usuario no encontrado" });
-      }
+      if (!userFound) return res.status(401).json({ message: "Usuario no encontrado" });
 
-      // Verificar si está activo (si el campo existe)
       if (userFound.status !== undefined && userFound.status !== true) {
         return res.status(403).json({ message: "Usuario inactivo. Contacte al administrador." });
       }
 
-      // Comparar contraseña (no en admin hardcoded)
       const isMatch = await bcryptjs.compare(password, userFound.password);
-      if (!isMatch) {
-        return res.status(401).json({ message: "Contraseña incorrecta" });
-      }
+      if (!isMatch) return res.status(401).json({ message: "Contraseña incorrecta" });
     }
 
-    // Construir payload común para JWT
+    // Payload JWT para backend
     tokenPayload = {
       id: userFound._id,
       userType,
     };
 
-    // Función para obtener foto segura (sin base64)
     const safePhoto = (photo) => {
       if (!photo) return null;
-      // Si es URL (por ejemplo empieza con http o https), úsala
       if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
-      // Si es base64 u otro, no incluir para evitar problema tamaño cookie
       return null;
     };
 
-    // Agregar datos extendidos al payload según tipo de usuario
+    // Agregar info extra
     if (userType === "Admin") {
       tokenPayload.fullName = userFound.fullName || (userFound.names && userFound.surnames
         ? `${userFound.names} ${userFound.surnames}`
@@ -97,10 +82,9 @@ loginController.login = async (req, res) => {
       tokenPayload.photo = safePhoto(userFound.photo);
     }
 
-    // Calcular duración cookie/token
     const cookieMaxAge = parseExpirationToMs(config.JWT.expiresIn);
 
-    // Firmar token JWT
+    // Firmar JWT backend
     jsonwebtoken.sign(
       tokenPayload,
       config.JWT.secret,
@@ -111,37 +95,41 @@ loginController.login = async (req, res) => {
           return res.status(500).json({ message: "Error generando el token" });
         }
 
-        // Enviar cookie httpOnly con token (para backend)
+        // Cookie httpOnly backend
         res.cookie("authToken", token, {
           httpOnly: true,
-          secure: false, // En producción: true si usas HTTPS
+          secure: false,
           sameSite: "lax",
           path: "/",
           maxAge: cookieMaxAge,
         });
 
-        // Enviar cookie accesible desde frontend con info del usuario, sin foto pesada
-        res.cookie(
-          "userInfo",
-          JSON.stringify({
-            _id: userFound._id,
-            userType,
-            fullName: tokenPayload.fullName,
-            idTeam: tokenPayload.idTeam,
-            numEmpleado: tokenPayload.numEmpleado,
-            department: tokenPayload.department,
-            photo: tokenPayload.photo,
-          }),
-          {
-            httpOnly: false,
-            secure: false,
-            sameSite: "lax",
-            path: "/",
-            maxAge: cookieMaxAge,
-          }
-        );
+        // Crear objeto userInfo plano
+        const userInfo = {
+          _id: userFound._id,
+          userType,
+          fullName: tokenPayload.fullName,
+          idTeam: tokenPayload.idTeam,
+          numEmpleado: tokenPayload.numEmpleado,
+          department: tokenPayload.department,
+          photo: tokenPayload.photo,
+        };
 
-        // Responder con json
+        // Cifrar userInfo con AES usando crypto-js y clave secreta
+        const encryptedUserInfo = CryptoJS.AES.encrypt(
+          JSON.stringify(userInfo),
+          config.JWT.secret
+        ).toString();
+
+        // Enviar cookie no httpOnly accesible en frontend con userInfo cifrada
+        res.cookie("userInfo", encryptedUserInfo, {
+          httpOnly: false,
+          secure: false,
+          sameSite: "lax",
+          path: "/",
+          maxAge: cookieMaxAge,
+        });
+
         return res.json({
           message: "login successful",
           userType,

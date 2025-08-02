@@ -1,31 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import '../../components/styles/employee/Home.css';
+import React, { useEffect, useState } from "react";
+import CryptoJS from "crypto-js";
+import "../../components/styles/employee/Home.css";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
 
 export default function Home() {
-  const [greeting, setGreeting] = useState('');
-  const [userName, setUserName] = useState('');
+  const [greeting, setGreeting] = useState("");
+  const [userName, setUserName] = useState("");
+
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
 
   useEffect(() => {
-    // Obtener datos del usuario desde la cookie `userInfo`
+    // Leer y parsear la cookie userInfo
     const userInfoCookie = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('userInfo='));
+      .split("; ")
+      .find((row) => row.startsWith("userInfo="));
 
-    if (userInfoCookie) {
+    if (userInfoCookie && secretKey) {
       try {
-        const userInfo = JSON.parse(decodeURIComponent(userInfoCookie.split('=')[1]));
-        setUserName(userInfo.fullName || 'Usuario');
+        const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
+        const bytes = CryptoJS.AES.decrypt(encrypted, secretKey);
+        const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!decryptedStr)
+          throw new Error("No se pudo descifrar correctamente.");
+
+        const userInfo = JSON.parse(decryptedStr);
+        
+        setUserName(userInfo.fullName || "Usuario");
       } catch (err) {
-        console.error('Error al parsear userInfo cookie:', err);
+        console.error("Error al descifrar userInfo:", err);
       }
     }
-  }, []);
+  }, [secretKey]);
 
   return (
     <div className="dashboard-home-container">
-      <h2>{greeting && `${greeting}, ${userName}`}</h2>
+      <h2>{`${greeting || "Hola"}, ${userName || "Usuario"}`}</h2>
 
       <div className="dashboard-widgets">
         <GreetingCard onGreetingReady={setGreeting} />

@@ -21,12 +21,31 @@ const useDataEmployee = () => {
   const saveEmployee = async (employeeData, idToUpdate = null) => {
     try {
       if (idToUpdate) {
-        // Actualizar empleado
-        await axios.put(`http://localhost:4000/api/employee/${idToUpdate}`, employeeData);
-        Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
+        // Si es actualización, eliminar IdTeam para que no se actualice
+        if (employeeData instanceof FormData) {
+          employeeData.delete("IdTeam");
+        }
+
+        await axios.put(
+          `http://localhost:4000/api/employee/${idToUpdate}`,
+          employeeData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        Swal.fire(
+          "¡Actualizado!",
+          "El empleado ha sido actualizado.",
+          "success"
+        );
       } else {
-        // Crear empleado
-        await axios.post("http://localhost:4000/api/registerEmployees", employeeData);
+        // Al crear sí se envía todo (incluyendo IdTeam si está)
+        await axios.post(
+          "http://localhost:4000/api/registerEmployees",
+          employeeData
+        );
         Swal.fire("¡Guardado!", "El empleado ha sido creado.", "success");
       }
       fetchEmployees();

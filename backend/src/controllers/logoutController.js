@@ -1,16 +1,21 @@
+// logoutController.js
 const logoutController = {};
 
-logoutController.logout = async (req, res) => {
+logoutController.logout = (req, res) => {
   try {
-    // Si además manejas sesión:
-    req.session?.destroy();
+    // Destruye sesión si usas express-session
+    if (req.session) {
+      req.session.destroy((err) => {
+        if (err) console.error("Error destruyendo sesión:", err);
+      });
+    }
 
-    // Borrar cookie authToken enviando cabecera de expiración
+    // Borra cookie authToken (ajusta secure según entorno)
     res.clearCookie("authToken", {
       httpOnly: true,
-      secure: false,    // true en producción
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      path: "/"
+      path: "/",
     });
 
     return res.json({ message: "Sesión cerrada correctamente" });

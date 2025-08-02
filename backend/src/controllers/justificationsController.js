@@ -92,7 +92,7 @@ justificationsController.createJustification = async (req, res) => {
       justification: newJustification,
     });
   } catch (error) {
-    console.error("❌ Error backend:", error);
+    console.error("Error backend:", error);
     res.status(500).json({ message: "Error creating justification", error: error.message });
   }
 };

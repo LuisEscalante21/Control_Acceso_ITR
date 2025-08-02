@@ -27,10 +27,10 @@ RECONOCIMIENTO_API_KEY = os.getenv("RECONOCIMIENTO_API_KEY")
 mongo_uri = os.getenv("DB_URI")
 port = int(os.getenv("PORT_RECONOCIMIENTO"))
 db_name = os.getenv("DB_NAME", "PTC_2025")
-collection_name = os.getenv("DB_COLLECTION", "faces")
+collection_name = os.getenv("DB_COLLECTION")
 SCHEDULES_URL = "http://localhost:4000/api/schedules"
-ACCESS_API_URL = "http://localhost:4700/api/access"  # URL de la API de acceso
-ACCESS_API_KEY = os.getenv("API_ACCESS_KEY")        # API Key para acceso
+ACCESS_API_URL = "http://localhost:4700/api/access" 
+ACCESS_API_KEY = os.getenv("API_ACCESS_KEY")
 
 # Conexión Mongo
 mongo_client = MongoClient(mongo_uri)

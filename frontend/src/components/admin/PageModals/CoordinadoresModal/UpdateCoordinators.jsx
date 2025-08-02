@@ -15,6 +15,7 @@ const toInputDateFormat = (date) => {
 export default function UpdateCoordinators({ coordinator, onSave, onDelete, onClose }) {
   const [editMode, setEditMode] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(coordinator?.photo || "");
+  const [photoFile, setPhotoFile] = useState(null); // Estado para archivo real
 
   const {
     register,
@@ -32,15 +33,26 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
         password: "",
       });
       setPhotoPreview(coordinator.photo || "");
+      setPhotoFile(null);
       setEditMode(false);
     }
   }, [coordinator, reset]);
 
   const onSubmit = async (data) => {
     data.status = data.status === "activo";
-    data.photo = photoPreview;
+
+    // Crear FormData para enviar, incluyendo archivo si existe
+    const formData = new FormData();
+    for (const key in data) {
+      formData.append(key, data[key]);
+    }
+
+    if (photoFile) {
+      formData.append("photo", photoFile);
+    }
+
     try {
-      await onSave(data, coordinator._id);
+      await onSave(formData, coordinator._id);
       Swal.fire("Actualizado", "El coordinador ha sido actualizado exitosamente.", "success");
       setEditMode(false);
       onClose();
@@ -67,6 +79,7 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setPhotoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -105,6 +118,7 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
           </div>
           {!editMode ? (
             <>
+              {/* Mostrar datos igual */}
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Nombres y apellidos:</span>
                 <span className="cvcard-value">{coordinator.names} {coordinator.surnames}</span>

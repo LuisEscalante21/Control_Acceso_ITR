@@ -62,8 +62,8 @@ export default function Sidebar() {
       localStorage.removeItem("userData");
       sessionStorage.clear();
 
-      // ✅ Eliminar también la cookie userInfo desde el frontend
       document.cookie = "userInfo=; Max-Age=0; path=/";
+      document.cookie = "authToken=; Max-Age=0; path=/";
 
       Swal.close();
 
@@ -99,7 +99,7 @@ export default function Sidebar() {
       localStorage.removeItem("userData");
       sessionStorage.clear();
 
-      // ✅ También eliminar cookie userInfo en caso de error
+      //También eliminar cookie userInfo en caso de error
       document.cookie = "userInfo=; Max-Age=0; path=/";
 
       navigate("/login", { replace: true });

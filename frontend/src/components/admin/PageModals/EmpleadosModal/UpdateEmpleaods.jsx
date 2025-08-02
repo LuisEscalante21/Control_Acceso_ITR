@@ -15,12 +15,11 @@ const toInputDateFormat = (date) => {
 export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose }) {
   const [editMode, setEditMode] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(empleado?.photo || "");
+  const [photoFile, setPhotoFile] = useState(null); // <-- Nuevo estado para archivo real
 
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     reset,
     formState: { errors },
   } = useForm();
@@ -31,17 +30,31 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
         ...empleado,
         birthday: toInputDateFormat(empleado.birthday),
         status: empleado.status ? "activo" : "inactivo",
-        password: ""
+        password: "",
       });
       setPhotoPreview(empleado.photo || "");
+      setPhotoFile(null); // Reset archivo cuando cambia empleado
       setEditMode(false);
     }
   }, [empleado, reset]);
 
   const onSubmit = async (data) => {
     data.status = data.status === "activo";
-    data.photo = photoPreview;
-    await onSave(data, empleado._id);
+
+    const formData = new FormData();
+
+    // Agregar todos los campos excepto photo
+    for (const key in data) {
+      formData.append(key, data[key]);
+    }
+
+    // Agregar archivo solo si hay uno nuevo
+    if (photoFile) {
+      formData.append("photo", photoFile);
+    }
+
+    await onSave(formData, empleado._id);
+
     Swal.fire("Actualizado", "El empleado ha sido actualizado exitosamente.", "success");
     setEditMode(false);
     onClose();
@@ -65,6 +78,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setPhotoFile(file); // Guardar archivo real para FormData
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -134,6 +148,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
             </>
           ) : (
             <form className="cvcard-form" onSubmit={handleSubmit(onSubmit)} style={{ width: "100%", marginTop: 10 }}>
+              {/* Campos... (igual que antes) */}
               <div className="form-field">
                 <label>Código de empleado:</label>
                 <input {...register("numEmpleado", { required: true })} />

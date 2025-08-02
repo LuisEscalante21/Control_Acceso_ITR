@@ -14,7 +14,11 @@ const useDataCoordinators = () => {
   const navigate = useNavigate();
 
   const handleNetworkError = (error) => {
-    if (!error.response || error.code === "ERR_NETWORK" || error.response?.status === 503) {
+    if (
+      !error.response ||
+      error.code === "ERR_NETWORK" ||
+      error.response?.status === 503
+    ) {
       navigate("/503");
     } else {
       console.error("Error:", error);
@@ -36,10 +40,28 @@ const useDataCoordinators = () => {
       const coordinatorId = id || coordinatorEdit?._id;
 
       if (coordinatorId) {
-        await axios.put(`${API_URL}/coordinators/${coordinatorId}`, coordinatorData);
+        // Si es FormData, eliminar IdTeam para no actualizarlo
+        if (coordinatorData instanceof FormData) {
+          coordinatorData.delete("IdTeam");
+        } else if (typeof coordinatorData === "object") {
+          delete coordinatorData.IdTeam;
+        }
+
+        await axios.put(`${API_URL}/coordinators/${coordinatorId}`, coordinatorData, {
+          headers: coordinatorData instanceof FormData
+            ? { "Content-Type": "multipart/form-data" }
+            : undefined,
+        });
+
         Swal.fire("¡Actualizado!", "El coordinador ha sido actualizado.", "success");
       } else {
-        await axios.post(`${API_URL}/registerCoordinators`, coordinatorData);
+        // Crear con todo (incluyendo IdTeam)
+        await axios.post(`${API_URL}/registerCoordinators`, coordinatorData, {
+          headers: coordinatorData instanceof FormData
+            ? { "Content-Type": "multipart/form-data" }
+            : undefined,
+        });
+
         Swal.fire("¡Guardado!", "El coordinador ha sido creado.", "success");
       }
 

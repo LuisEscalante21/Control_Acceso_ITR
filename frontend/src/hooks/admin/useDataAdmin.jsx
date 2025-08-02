@@ -34,12 +34,28 @@ const useDataAdmin = () => {
   const saveAdmin = async (adminData, adminId = null) => {
     try {
       if (adminId) {
-        // Actualizar administrador con JSON normal
-        await axios.put(`${API_URL}/administrators/${adminId}`, adminData);
+        // Al actualizar, eliminar IdTeam para no modificarlo
+        if (adminData instanceof FormData) {
+          adminData.delete("IdTeam");
+        } else if (typeof adminData === "object") {
+          delete adminData.IdTeam;
+        }
+
+        await axios.put(`${API_URL}/administrators/${adminId}`, adminData, {
+          headers: adminData instanceof FormData
+            ? { "Content-Type": "multipart/form-data" }
+            : undefined,
+        });
+
         Swal.fire("¡Actualizado!", "El administrador ha sido actualizado.", "success");
       } else {
-        // Crear nuevo administrador
-        await axios.post(`${API_URL}/registerAdministrators`, adminData);
+        // Crear nuevo administrador (envía todo, incluido IdTeam)
+        await axios.post(`${API_URL}/registerAdministrators`, adminData, {
+          headers: adminData instanceof FormData
+            ? { "Content-Type": "multipart/form-data" }
+            : undefined,
+        });
+
         Swal.fire("¡Guardado!", "El administrador ha sido creado.", "success");
       }
 

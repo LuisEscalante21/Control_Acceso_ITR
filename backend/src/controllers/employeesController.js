@@ -1,9 +1,18 @@
 import employeesModel from "../models/Employees.js";
 import bcryptjs from "bcryptjs";
+import { config } from "../config.js";
+import { v2 as cloudinary } from "cloudinary";
+
+// Configurar cloudinary (si aún no está configurado globalmente)
+cloudinary.config({
+  cloud_name: config.cloudinary.cloudinary_name,
+  api_key: config.cloudinary.cloudinary_api_key,
+  api_secret: config.cloudinary.cloudinary_api_secret,
+});
 
 const employeesController = {};
 
-// S E L E C T
+// S E L E C T - Obtener todos los empleados
 employeesController.getEmployees = async (req, res) => {
   try {
     const employees = await employeesModel.find().populate("IdTeam");
@@ -38,21 +47,20 @@ employeesController.getEmployee = async (req, res) => {
   }
 };
 
-
-// D E L E T E
+// D E L E T E - Eliminar empleado por ID
 employeesController.deleteEmployees = async (req, res) => {
   try {
     const deleted = await employeesModel.findByIdAndDelete(req.params.id);
     if (!deleted) {
-      return res.status(404).json({ message: "Employee not found" });
+      return res.status(404).json({ message: "Empleado no encontrado" });
     }
-    res.json({ message: "Employee deleted" });
+    res.json({ message: "Empleado eliminado" });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting employee", error });
+    res.status(500).json({ message: "Error al eliminar empleado", error });
   }
 };
 
-// U P D A T E
+// U P D A T E - Actualizar empleado por ID
 employeesController.updateEmployees = async (req, res) => {
   try {
     const {
@@ -70,7 +78,6 @@ employeesController.updateEmployees = async (req, res) => {
       address,
     } = req.body;
 
-    // Preparar datos a actualizar
     const updatedData = {
       numEmpleado,
       names,
@@ -80,15 +87,44 @@ employeesController.updateEmployees = async (req, res) => {
       telephone,
       email,
       hireDate,
-      IdTeam,
       status,
       address,
     };
 
-    // Si se incluye nueva contraseña, hashearla
+     // Solo agregar IdTeam si viene como string
+    if (IdTeam) {
+      if (typeof IdTeam === "string") {
+        updatedData.IdTeam = IdTeam;
+      } else if (typeof IdTeam === "object" && IdTeam._id) {
+        updatedData.IdTeam = IdTeam._id;
+      }
+      // Si no es string ni objeto con _id, no lo agregamos
+    }
+
+    // Validar formatos
+    const phoneRegex = /^\d{4}-\d{4}$/;
+    const duiRegex = /^\d{8}-\d$/;
+
+    if (telephone && !phoneRegex.test(telephone)) {
+      return res.status(400).json({ message: "Formato de teléfono inválido. Use ####-####." });
+    }
+
+    if (DUI && !duiRegex.test(DUI)) {
+      return res.status(400).json({ message: "Formato de DUI inválido. Use ########-#." });
+    }
+
+    // Hashear la contraseña si se proporciona
     if (password) {
-      const salt = await bcryptjs.genSalt(10);
-      updatedData.password = await bcryptjs.hash(password, salt);
+      updatedData.password = await bcryptjs.hash(password, 10);
+    }
+
+    // 📸 Subir imagen si viene en el request
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "employees",
+        allowed_formats: ["jpg", "png", "jpeg"],
+      });
+      updatedData.photo = result.secure_url;
     }
 
     const updatedEmployee = await employeesModel.findByIdAndUpdate(
@@ -98,13 +134,15 @@ employeesController.updateEmployees = async (req, res) => {
     );
 
     if (!updatedEmployee) {
-      return res.status(404).json({ message: "Employee not found" });
+      return res.status(404).json({ message: "Empleado no encontrado" });
     }
 
-    res.json({ message: "Employee updated", employee: updatedEmployee });
+    res.json({ message: "Empleado actualizado", employee: updatedEmployee });
   } catch (error) {
-    res.status(500).json({ message: "Error updating employee", error });
+    console.error(error);
+    res.status(500).json({ message: "Error al actualizar empleado", error: error.message });
   }
 };
+
 
 export default employeesController;

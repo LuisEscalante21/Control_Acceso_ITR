@@ -15,6 +15,7 @@ const toInputDateFormat = (date) => {
 export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   const [editMode, setEditMode] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(admin?.photo || "");
+  const [photoFile, setPhotoFile] = useState(null); // <-- Archivo real para subir
 
   const {
     register,
@@ -32,16 +33,25 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
         password: "",
       });
       setPhotoPreview(admin.photo || "");
+      setPhotoFile(null); // reset archivo al cambiar admin
       setEditMode(false);
     }
   }, [admin, reset]);
 
   const onSubmit = async (data) => {
     data.status = data.status === "activo";
-    // Añadimos la foto en base64 (preview) para enviar junto a los datos
-    data.photo = photoPreview;
+
+    const formData = new FormData();
+    for (const key in data) {
+      formData.append(key, data[key]);
+    }
+
+    if (photoFile) {
+      formData.append("photo", photoFile);
+    }
+
     try {
-      await onSave(data, admin._id);
+      await onSave(formData, admin._id);
       Swal.fire("Actualizado", "El administrador ha sido actualizado exitosamente.", "success");
       setEditMode(false);
       onClose();
@@ -65,10 +75,10 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
     });
   };
 
-  // Manejar cambio de imagen y vista previa
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setPhotoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -194,7 +204,6 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
                 </select>
                 {errors.status && <span className="error-message">Estado obligatorio</span>}
               </div>
-              {/* Bloque para subida de imagen */}
               <div className="form-field">
                 <label htmlFor="photo">Imagen de perfil:</label>
                 <div className="image-upload-container">

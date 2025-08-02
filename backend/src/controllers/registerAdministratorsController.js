@@ -65,7 +65,7 @@ registerAdministratorsController.register = async (req, res) => {
       return res.status(400).json({ message: "Invalid DUI format." });
     }
 
-    // ✅ Verificar email global
+    // Verificar email global
     const emailExists = await emailExistsInAnyCollection(email);
     if (emailExists) {
       return res.status(400).json({ message: "Email already exists in the system." });

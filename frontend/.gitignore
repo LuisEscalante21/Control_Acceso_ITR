@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 #Datos sensibles
-/frontend/.env
+.env
 *.env
+/frontend/.env

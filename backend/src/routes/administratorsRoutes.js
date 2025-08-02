@@ -1,11 +1,18 @@
 import { Router } from "express";
+import multer from "multer";
 import administratorsController from "../controllers/administratorsController.js";
 
 const router = Router();
 
+// Configuración básica de multer (carpeta temporal)
+const upload = multer({ dest: "public/administrators/" });
+
 // Rutas para Administradores
-router.get("/", administratorsController.getAdministrators); // Obtener todos los administradores
-router.delete("/:id", administratorsController.deleteAdministrator); // Eliminar un administrador por ID
-router.put("/:id", administratorsController.updateAdministrator); // Actualizar un administrador por ID
+router.route("/").get(administratorsController.getAdministrators);
+
+router
+  .route("/:id")
+  .put(upload.single("photo"), administratorsController.updateAdministrator)
+  .delete(administratorsController.deleteAdministrator);
 
 export default router;

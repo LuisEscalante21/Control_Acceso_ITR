@@ -1,28 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import Cookies from 'js-cookie'; // Importar la librería
-import '../../components/styles/admin/Home.css';
+import React, { useEffect, useState } from "react";
+import CryptoJS from "crypto-js";
+import "../../components/styles/admin/Home.css";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
 
 export default function AdminHome() {
-  const [greeting, setGreeting] = useState('');
-  const [userName, setUserName] = useState('');
+  const [greeting, setGreeting] = useState("");
+  const [userName, setUserName] = useState("");
+
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
 
   useEffect(() => {
     // Leer y parsear la cookie userInfo
-    const userInfoCookie = Cookies.get('userInfo');
-    if (userInfoCookie) {
+    const userInfoCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("userInfo="));
+
+    if (userInfoCookie && secretKey) {
       try {
-        const userInfo = JSON.parse(userInfoCookie);
-        setUserName(userInfo.fullName);
-      } catch (error) {
-        console.error('Error al parsear userInfo:', error);
-        setUserName('Usuario');
+        const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
+        const bytes = CryptoJS.AES.decrypt(encrypted, secretKey);
+        const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!decryptedStr)
+          throw new Error("No se pudo descifrar correctamente.");
+
+        const userInfo = JSON.parse(decryptedStr);
+
+        setUserName(userInfo.fullName || "Usuario");
+      } catch (err) {
+        console.error("Error al descifrar userInfo:", err);
       }
-    } else {
-      setUserName('Usuario');
     }
-  }, []);
+  }, [secretKey]);
 
   return (
     <div className="dashboard-home-container">

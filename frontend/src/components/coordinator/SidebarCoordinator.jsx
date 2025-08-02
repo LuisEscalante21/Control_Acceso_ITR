@@ -1,15 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import {
-  Home,
-  FileCheck,
-  Clock,
-  Menu,
-  X,
-  UserCheck,
-  LogOut,
-} from "lucide-react";
+import {Home, FileCheck, Clock, Menu, X, UserCheck, LogOut,} from "lucide-react";
 import "../../components/styles/SidebarEmployee.css";
 import logoRical from "../../img/logo_rical.png";
 
@@ -109,8 +101,9 @@ export default function Sidebar() {
         localStorage.removeItem("userData");
         sessionStorage.clear();
 
-        // ✅ También eliminar cookie en caso de error
+        //También eliminar cookie en caso de error
         document.cookie = "userInfo=; Max-Age=0; path=/";
+        document.cookie = "authToken=; Max-Age=0; path=/";
 
         navigate("/login", { replace: true });
       }

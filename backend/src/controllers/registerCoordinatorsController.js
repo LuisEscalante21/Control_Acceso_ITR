@@ -58,7 +58,7 @@ registerCoordinatorsController.register = async (req, res) => {
       return res.status(400).json({ message: "Invalid DUI format." });
     }
 
-    // ✅ Verificar que el email no exista en ninguna colección
+    //Verificar que el email no exista en ninguna colección
     const emailExists = await emailExistsInAnyCollection(email);
     if (emailExists) {
       return res.status(400).json({ message: "Email already exists in the system." });

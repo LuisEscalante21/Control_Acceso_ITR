@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import Error403 from "../pages/error/Error403"; // Asegúrate que el path sea correcto
+import Error403 from "../pages/error/Error403";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const [userRole, setUserRole] = useState(null);
@@ -18,7 +18,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         if (response.ok) {
           const data = await response.json();
           setIsAuthenticated(true);
-          setUserRole(data.user.userType); // Ejemplo: "Admin", "Employee"
+          setUserRole(data.user.userType); 
         } else {
           setIsAuthenticated(false);
         }

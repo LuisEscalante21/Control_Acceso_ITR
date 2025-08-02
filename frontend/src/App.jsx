@@ -31,7 +31,6 @@ import HomeEmployee from "./pages/employee/Home.jsx";
 import EmployeeAccesos from "./pages/employee/Accesos.jsx"; 
 
 // Error Pages
-import Error403 from "./pages/error/Error403.jsx";
 import Error404 from "./pages/error/Error404.jsx";
 import Error503 from "./pages/error/Error503.jsx"; 
 

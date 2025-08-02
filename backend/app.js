@@ -22,15 +22,15 @@ import path from "path";
 
 const app = express();
 
-// Aumenta el límite a 10mb (puedes ajustar según lo que necesites)
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
-
 // Configurar CORS
 app.use(cors({
   origin: 'http://localhost:5173', // Permitir solicitudes desde el frontend
   credentials: true // Si necesitas enviar cookies o encabezados de autenticación
 }));
+
+// Aumenta el límite a 10mb (puedes ajustar según lo que necesites)
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
 // Que acepte datos en json
 app.use(express.json());
@@ -46,7 +46,6 @@ const swaggerDocument = JSON.parse(
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Definir las rutas de la API
 app.use("/api/employee", employeeRoutes) // Ruta para los empleados

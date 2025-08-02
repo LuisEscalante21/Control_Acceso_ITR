@@ -2,6 +2,7 @@ import "../../styles/LoginPage.css";
 import Swal from "sweetalert2";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import LogoRedondo from "../../img/logo_redondo.png";
 
 const BASE = import.meta.env.VITE_BASE_URL;
@@ -11,6 +12,7 @@ const API_URL = `${BASE}${PORT}/api`;
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -57,9 +59,7 @@ const LoginPage = () => {
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
         credentials: "include",
       });
@@ -85,8 +85,8 @@ const LoginPage = () => {
         Swal.fire({
           icon: "success",
           title: "¡Inicio de sesión exitoso!",
-          text: `Bienvenido, ${data.userType}`,
-          timer: 1900,
+          text: `Bienvenido, ${data.fullName}`,
+          timer: 1850,
           showConfirmButton: false,
         });
 
@@ -99,7 +99,6 @@ const LoginPage = () => {
         }
       }
     } catch (error) {
-      // Detectar error de red o 503
       if (
         error.message === "Failed to fetch" ||
         error.message.includes("503")
@@ -122,11 +121,7 @@ const LoginPage = () => {
     <div className="login-container">
       <div className="login-card">
         <div className="logo-container">
-          <img
-            src={LogoRedondo}
-            alt="Instituto Técnico Ricaldone Logo"
-            className="logo"
-          />
+          <img src={LogoRedondo} alt="Logo" className="logo" />
           <h1 className="title">
             Bienvenido al Sistema de Control
             <br />
@@ -155,13 +150,13 @@ const LoginPage = () => {
             />
           </div>
 
-          <div className="input-group">
+          <div className="input-group password-group">
             <label htmlFor="password" className="input-label">
               Contraseña
             </label>
             <input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               placeholder="Contraseña"
               className="input-field"
@@ -169,6 +164,16 @@ const LoginPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="password-toggle-btn"
+              aria-label={
+                showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+              }
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
 
           <button type="submit" className="login-button" disabled={loading}>
