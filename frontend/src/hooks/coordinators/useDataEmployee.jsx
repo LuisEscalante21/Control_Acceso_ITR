@@ -15,8 +15,12 @@ const useDataEmployee = () => {
 
   // Manejo general de errores de red o servidor
   const handleNetworkError = (err) => {
-    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
-      navigate("/503");  // Redirigir a página 503
+    if (
+      !err.response ||
+      err.code === "ERR_NETWORK" ||
+      err.response?.status === 503
+    ) {
+      navigate("/503"); // Redirigir a página 503
     } else {
       console.error("Error:", err);
     }
@@ -36,11 +40,17 @@ const useDataEmployee = () => {
   // Obtener empleados por equipo (coordinación)
   const fetchEmployeesByTeam = async (teamId) => {
     try {
-      const res = await axios.get(`${API_URL}/employee/team/${teamId}`);
+      const res = await axios.get(`${API_URL}/employee/search`, {
+        params: { teamId },
+      });
       setEmployeesByTeam(res.data);
     } catch (error) {
       handleNetworkError(error);
-      Swal.fire("Error", "No se pudieron cargar los empleados de esta coordinación.", "error");
+      Swal.fire(
+        "Error",
+        "No se pudieron cargar los empleados de esta coordinación.",
+        "error"
+      );
     }
   };
 
@@ -50,7 +60,11 @@ const useDataEmployee = () => {
     try {
       if (idToUpdate) {
         await axios.put(`${API_URL}/employee/${idToUpdate}`, data);
-        Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
+        Swal.fire(
+          "¡Actualizado!",
+          "El empleado ha sido actualizado.",
+          "success"
+        );
       } else {
         await axios.post(`${API_URL}/registerEmployees`, data);
         Swal.fire("¡Guardado!", "El empleado ha sido creado.", "success");

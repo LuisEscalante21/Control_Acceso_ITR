@@ -11,7 +11,7 @@ const Admins = () => {
   const [showNewAdmin, setShowNewAdmin] = useState(false);
   const [adminEdit, setAdminEdit] = useState(null);
 
-const { admins, fetchAdmins, saveAdmin, deleteAdmin } = useAdmins();
+  const { admins, fetchAdmins, saveAdmin, deleteAdmin } = useAdmins();
 
   useEffect(() => {
     fetchAdmins();
@@ -31,10 +31,8 @@ const { admins, fetchAdmins, saveAdmin, deleteAdmin } = useAdmins();
         style={{ display: "flex", flexDirection: "column", gap: "15px" }}
       >
         <h1 className="titulo">Gestión de Administradores</h1>
-        <div
-          className="busqueda-bar-G"
-        >
-          <div className="buscador-G" >
+        <div className="busqueda-bar-G">
+          <div className="buscador-G">
             <Search className="search-icon" size={18} />
             <input
               type="text"
@@ -63,9 +61,8 @@ const { admins, fetchAdmins, saveAdmin, deleteAdmin } = useAdmins();
               <div
                 key={admin._id}
                 onClick={() => {
-                setAdminEdit(admin);
-                setShowForm(true);
-              }}
+                  setAdminEdit(admin); // Solo esto para abrir el modal
+                }}
                 style={{ cursor: "pointer" }}
               >
                 <DocenteCard

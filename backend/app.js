@@ -45,6 +45,9 @@ const swaggerDocument = JSON.parse(
 // Ruta para acceder a la documentación de la API
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // Definir las rutas de la API
 app.use("/api/employee", employeeRoutes) // Ruta para los empleados
 app.use("/api/schedules", ScheduleRoutes); // Ruta para los horarios

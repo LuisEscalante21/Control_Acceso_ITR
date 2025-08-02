@@ -1,4 +1,4 @@
 /backend/.env
-/backend/public/__pycache__/
-/backend/Python/
+/backend/public/
+/backend/Python/__pycache__/
 *.env

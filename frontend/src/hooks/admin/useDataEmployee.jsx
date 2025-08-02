@@ -1,34 +1,18 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-
-// Variables de entorno
-const BASE_URL = import.meta.env.VITE_BASE_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${BASE_URL}${PORT}/api`;
 
 const useDataEmployee = () => {
   const [employees, setEmployees] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const navigate = useNavigate();
-
-  // Manejar errores de red
-  const handleNetworkError = (error) => {
-    if (!error.response || error.code === "ERR_NETWORK" || error.response?.status === 503) {
-      navigate("/503");
-    } else {
-      console.error("Error:", error);
-    }
-  };
 
   // Obtener todos los empleados
   const fetchEmployees = async () => {
     try {
-      const res = await axios.get(`${API_URL}/employee`);
+      const res = await axios.get("http://localhost:4000/api/employee");
       setEmployees(res.data);
     } catch (error) {
-      handleNetworkError(error);
+      console.error("Error al obtener empleados:", error);
       Swal.fire("Error", "No se pudo obtener la lista de empleados.", "error");
     }
   };
@@ -37,26 +21,19 @@ const useDataEmployee = () => {
   const saveEmployee = async (employeeData, idToUpdate = null) => {
     try {
       if (idToUpdate) {
-        await axios.put(`${API_URL}/employee/${idToUpdate}`, employeeData);
+        // Actualizar empleado
+        await axios.put(`http://localhost:4000/api/employee/${idToUpdate}`, employeeData);
         Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
       } else {
-        await axios.post(`${API_URL}/registerEmployees`, employeeData);
+        // Crear empleado
+        await axios.post("http://localhost:4000/api/registerEmployees", employeeData);
         Swal.fire("¡Guardado!", "El empleado ha sido creado.", "success");
       }
-
-      await fetchEmployees();
+      fetchEmployees();
       handleCloseForm();
     } catch (error) {
-      handleNetworkError(error);
-      const backendMessage = error?.response?.data?.message;
-
-      if (backendMessage === "Email already exists.") {
-        Swal.fire("Error", "Este correo ya está en uso.", "warning");
-      } else if (backendMessage === "Invalid email format.") {
-        Swal.fire("Error", "El correo tiene un formato inválido.", "warning");
-      } else {
-        Swal.fire("Error", "No se pudo guardar el empleado.", "error");
-      }
+      console.error("Error al guardar/actualizar empleado:", error);
+      Swal.fire("Error", "No se pudo guardar el empleado.", "error");
     }
   };
 
@@ -73,16 +50,17 @@ const useDataEmployee = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_URL}/employee/${id}`);
+        await axios.delete(`http://localhost:4000/api/employee/${id}`);
         Swal.fire("¡Eliminado!", "El empleado ha sido eliminado.", "success");
-        await fetchEmployees();
+        fetchEmployees();
       } catch (error) {
-        handleNetworkError(error);
+        console.error("Error al eliminar empleado:", error);
         Swal.fire("Error", "No se pudo eliminar el empleado.", "error");
       }
     }
   };
 
+  // Cerrar formulario
   const handleCloseForm = () => {
     setShowForm(false);
   };

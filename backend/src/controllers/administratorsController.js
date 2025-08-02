@@ -1,6 +1,5 @@
 import administratorsModel from "../models/Administrators.js";
 import bcryptjs from "bcryptjs";
-import { emailExistsInAnyCollection } from "../../src/utils/validationUsers.js"; 
 
 const administratorsController = {};
 
@@ -14,14 +13,14 @@ administratorsController.getAdministrators = async (req, res) => {
   }
 };
 
-// D E L E T E (corregido)
+// D E L E T E
 administratorsController.deleteAdministrator = async (req, res) => {
   try {
     const administrator = await administratorsModel.findByIdAndDelete(req.params.id);
     if (!administrator) {
       return res.status(404).json({ message: "Administrator not found" });
     }
-    res.status(200).json({ message: "Administrator deleted", administrator });
+    res.status(200).json({ message: "Administrator deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting administrator", error });
   }
@@ -43,16 +42,7 @@ administratorsController.updateAdministrator = async (req, res) => {
       IdTeam,
       status,
       address,
-      photo,
     } = req.body;
-
-    const adminId = req.params.id;
-
-    // Validar email globalmente
-    const emailExists = await emailExistsInAnyCollection(email, adminId);
-    if (emailExists) {
-      return res.status(400).json({ message: "Email already exists in the system" });
-    }
 
     const updatedData = {
       numEmpleado,
@@ -65,17 +55,17 @@ administratorsController.updateAdministrator = async (req, res) => {
       hireDate,
       IdTeam,
       status,
-      address,
-      photo,
+      address
     };
 
+    // Si viene password, la hasheamos
     if (password) {
       const salt = await bcryptjs.genSalt(10);
       updatedData.password = await bcryptjs.hash(password, salt);
     }
 
     const updatedAdministrator = await administratorsModel.findByIdAndUpdate(
-      adminId,
+      req.params.id,
       updatedData,
       { new: true }
     );

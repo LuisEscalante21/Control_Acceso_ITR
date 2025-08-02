@@ -19,7 +19,6 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   const {
     register,
     handleSubmit,
-    watch,
     reset,
     formState: { errors },
   } = useForm();
@@ -37,18 +36,17 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
     }
   }, [admin, reset]);
 
-  const statusValue = watch("status");
-
   const onSubmit = async (data) => {
+    data.status = data.status === "activo";
+    // Añadimos la foto en base64 (preview) para enviar junto a los datos
+    data.photo = photoPreview;
     try {
-      data.status = data.status === "activo";
-      data.photo = photoPreview;
       await onSave(data, admin._id);
       Swal.fire("Actualizado", "El administrador ha sido actualizado exitosamente.", "success");
       setEditMode(false);
       onClose();
     } catch (error) {
-      Swal.fire("Error", "No se pudo actualizar el administrador", "error");
+      Swal.fire("Error", "No se pudo actualizar el administrador.", "error");
     }
   };
 
@@ -67,17 +65,10 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
     });
   };
 
+  // Manejar cambio de imagen y vista previa
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (!file.type.startsWith("image/")) {
-        Swal.fire("Error", "Por favor selecciona un archivo de imagen válido.", "error");
-        return;
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        Swal.fire("Error", "La imagen no debe superar los 2MB.", "error");
-        return;
-      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -105,28 +96,15 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
             <span className="cvcard-info-title">Información personal</span>
             {!editMode && (
               <span className="cvcard-actions">
-                <button
-                  type="button"
-                  className="cvcard-action-btn"
-                  onClick={() => setEditMode(true)}
-                  title="Editar"
-                  aria-label="Editar administrador"
-                >
+                <button className="cvcard-action-btn" onClick={() => setEditMode(true)} title="Editar">
                   <Pencil size={22} />
                 </button>
-                <button
-                  type="button"
-                  className="cvcard-action-btn"
-                  onClick={handleDelete}
-                  title="Eliminar"
-                  aria-label="Eliminar administrador"
-                >
+                <button className="cvcard-action-btn" onClick={handleDelete} title="Eliminar">
                   <Trash2 size={22} />
                 </button>
               </span>
             )}
           </div>
-
           {!editMode ? (
             <>
               <div className="cvcard-info-group">
@@ -163,112 +141,64 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
               </div>
             </>
           ) : (
-            <form
-              className="cvcard-form"
-              onSubmit={handleSubmit(onSubmit)}
-              style={{ width: "100%", marginTop: 10 }}
-              noValidate
-            >
+            <form className="cvcard-form" onSubmit={handleSubmit(onSubmit)} style={{ width: "100%", marginTop: 10 }}>
               <div className="form-field">
-                <label htmlFor="numEmpleado">Código de administrador:</label>
-                <input id="numEmpleado" {...register("numEmpleado", { required: "Código obligatorio" })} />
-                {errors.numEmpleado && <span className="error-message">{errors.numEmpleado.message}</span>}
+                <label>Código de administrador:</label>
+                <input {...register("numEmpleado", { required: true })} />
+                {errors.numEmpleado && <span className="error-message">Código obligatorio</span>}
               </div>
-
               <div className="form-field">
-                <label htmlFor="names">Nombres:</label>
-                <input id="names" {...register("names", { required: "Nombres obligatorios" })} />
-                {errors.names && <span className="error-message">{errors.names.message}</span>}
+                <label>Nombres:</label>
+                <input {...register("names", { required: true })} />
+                {errors.names && <span className="error-message">Nombres obligatorios</span>}
               </div>
-
               <div className="form-field">
-                <label htmlFor="surnames">Apellidos:</label>
-                <input id="surnames" {...register("surnames", { required: "Apellidos obligatorios" })} />
-                {errors.surnames && <span className="error-message">{errors.surnames.message}</span>}
+                <label>Apellidos:</label>
+                <input {...register("surnames", { required: true })} />
+                {errors.surnames && <span className="error-message">Apellidos obligatorios</span>}
               </div>
-
               <div className="form-field">
-                <label htmlFor="email">Correo electrónico:</label>
-                <input
-                  id="email"
-                  type="email"
-                  {...register("email", {
-                    required: "Correo obligatorio",
-                    pattern: {
-                      value: /^[a-zA-Z0-9._%+-]+@ricaldone\.edu\.sv$/,
-                      message: "Correo debe ser @ricaldone.edu.sv",
-                    },
-                  })}
-                />
-                {errors.email && <span className="error-message">{errors.email.message}</span>}
+                <label>Correo electrónico:</label>
+                <input type="email" {...register("email", { required: true })} />
+                {errors.email && <span className="error-message">Correo obligatorio</span>}
               </div>
-
               <div className="form-field">
-                <label htmlFor="password">Nueva contraseña:</label>
-                <input
-                  id="password"
-                  type="password"
-                  {...register("password")}
-                  placeholder="Dejar vacío para no cambiar"
-                  autoComplete="new-password"
-                />
+                <label>Nueva contraseña:</label>
+                <input type="password" {...register("password")} placeholder="Dejar vacío para no cambiar" autoComplete="new-password" />
               </div>
-
               <div className="form-field">
-                <label htmlFor="telephone">Número telefónico:</label>
-                <input id="telephone" {...register("telephone", { required: "Teléfono obligatorio" })} />
-                {errors.telephone && <span className="error-message">{errors.telephone.message}</span>}
+                <label>Número telefónico:</label>
+                <input {...register("telephone", { required: true })} />
+                {errors.telephone && <span className="error-message">Teléfono obligatorio</span>}
               </div>
-
               <div className="form-field">
-                <label htmlFor="address">Dirección de residencia:</label>
-                <input id="address" {...register("address", { required: "Dirección obligatoria" })} />
-                {errors.address && <span className="error-message">{errors.address.message}</span>}
+                <label>Dirección de residencia:</label>
+                <input {...register("address", { required: true })} />
+                {errors.address && <span className="error-message">Dirección obligatoria</span>}
               </div>
-
               <div className="form-field">
-                <label htmlFor="DUI">DUI:</label>
-                <input
-                  id="DUI"
-                  {...register("DUI", {
-                    required: "DUI obligatorio",
-                    pattern: {
-                      value: /^\d{8}-\d{1}$/,
-                      message: "Formato DUI inválido (12345678-9)",
-                    },
-                  })}
-                />
-                {errors.DUI && <span className="error-message">{errors.DUI.message}</span>}
+                <label>DUI:</label>
+                <input {...register("DUI", { required: true })} />
+                {errors.DUI && <span className="error-message">DUI obligatorio</span>}
               </div>
-
               <div className="form-field">
-                <label htmlFor="birthday">Fecha de nacimiento:</label>
-                <input
-                  id="birthday"
-                  type="date"
-                  {...register("birthday", { required: "Fecha obligatoria" })}
-                  max={toInputDateFormat(new Date())}
-                />
-                {errors.birthday && <span className="error-message">{errors.birthday.message}</span>}
+                <label>Fecha de nacimiento:</label>
+                <input type="date" {...register("birthday", { required: true })} />
+                {errors.birthday && <span className="error-message">Fecha obligatoria</span>}
               </div>
-
               <div className="form-field">
                 <label htmlFor="status">Estado:</label>
-                <select
-                  id="status"
-                  {...register("status", { required: "Estado obligatorio" })}
-                  defaultValue={statusValue}
-                >
+                <select id="status" {...register("status", { required: true })}>
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
                 </select>
-                {errors.status && <span className="error-message">{errors.status.message}</span>}
+                {errors.status && <span className="error-message">Estado obligatorio</span>}
               </div>
-
+              {/* Bloque para subida de imagen */}
               <div className="form-field">
                 <label htmlFor="photo">Imagen de perfil:</label>
                 <div className="image-upload-container">
-                  <label htmlFor="photo" className="custom-image-upload" tabIndex={0} onKeyDown={e => e.key === "Enter" && document.getElementById('photo').click()}>
+                  <label htmlFor="photo" className="custom-image-upload">
                     <Camera className="camera-icon" />
                     <span>{photoPreview ? "Cambiar imagen" : "Agregar imagen"}</span>
                     <input
@@ -289,10 +219,7 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
                   </div>
                 </div>
               </div>
-
-              <button type="submit" className="btn-guardar" aria-label="Actualizar administrador">
-                ACTUALIZAR
-              </button>
+              <button type="submit" className="btn-guardar">ACTUALIZAR</button>
             </form>
           )}
         </div>

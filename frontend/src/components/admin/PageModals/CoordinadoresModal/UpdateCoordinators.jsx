@@ -14,13 +14,13 @@ const toInputDateFormat = (date) => {
 
 export default function UpdateCoordinators({ coordinator, onSave, onDelete, onClose }) {
   const [editMode, setEditMode] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState("");
+  const [photoPreview, setPhotoPreview] = useState(coordinator?.photo || "");
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { isSubmitting, errors },
+    formState: { errors },
   } = useForm();
 
   useEffect(() => {
@@ -29,22 +29,24 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
         ...coordinator,
         birthday: toInputDateFormat(coordinator.birthday),
         status: coordinator.status ? "activo" : "inactivo",
-        password: ""
+        password: "",
       });
-      setEditMode(false);
       setPhotoPreview(coordinator.photo || "");
+      setEditMode(false);
     }
   }, [coordinator, reset]);
 
   const onSubmit = async (data) => {
     data.status = data.status === "activo";
-    data.photo = photoPreview || coordinator.photo;
-    if (!data.password) delete data.password;
-
-    await onSave(data, coordinator._id);
-    await Swal.fire("Actualizado", "El coordinador ha sido actualizado exitosamente.", "success");
-    setEditMode(false);
-    onClose();
+    data.photo = photoPreview;
+    try {
+      await onSave(data, coordinator._id);
+      Swal.fire("Actualizado", "El coordinador ha sido actualizado exitosamente.", "success");
+      setEditMode(false);
+      onClose();
+    } catch (error) {
+      Swal.fire("Error", "No se pudo actualizar el coordinador.", "error");
+    }
   };
 
   const handleDelete = () => {
@@ -70,8 +72,6 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
         setPhotoPreview(reader.result);
       };
       reader.readAsDataURL(file);
-    } else {
-      setPhotoPreview("");
     }
   };
 
@@ -94,30 +94,19 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
             <span className="cvcard-info-title">Información personal</span>
             {!editMode && (
               <span className="cvcard-actions">
-                <button
-                  className="cvcard-action-btn"
-                  onClick={() => setEditMode(true)}
-                  title="Editar"
-                  aria-label="Editar coordinador"
-                >
+                <button className="cvcard-action-btn" onClick={() => setEditMode(true)} title="Editar">
                   <Pencil size={22} />
                 </button>
-                <button
-                  className="cvcard-action-btn"
-                  onClick={handleDelete}
-                  title="Eliminar"
-                  aria-label="Eliminar coordinador"
-                >
+                <button className="cvcard-action-btn" onClick={handleDelete} title="Eliminar">
                   <Trash2 size={22} />
                 </button>
               </span>
             )}
           </div>
-
           {!editMode ? (
             <>
               <div className="cvcard-info-group">
-                <span className="cvcard-label">Nombres y apellidos</span>
+                <span className="cvcard-label">Nombres y apellidos:</span>
                 <span className="cvcard-value">{coordinator.names} {coordinator.surnames}</span>
               </div>
               <div className="cvcard-info-group">
@@ -144,59 +133,56 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
                 <span className="cvcard-label">Fecha de nacimiento:</span>
                 <span className="cvcard-value">{toInputDateFormat(coordinator.birthday)}</span>
               </div>
+              <div className="cvcard-info-group">
+                <span className="cvcard-label">Estado:</span>
+                <span className="cvcard-value">{coordinator.status ? "Activo" : "Inactivo"}</span>
+              </div>
             </>
           ) : (
             <form className="cvcard-form" onSubmit={handleSubmit(onSubmit)} style={{ width: "100%", marginTop: 10 }}>
               <div className="form-field">
                 <label>Código de coordinador:</label>
                 <input {...register("numEmpleado", { required: true })} />
+                {errors.numEmpleado && <span className="error-message">Código obligatorio</span>}
               </div>
               <div className="form-field">
                 <label>Nombres:</label>
                 <input {...register("names", { required: true })} />
+                {errors.names && <span className="error-message">Nombres obligatorios</span>}
               </div>
               <div className="form-field">
                 <label>Apellidos:</label>
                 <input {...register("surnames", { required: true })} />
+                {errors.surnames && <span className="error-message">Apellidos obligatorios</span>}
               </div>
               <div className="form-field">
                 <label>Correo electrónico:</label>
                 <input type="email" {...register("email", { required: true })} />
+                {errors.email && <span className="error-message">Correo obligatorio</span>}
               </div>
               <div className="form-field">
                 <label>Nueva contraseña:</label>
-                <input
-                  type="password"
-                  {...register("password", {
-                    minLength: {
-                      value: 8,
-                      message: "La contraseña debe tener al menos 8 caracteres.",
-                    },
-                  })}
-                  placeholder="Dejar vacío para no cambiar"
-                  autoComplete="new-password"
-                />
+                <input type="password" {...register("password")} placeholder="Dejar vacío para no cambiar" autoComplete="new-password" />
               </div>
-              {errors.password && (
-                <span className="error-message" role="alert">
-                  {errors.password.message}
-                </span>
-              )}
               <div className="form-field">
                 <label>Número telefónico:</label>
                 <input {...register("telephone", { required: true })} />
+                {errors.telephone && <span className="error-message">Teléfono obligatorio</span>}
               </div>
               <div className="form-field">
                 <label>Dirección de residencia:</label>
                 <input {...register("address", { required: true })} />
+                {errors.address && <span className="error-message">Dirección obligatoria</span>}
               </div>
               <div className="form-field">
                 <label>DUI:</label>
                 <input {...register("DUI", { required: true })} />
+                {errors.DUI && <span className="error-message">DUI obligatorio</span>}
               </div>
               <div className="form-field">
                 <label>Fecha de nacimiento:</label>
                 <input type="date" {...register("birthday", { required: true })} />
+                {errors.birthday && <span className="error-message">Fecha obligatoria</span>}
               </div>
               <div className="form-field">
                 <label htmlFor="status">Estado:</label>
@@ -204,11 +190,12 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
                 </select>
+                {errors.status && <span className="error-message">Estado obligatorio</span>}
               </div>
               <div className="form-field">
                 <label htmlFor="photo">Imagen de perfil:</label>
                 <div className="image-upload-container">
-                  <label htmlFor="photo" className="custom-image-upload" tabIndex={0} onKeyDown={e => e.key === "Enter" && document.getElementById('photo').click()}>
+                  <label htmlFor="photo" className="custom-image-upload">
                     <Camera className="camera-icon" />
                     <span>{photoPreview ? "Cambiar imagen" : "Agregar imagen"}</span>
                     <input
@@ -229,9 +216,7 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
                   </div>
                 </div>
               </div>
-              <button type="submit" className="btn-guardar" disabled={isSubmitting}>
-                {isSubmitting ? "Actualizando..." : "ACTUALIZAR"}
-              </button>
+              <button type="submit" className="btn-guardar">ACTUALIZAR</button>
             </form>
           )}
         </div>

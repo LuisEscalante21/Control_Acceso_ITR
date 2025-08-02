@@ -34,9 +34,11 @@ const useDataAdmin = () => {
   const saveAdmin = async (adminData, adminId = null) => {
     try {
       if (adminId) {
+        // Actualizar administrador con JSON normal
         await axios.put(`${API_URL}/administrators/${adminId}`, adminData);
         Swal.fire("¡Actualizado!", "El administrador ha sido actualizado.", "success");
       } else {
+        // Crear nuevo administrador
         await axios.post(`${API_URL}/registerAdministrators`, adminData);
         Swal.fire("¡Guardado!", "El administrador ha sido creado.", "success");
       }
@@ -47,7 +49,7 @@ const useDataAdmin = () => {
       handleNetworkError(error);
       const backendMessage = error?.response?.data?.message;
 
-      if (backendMessage === "Email already exists.") {
+      if (backendMessage === "Email already exists in the system") {
         Swal.fire("Error", "Este correo ya está en uso.", "warning");
       } else if (backendMessage === "Invalid email format.") {
         Swal.fire("Error", "El correo tiene un formato inválido.", "warning");
