@@ -1,8 +1,9 @@
 import React from "react";
 import iconSalida from "../../../img/Salida_acceso.png";
 import iconEntrada from "../../../img/Entrada_acceso.png";
-import { UserCircle } from "lucide-react";
+import { UserCircle, CheckCircle } from "lucide-react";
 import "../../../components/styles/employee/AccessCard.css";
+import JustifyButton from "../../Tools/Buttons/JustifyButton";
 
 const AccessCard = ({
   name,
@@ -12,11 +13,15 @@ const AccessCard = ({
   tipoRegistro,
   showJustifyButton,
   onJustifyClick,
+  isJustified,
 }) => {
-  const horaFormateada = new Date(time).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // Validar que time sea fecha válida
+  const horaFormateada = time
+    ? new Date(time).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "--:--";
 
   const icono =
     tipoRegistro === "entrada"
@@ -31,7 +36,7 @@ const AccessCard = ({
 
       <div className="access-avatar">
         {avatar ? (
-          <img src={avatar} alt="Avatar" className="access-avatar-img" />
+          <img src={avatar} alt={`${name || "Empleado"} avatar`} className="access-avatar-img" />
         ) : (
           <UserCircle size={48} className="access-avatar-icon" />
         )}
@@ -40,16 +45,20 @@ const AccessCard = ({
       <div className="access-name">{name || "Sin nombre"}</div>
 
       <div className="access-time">
-        {icono && <img src={icono} alt="Ícono de acceso" />}
+        {icono && <img src={icono} alt={`Ícono de ${tipoRegistro}`} />}
         <span>
           {timeLabel}: {horaFormateada}
         </span>
       </div>
 
-      {showJustifyButton && (
-        <button className="justify-button" onClick={onJustifyClick}>
-          Justificar
-        </button>
+      {/* Mostrar botón o etiqueta según justificación */}
+      {isJustified ? (
+        <div className="justified-label" title="Registro justificado">
+          <CheckCircle color="green" size={20} style={{ marginRight: 5 }} />
+          Justificada
+        </div>
+      ) : (
+        showJustifyButton && <JustifyButton onClick={onJustifyClick} />
       )}
     </div>
   );

@@ -3,9 +3,9 @@ import { Search, ChevronDown } from "lucide-react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
 import "../../styles/employee/Accesos.css";
-import useDataAccess from "../../hooks/admin/useDataAccess";
+import useDataAccess from "../../hooks/employee/useDataAccess";
 import AccessCard from "../../components/employee/Cards/AccessCard.jsx";
-import ModalJustificacion from "../../components/employee/PageModals/justifictions.jsx";
+import JustifyModal from "../../components/employee/PageModals/justifictions.jsx";
 
 const HorarioOptions = ["Entrada", "Salida"];
 
@@ -21,8 +21,7 @@ const Accesos = () => {
   const salidasRef = useRef(null);
 
   // Leer y descifrar info del usuario desde cookie cifrada con AES
-  const secretKey = import.meta.env.VITE_JWT_SECRET; // misma clave usada en backend
-
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
   const encryptedUserInfo = Cookies.get("userInfo");
   if (encryptedUserInfo && secretKey) {
@@ -38,18 +37,27 @@ const Accesos = () => {
 
   const empleadoId = userInfo?._id || null;
 
-  // Usar hook con el empleadoId para que solo traiga sus registros
+  // Extraemos datos y funciones del hook
   const {
     accessRecords,
+    justificationMap = {},
     fetchAccessRecords,
+    fetchJustifications,
     fetchTeams,
     teams: docentesOptions,
   } = useDataAccess(empleadoId);
 
+  // Función que refresca registros de acceso y justificaciones para que el estado esté sincronizado
+  const refreshAccessData = async () => {
+    await fetchAccessRecords();
+    await fetchJustifications();
+  };
+
   useEffect(() => {
-    fetchAccessRecords();
+    console.log("fetchJustifications:", fetchJustifications);
+    refreshAccessData();
     fetchTeams && fetchTeams();
-  }, [empleadoId]); // Reactualiza si cambia empleadoId
+  }, [empleadoId]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -100,12 +108,9 @@ const Accesos = () => {
     setJustificarInfo(null);
   };
 
-  // Filtrar accesos
+  // Filtrar accesos según usuario, tipo, docente y búsqueda
   const filteredAccess = (accessRecords || [])
-    .filter((person) => {
-      // Aunque el hook ya filtra por empleado, dejamos esta validación por seguridad
-      return person.id_Employee === empleadoId;
-    })
+    .filter((person) => person.id_Employee === empleadoId)
     .filter((person) => {
       if (selectedSalida === "Entrada") {
         return (
@@ -222,7 +227,8 @@ const Accesos = () => {
                   time={time}
                   tipoRegistro={person.tipo_registro}
                   docente={person.docente}
-                  showJustifyButton={isLateOrEarly}
+                  showJustifyButton={isLateOrEarly && !justificationMap?.[person._id]}
+                  isJustified={!!justificationMap?.[person._id]}
                   onJustifyClick={() => handleOpenJustifyModal(person)}
                 />
               );
@@ -231,13 +237,13 @@ const Accesos = () => {
         </div>
       </div>
 
-      {/* Modal de justificación */}
       {isModalOpen && (
-        <ModalJustificacion
+        <JustifyModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          data={justificarInfo}
+          record={justificarInfo}
           currentUser={userInfo}
+          refreshAccessRecords={refreshAccessData} // <-- Aquí el cambio importante
         />
       )}
     </div>

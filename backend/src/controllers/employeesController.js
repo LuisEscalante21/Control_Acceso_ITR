@@ -22,22 +22,29 @@ employeesController.getEmployees = async (req, res) => {
   }
 };
 
-// G E T  P O R  I D  O  T E A M
+// Obtener empleado por id (parametro)
+employeesController.getEmployeeById = async (req, res) => {
+  try {
+    const employee = await employeesModel.findById(req.params.id).populate("IdTeam");
+    if (!employee) return res.status(404).json({ message: "Empleado no encontrado" });
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: "Error obteniendo empleado", error });
+  }
+};
+
+// G E T  P O R  T E A M
 employeesController.getEmployee = async (req, res) => {
-  const { id, teamId } = req.query;
+  const { teamId } = req.query;
+
+  if (!teamId) {
+    return res.status(400).json({ message: "Debe proporcionar 'teamId'" });
+  }
 
   try {
-    let result;
+    const result = await employeesModel.find({ IdTeam: teamId }).populate("IdTeam");
 
-    if (id) {
-      result = await employeesModel.findById(id).populate("IdTeam");
-    } else if (teamId) {
-      result = await employeesModel.find({ IdTeam: teamId }).populate("IdTeam");
-    } else {
-      return res.status(400).json({ message: "Debe proporcionar 'id' o 'teamId'" });
-    }
-
-    if (!result || (Array.isArray(result) && result.length === 0)) {
+    if (!result || result.length === 0) {
       return res.status(404).json({ message: "Empleado(s) no encontrado(s)" });
     }
 
@@ -46,6 +53,7 @@ employeesController.getEmployee = async (req, res) => {
     res.status(500).json({ message: "Error obteniendo empleado(s)", error });
   }
 };
+
 
 // D E L E T E - Eliminar empleado por ID
 employeesController.deleteEmployees = async (req, res) => {

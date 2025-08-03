@@ -63,3 +63,11 @@
   height: 18px;
   object-fit: contain;
 }
+
+.justified-label {
+  display: flex;
+  align-items: center;
+  color: green;
+  font-weight: bold;
+  margin-top: 8px;
+}

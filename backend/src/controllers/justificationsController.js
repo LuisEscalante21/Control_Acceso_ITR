@@ -1,9 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config.js";
 import JustificationLateArrival from "../models/Justifications.js";
-import Employee from "../models/Employees.js";
-import Coordinator from "../models/Coordinators.js";
-import Administrator from "../models/Administrators.js";
 
 // Configuración de Cloudinary
 cloudinary.config({
@@ -47,6 +44,7 @@ justificationsController.createJustification = async (req, res) => {
       date,
       arrivalTime,
       reason,
+      idAccess, 
     } = req.body;
 
     if (
@@ -55,7 +53,8 @@ justificationsController.createJustification = async (req, res) => {
       !IdTeam?.trim() ||
       !date?.trim() ||
       !arrivalTime?.trim() ||
-      !reason?.trim()
+      !reason?.trim() ||
+      !idAccess?.trim()
     ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -83,6 +82,7 @@ justificationsController.createJustification = async (req, res) => {
       arrivalTime,
       reason,
       evidenceUrl,
+      idAccess,
     });
 
     await newJustification.save();
@@ -97,7 +97,6 @@ justificationsController.createJustification = async (req, res) => {
   }
 };
 
-
 // 🔹 UPDATE
 justificationsController.updateJustification = async (req, res) => {
   try {
@@ -108,6 +107,7 @@ justificationsController.updateJustification = async (req, res) => {
       date,
       arrivalTime,
       reason,
+      idAccess, 
     } = req.body;
 
     const justification = await JustificationLateArrival.findById(req.params.id);
@@ -133,6 +133,7 @@ justificationsController.updateJustification = async (req, res) => {
     justification.arrivalTime = arrivalTime;
     justification.reason = reason;
     justification.evidenceUrl = evidenceUrl;
+    justification.idAccess = idAccess;
 
     await justification.save();
 
@@ -141,6 +142,7 @@ justificationsController.updateJustification = async (req, res) => {
       justification,
     });
   } catch (error) {
+    console.error("Error backend:", error);
     res.status(500).json({ message: "Error updating justification", error: error.message });
   }
 };
@@ -155,6 +157,7 @@ justificationsController.deleteJustification = async (req, res) => {
 
     res.status(200).json({ message: "Justification deleted", justification });
   } catch (error) {
+    console.error("Error backend:", error);
     res.status(500).json({ message: "Error deleting justification", error });
   }
 };

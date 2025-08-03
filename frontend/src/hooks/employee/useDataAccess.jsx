@@ -7,12 +7,15 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT_ACCESS;
 const API_URL = `${BASE_URL}${PORT}/api`;
 
+const PORT_JUSTIFICATIONS = import.meta.env.VITE_PORT;
 const EMPLOYEE_API_URL = "http://localhost:4000/api/employee";
+const JUSTIFICATIONS_API_URL = `${BASE_URL}${PORT_JUSTIFICATIONS}/api/justifications`;
 
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
 
-const useDataAccess = (empleadoId) => {
+const useDataAccess = () => {
   const [accessRecords, setAccessRecords] = useState([]);
+  const [justifications, setJustifications] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const navigate = useNavigate();
 
@@ -31,7 +34,7 @@ const useDataAccess = (empleadoId) => {
     },
   };
 
-  // Obtener datos empleado por ID
+  // Obtener datos de un empleado por ID
   const fetchEmployeeById = async (id_Employee) => {
     try {
       const res = await axios.get(`${EMPLOYEE_API_URL}/${id_Employee}`);
@@ -42,20 +45,12 @@ const useDataAccess = (empleadoId) => {
     }
   };
 
-  // Obtener registros de acceso filtrados por empleadoId
+  // Obtener registros de acceso
   const fetchAccessRecords = async () => {
-    if (!empleadoId) {
-      console.warn("No hay empleadoId para filtrar registros de acceso");
-      setAccessRecords([]);
-      return;
-    }
-
     try {
-      // Se asume que la API acepta filtro por query 'employeeId'
-      const res = await axios.get(`${API_URL}/access?employeeId=${empleadoId}`, axiosConfig);
+      const res = await axios.get(`${API_URL}/access`, axiosConfig);
       const registros = res.data;
 
-      // Enriquecer cada registro con datos del empleado (nombre completo y foto)
       const registrosConEmpleado = await Promise.all(
         registros.map(async (reg) => {
           const empleado = await fetchEmployeeById(reg.id_Employee);
@@ -73,6 +68,17 @@ const useDataAccess = (empleadoId) => {
     } catch (error) {
       handleNetworkError(error);
       Swal.fire("Error", "No se pudo obtener la lista de accesos.", "error");
+    }
+  };
+
+  // Obtener justificaciones
+  const fetchJustifications = async () => {
+    try {
+      const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfig);
+      setJustifications(res.data);
+    } catch (error) {
+      handleNetworkError(error);
+      console.error("Error al obtener justificaciones:", error);
     }
   };
 
@@ -114,11 +120,14 @@ const useDataAccess = (empleadoId) => {
 
   useEffect(() => {
     fetchAccessRecords();
-  }, [empleadoId]);
+    fetchJustifications(); // Se ejecuta al cargar
+  }, []);
 
   return {
     accessRecords,
+    justifications,
     fetchAccessRecords,
+    fetchJustifications,
     saveAccessRecord,
     deleteAccessRecord,
     showForm,

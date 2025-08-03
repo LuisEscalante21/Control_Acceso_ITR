@@ -3,20 +3,18 @@ import multer from "multer";
 import employeesController from "../controllers/employeesController.js";
 
 const router = express.Router();
-
-// Configuración básica de multer (carpeta temporal)
 const upload = multer({ dest: "public/employees/" });
 
-// Obtener todos los empleados
-router.route("/").get(employeesController.getEmployees);
+// Obtener todos los empleados o filtrar por teamId con query
+router.get("/", employeesController.getEmployees);
 
-// Buscar empleado por ID o TeamID
-router.get("/search", employeesController.getEmployee);
+// Obtener empleado por ID (parámetro en la URL)
+router.get("/:id", employeesController.getEmployeeById);
 
-// Actualizar empleado con imagen y eliminar empleado
-router
-  .route("/:id")
-  .put(upload.single("photo"), employeesController.updateEmployees)
-  .delete(employeesController.deleteEmployees);
+// Actualizar empleado con posible imagen
+router.put("/:id", upload.single("photo"), employeesController.updateEmployees);
+
+// Eliminar empleado
+router.delete("/:id", employeesController.deleteEmployees);
 
 export default router;
