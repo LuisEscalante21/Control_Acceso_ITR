@@ -150,7 +150,7 @@
     "/registerCoordinators": {
       "post": {
         "tags": [
-          "Registrar coordinadores"
+          "Register coordinators"
         ],
         "summary": "Registrar un nuevo coordinador",
         "requestBody": {
@@ -296,7 +296,7 @@
     "/registerEmployees": {
       "post": {
         "tags": [
-          "Registrar empleados"
+          "Register employees"
         ],
         "summary": "Registrar un nuevo empleado",
         "requestBody": {
@@ -312,6 +312,137 @@
         "responses": {
           "201": {
             "description": "Empleado registrado"
+          },
+          "400": {
+            "description": "Error en la solicitud"
+          }
+        }
+      }
+    },
+    "/administrators": {
+      "get": {
+        "tags": [
+          "Administrators"
+        ],
+        "summary": "Obtener lista de administradores",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/administrators/{id}": {
+      "get": {
+        "tags": [
+          "Administrators"
+        ],
+        "summary": "Obtener administrador por ID",
+        "operationId": "get-administrators-id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Administrador no encontrado"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Administrators"
+        ],
+        "summary": "Actualizar administrador por ID",
+        "operationId": "put-administrators-id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Coordinator"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Administrador actualizado"
+          },
+          "404": {
+            "description": "Administrador no encontrado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Administrators"
+        ],
+        "summary": "Eliminar administrador por ID",
+        "operationId": "delete-administrators-id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Administrador eliminado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/registerAdministrators": {
+      "post": {
+        "tags": [
+          "Register administrators"
+        ],
+        "summary": "Registrar un nuevo administrador",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/registerAdministrators_body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Administrador registrado"
           },
           "400": {
             "description": "Error en la solicitud"
@@ -373,7 +504,7 @@
     "/permissions": {
       "get": {
         "tags": [
-          "Permisos"
+          "Permissions"
         ],
         "summary": "Obtener permisos del usuario (propios, equipo, globales)",
         "responses": {
@@ -467,32 +598,6 @@
             "BearerAuth": []
           }
         ]
-      }
-    },
-    "/registerAdministrators": {
-      "post": {
-        "tags": [
-          "Registrar administradores"
-        ],
-        "summary": "Registrar un nuevo administrador",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/registerAdministrators_body"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Administrador registrado"
-          },
-          "400": {
-            "description": "Error en la solicitud"
-          }
-        }
       }
     },
     "/schedules": {
@@ -613,7 +718,7 @@
     "/teams": {
       "get": {
         "tags": [
-          "Areas"
+          "Teams"
         ],
         "summary": "Obtener todos los equipos",
         "responses": {
@@ -728,7 +833,7 @@
     "/mapeo": {
       "post": {
         "tags": [
-          "Mapeo de rostros"
+          "Face Mapping"
         ],
         "summary": "Mapear y registrar rostro",
         "requestBody": {
@@ -905,111 +1010,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/administrators": {
-      "get": {
-        "tags": [
-          "Administrators"
-        ],
-        "summary": "Obtener lista de administradores",
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "500": {
-            "description": "Error interno"
-          }
-        }
-      }
-    },
-    "/administrators/{id}": {
-      "get": {
-        "tags": [
-          "Administrators"
-        ],
-        "summary": "Obtener administrador por ID",
-        "operationId": "get-administrators-id",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Administrador no encontrado"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Administrators"
-        ],
-        "summary": "Actualizar administrador por ID",
-        "operationId": "put-administrators-id",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Coordinator"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Administrador actualizado"
-          },
-          "404": {
-            "description": "Administrador no encontrado"
-          },
-          "500": {
-            "description": "Error interno"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Administrators"
-        ],
-        "summary": "Eliminar administrador por ID",
-        "operationId": "delete-administrators-id",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Administrador eliminado"
-          },
-          "500": {
-            "description": "Error interno"
           }
         }
       }
@@ -1286,6 +1286,29 @@
           }
         }
       },
+      "registerAdministrators_body": {
+        "required": [
+          "email",
+          "name",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "admin@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "securepassword"
+          },
+          "name": {
+            "type": "string",
+            "example": "Administrador Principal"
+          }
+        }
+      },
       "permissions_body": {
         "required": [
           "description",
@@ -1327,29 +1350,6 @@
           "description": {
             "type": "string",
             "example": "Actualización de descripción"
-          }
-        }
-      },
-      "registerAdministrators_body": {
-        "required": [
-          "email",
-          "name",
-          "password"
-        ],
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email",
-            "example": "admin@example.com"
-          },
-          "password": {
-            "type": "string",
-            "example": "securepassword"
-          },
-          "name": {
-            "type": "string",
-            "example": "Administrador Principal"
           }
         }
       },
