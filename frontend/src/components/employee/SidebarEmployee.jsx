@@ -25,6 +25,7 @@ export default function Sidebar() {
       path: "/employee-dashboard/historial",
       icon: Clock,
     },
+    
   ];
 
   const handleLogout = async () => {

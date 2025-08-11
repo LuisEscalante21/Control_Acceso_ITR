@@ -1,88 +1,126 @@
+// src/controllers/permissionsController.js
 import PermissionsModel from "../models/Permissions.js";
+import cloudinary from "../lib/cloudinary.js";
 
 const permissionsController = {};
 
-// Crear un nuevo permiso
+// ===================== Crear un nuevo permiso =====================
 permissionsController.InsertPermission = async (req, res) => {
   try {
     const user = req.user;
-
-    if (!user) {
-      return res.status(401).json({ message: "No autorizado. Inicia sesión." });
-    }
+    if (!user) return res.status(401).json({ message: "No autorizado. Inicia sesión." });
 
     const { permissionType } = req.body;
 
+    // 1) Subir archivo si viene (imagen o PDF) a Cloudinary
+    let supportingDocumentUrl = req.body.supportingDocument || null;
+    let supportingPublicId = null;
+    let supportingResourceType = null;
+
+    if (req.file) {
+      const mime = req.file?.mimetype || "";
+      const isPdf = mime === "application/pdf";
+      const resourceType = isPdf ? "raw" : "image";
+
+      const uploadOptions = {
+        folder: "permisos",
+        resource_type: resourceType,
+        use_filename: true,
+        unique_filename: true,
+        overwrite: false,
+      };
+
+      // Forzar extensión PDF si corresponde
+      if (isPdf) uploadOptions.format = "pdf";
+
+      const uploadResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          uploadOptions,
+          (error, result) => (error ? reject(error) : resolve(result))
+        );
+        stream.end(req.file.buffer);
+      });
+
+      supportingDocumentUrl = uploadResult.secure_url;
+      supportingPublicId = uploadResult.public_id;
+      supportingResourceType = uploadResult.resource_type;
+    }
+
+    // 2) Armar payload con fallback y normalizaciones
     const permissionData = {
       ...req.body,
       employeeNumber: user.numEmpleado,
-      employeeName: `${user.names} ${user.surnames}`,
-      department: user.department,
-      idTeam: user.IdTeam,
+      employeeName: `${user.names ?? ""} ${user.surnames ?? ""}`.trim() || user.fullName,
+      department: req.body.department || user.department,
+      idTeam: user.idTeam ?? user.IdTeam,
       createdBy: user._id,
+      Discount: req.body.Discount === "true" || req.body.Discount === true,
+      quantityDiscount: Number(req.body.quantityDiscount || 0),
+      supportingDocument: supportingDocumentUrl,
+      supportingPublicId,
+      supportingResourceType,
     };
 
-    // Validaciones comunes
+    // 2.1) BORRAR campos que no aplican según el tipo
+    if (permissionType !== "minor") {
+      delete permissionData.permissionDate;
+      delete permissionData.startTime;
+      delete permissionData.endTime;
+    }
+    if (permissionType !== "major") {
+      delete permissionData.permissionDateFrom;
+      delete permissionData.permissionDateTo;
+    }
+    if (permissionType !== "incapacity") {
+      delete permissionData.sickLeaveDateFrom;
+      delete permissionData.sickLeaveDateTo;
+      delete permissionData.incapacityType;
+      delete permissionData.illnessType;
+    }
+
+    // -------- Validaciones comunes --------
+    if (!permissionData.department) {
+      return res.status(400).json({ message: "El departamento es obligatorio." });
+    }
     if (!permissionData.applicationDay) {
       return res.status(400).json({ message: "El día de solicitud es obligatorio." });
     }
-
     if (typeof permissionData.Discount !== "boolean") {
       return res.status(400).json({ message: "El campo Discount debe ser booleano." });
     }
-
-    if (
-      permissionData.Discount &&
-      (typeof permissionData.quantityDiscount !== "number" || permissionData.quantityDiscount < 0)
-    ) {
+    if (permissionData.Discount && (isNaN(permissionData.quantityDiscount) || permissionData.quantityDiscount < 0)) {
       return res.status(400).json({ message: "Cantidad de descuento inválida." });
     }
 
-    //====================== Validaciones por tipo de permiso ======================
-
+    // -------- Validaciones por tipo --------
     if (permissionType === "minor") {
-      if (
-        !permissionData.permissionDate ||
-        !permissionData.startTime ||
-        !permissionData.endTime
-      ) {
+      if (!permissionData.permissionDate || !permissionData.startTime || !permissionData.endTime) {
         return res.status(400).json({ message: "Campos requeridos para permiso menor faltantes." });
       }
     }
 
     if (permissionType === "major") {
-      if (
-        !permissionData.permissionDateFrom ||
-        !permissionData.permissionDateTo
-      ) {
+      if (!permissionData.permissionDateFrom || !permissionData.permissionDateTo) {
         return res.status(400).json({ message: "Fechas requeridas para permiso mayor." });
       }
-
-      if (
-        !permissionData.reason &&
-        !permissionData.supportingDocument
-      ) {
+      if (!permissionData.reason && !permissionData.supportingDocument) {
         return res.status(400).json({ message: "Debe proporcionar una razón o documento para permiso mayor." });
       }
     }
 
     if (permissionType === "incapacity") {
-      if (
-        !permissionData.sickLeaveDateFrom ||
-        !permissionData.sickLeaveDateTo
-      ) {
+      if (!permissionData.sickLeaveDateFrom || !permissionData.sickLeaveDateTo) {
         return res.status(400).json({ message: "Fechas requeridas para incapacidad." });
       }
-
       if (!permissionData.incapacityType || !permissionData.illnessType) {
         return res.status(400).json({ message: "Tipo de incapacidad y enfermedad requeridos." });
       }
-
       if (!permissionData.supportingDocument) {
         return res.status(400).json({ message: "Documento de respaldo requerido para incapacidad." });
       }
     }
 
+    // 3) Guardar
     const newPermission = new PermissionsModel(permissionData);
     await newPermission.save();
 
@@ -93,8 +131,32 @@ permissionsController.InsertPermission = async (req, res) => {
   }
 };
 
+// ===================== Ver documento asociado =====================
+permissionsController.getDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const perm = await PermissionsModel.findById(id).lean();
+    if (!perm) return res.status(404).send("Permiso no encontrado");
+    if (!perm.supportingDocument) return res.status(404).send("No hay documento");
 
-// Obtener permisos propios
+    let viewUrl = perm.supportingDocument;
+
+    // Si es PDF pero no tiene extensión, agregarla
+    if (
+      (perm.supportingResourceType === "raw" || /\/raw\/upload\//.test(viewUrl)) &&
+      !/\.(pdf)(\?|$)/i.test(viewUrl)
+    ) {
+      viewUrl += ".pdf";
+    }
+
+    return res.redirect(302, viewUrl);
+  } catch (error) {
+    console.error("Error obteniendo documento:", error);
+    return res.status(500).send("Error obteniendo documento");
+  }
+};
+
+// ===================== Mis permisos =====================
 permissionsController.getMyPermissions = async (req, res) => {
   try {
     const permissions = await PermissionsModel.find({
@@ -108,17 +170,16 @@ permissionsController.getMyPermissions = async (req, res) => {
   }
 };
 
-// Obtener permisos del equipo (solo coordinador)
+// ===================== Permisos del equipo (solo coordinador) =====================
 permissionsController.getTeamPermissions = async (req, res) => {
   try {
     const user = req.user;
-
     if (user.userType !== "Coordinator") {
       return res.status(403).json({ message: "Solo coordinadores pueden ver permisos del equipo" });
     }
 
     const teamPermissions = await PermissionsModel.find({
-      idTeam: user.IdTeam,
+      idTeam: user.idTeam ?? user.IdTeam,
       employeeNumber: { $ne: user.numEmpleado },
     }).sort({ createdAt: -1 });
 
@@ -129,11 +190,10 @@ permissionsController.getTeamPermissions = async (req, res) => {
   }
 };
 
-// Obtener todos los permisos (solo admin)
+// ===================== Todos los permisos (solo Admin) =====================
 permissionsController.getAllPermissions = async (req, res) => {
   try {
     const user = req.user;
-
     if (user.userType !== "Admin") {
       return res.status(403).json({ message: "Solo administradores pueden ver todos los permisos" });
     }
@@ -146,7 +206,20 @@ permissionsController.getAllPermissions = async (req, res) => {
   }
 };
 
-// Actualizar estado del permiso
+// ===================== Obtener UNO (ver detalle) =====================
+permissionsController.getOne = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const perm = await PermissionsModel.findById(id);
+    if (!perm) return res.status(404).json({ message: "Permiso no encontrado" });
+    res.json({ data: perm });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al obtener permiso" });
+  }
+};
+
+// ===================== Actualizar estado (coord/admin) =====================
 permissionsController.updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -154,19 +227,15 @@ permissionsController.updateStatus = async (req, res) => {
     const user = req.user;
 
     const permission = await PermissionsModel.findById(id);
-    if (!permission) {
-      return res.status(404).json({ message: "Permiso no encontrado" });
-    }
+    if (!permission) return res.status(404).json({ message: "Permiso no encontrado" });
 
-    // Validar que el permiso no haya sido gestionado aún
     if (permission.status !== "pending") {
       return res.status(400).json({ message: "Este permiso ya fue gestionado" });
     }
 
-    // Coordinadores solo pueden modificar permisos de su equipo y no los suyos
     if (user.userType === "Coordinator") {
       if (
-        permission.idTeam?.toString() !== user.IdTeam?.toString() ||
+        permission.idTeam?.toString() !== (user.idTeam ?? user.IdTeam)?.toString() ||
         permission.employeeNumber === user.numEmpleado
       ) {
         return res.status(403).json({ message: "No autorizado para modificar este permiso" });
@@ -175,14 +244,11 @@ permissionsController.updateStatus = async (req, res) => {
       return res.status(403).json({ message: "Acceso denegado" });
     }
 
-    // Preparar actualización
-    const update = {
-      status,
-      supervisorComments,
-      actionBy: user.fullName,
-    };
-
-    const updated = await PermissionsModel.findByIdAndUpdate(id, update, { new: true });
+    const updated = await PermissionsModel.findByIdAndUpdate(
+      id,
+      { status, supervisorComments, actionBy: user.fullName },
+      { new: true }
+    );
 
     res.json({ message: "Estado del permiso actualizado", data: updated });
   } catch (error) {
@@ -191,18 +257,52 @@ permissionsController.updateStatus = async (req, res) => {
   }
 };
 
-// Eliminar todos los permisos (solo Admin)
+// ===================== Borrar UNO =====================
+permissionsController.deleteOne = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    const perm = await PermissionsModel.findById(id);
+    if (!perm) return res.status(404).json({ message: "Permiso no encontrado" });
+
+    if (perm.status !== "pending") {
+      return res.status(400).json({ message: "Solo puedes eliminar permisos pendientes" });
+    }
+
+    if (user.userType === "Employee") {
+      if (perm.employeeNumber !== user.numEmpleado) {
+        return res.status(403).json({ message: "No autorizado para borrar este permiso" });
+      }
+    } else if (user.userType === "Coordinator") {
+      if (
+        perm.idTeam?.toString() !== (user.idTeam ?? user.IdTeam)?.toString() ||
+        perm.employeeNumber === user.numEmpleado
+      ) {
+        return res.status(403).json({ message: "No autorizado para borrar este permiso" });
+      }
+    } else if (user.userType !== "Admin") {
+      return res.status(403).json({ message: "Rol no autorizado" });
+    }
+
+    await PermissionsModel.findByIdAndDelete(id);
+    res.json({ message: "Permiso eliminado" });
+  } catch (error) {
+    console.error("Error eliminando permiso:", error);
+    res.status(500).json({ message: "Error interno al eliminar permiso" });
+  }
+};
+
+// ===================== Borrar TODOS (solo Admin) =====================
 permissionsController.clearAllPermissions = async (req, res) => {
   try {
     const user = req.user;
     const { confirm } = req.query;
 
-    // Validar rol
     if (user.userType !== "Admin") {
       return res.status(403).json({ message: "No autorizado. Solo administradores pueden realizar esta acción." });
     }
 
-    // Validar confirmación explícita
     if (confirm !== "REMOVE") {
       return res.status(400).json({ message: 'Confirmación inválida. Debe proporcionar ?confirm=REMOVE para ejecutar esta acción.' });
     }
@@ -214,6 +314,5 @@ permissionsController.clearAllPermissions = async (req, res) => {
     res.status(500).json({ message: "Error del servidor al eliminar todos los permisos." });
   }
 };
-
 
 export default permissionsController;

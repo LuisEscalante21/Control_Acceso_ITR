@@ -29,6 +29,7 @@ import CoordinatorAccesos from "./pages/coordinator/Accesos.jsx";
 import EmployeeDashboard from "./pages/employee/Dashboard.jsx";
 import HomeEmployee from "./pages/employee/Home.jsx";
 import EmployeeAccesos from "./pages/employee/Accesos.jsx"; 
+import EmployeePermisos from "./pages/employee/Permissions.jsx";
 
 // Error Pages
 import Error404 from "./pages/error/Error404.jsx";
@@ -104,7 +105,7 @@ function App() {
         >
           <Route path="" element={<Navigate to="dashboard" />} />
           <Route path="dashboard" element={<HomeEmployee />} />
-          <Route path="permisos" element={<h1>Mis Permisos</h1>} />
+          <Route path="permisos" element={<EmployeePermisos/>} />
           <Route path="historial" element={<EmployeeAccesos/>} />
           <Route path="*" element={<Error404 />} />
         </Route>

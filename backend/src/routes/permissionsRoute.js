@@ -1,37 +1,45 @@
+// src/routes/permissionsRoute.js
 import express from "express";
 import permissionsController from "../controllers/permissionsController.js";
 import verifyToken from "../middleware/verifyToken.js";
+import { upload } from "../middleware/upload.js";
 
 const router = express.Router();
 
-// Crear nuevo permiso (Empleado o Coordinador autenticado)
+// Crear nuevo permiso (archivo opcional -> campo "supportingDocumentFile")
 router
   .route("/")
-  .post(verifyToken, permissionsController.InsertPermission);
-
-// Obtener todos los permisos (solo para los Admin)
-router
-  .route("/")
+  .post(verifyToken, upload.single("supportingDocumentFile"), permissionsController.InsertPermission)
   .get(verifyToken, permissionsController.getAllPermissions);
 
-// Obtener permisos propios del usuario autenticado
+// Mis permisos
 router
   .route("/mine")
   .get(verifyToken, permissionsController.getMyPermissions);
 
-// Obtener permisos del equipo (solo para Coordinador)
+// Permisos del equipo (coordinadores)
 router
   .route("/team")
   .get(verifyToken, permissionsController.getTeamPermissions);
 
-// Cambiar estado del permiso (solo Coordinador o Admin)
+// Ver uno (detalle)
+router
+  .route("/:id")
+  .get(verifyToken, permissionsController.getOne)
+  .delete(verifyToken, permissionsController.deleteOne);
+
+// Cambiar estado (coord/admin)
 router
   .route("/:id/status")
   .patch(verifyToken, permissionsController.updateStatus);
 
-// Eliminar permiso (solo Coordinador o Admin)
+// Borrar todos (solo admin, requiere ?confirm=REMOVE)
 router
-  .route("/:id")
+  .route("/clear/all")
   .delete(verifyToken, permissionsController.clearAllPermissions);
-
+// Descargar documento adjunto
+router
+.get("/:id", verifyToken, permissionsController.getOne);
+router
+.get("/:id/document", verifyToken, permissionsController.getDocument);
 export default router;

@@ -1,0 +1,136 @@
+/* Overlay por encima de todo */
+.np-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(17,24,39,.48);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+}
+
+/* Contenido del modal */
+.np-content{
+  background: #fff;
+  width: min(760px, calc(100% - 32px));
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.22);
+  padding: 18px 18px 16px;
+  position: relative;
+}
+
+/* Header */
+.np-header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.np-header h3{
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+
+/* Selector de tipo (chips) */
+.np-type{
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.np-chip{
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.np-chip.active{
+  border-color: #a7b3ff;
+  box-shadow: 0 0 0 3px rgba(84,105,255,.16) inset;
+}
+
+/* Botón cerrar */
+.np-close{
+  position: absolute;
+  top: 6px; right: 8px;
+  border: 0; background: transparent;
+  font-size: 22px; line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+}
+.np-close:hover{ color: #111827; }
+
+/* Grid del formulario */
+.np-grid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.np-col-2{ grid-column: span 2; }
+
+/* Campos */
+.np-field{ display: flex; flex-direction: column; gap: 6px; }
+.np-field label{ font-size: 13px; font-weight: 600; color: #374151; }
+
+.np-field input,
+.np-field select,
+.np-field textarea{
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+  font-size: 14px;
+  background: #fff;
+  transition: border-color .2s, box-shadow .2s;
+}
+.np-field input:focus,
+.np-field select:focus,
+.np-field textarea:focus{
+  border-color: #a7b3ff;
+  box-shadow: 0 0 0 3px rgba(84,105,255,.15);
+}
+
+/* Errores */
+.np-error{ color: #b91c1c; font-size: 12px; }
+
+/* Preview de archivo */
+.np-preview{
+  margin-top: 8px;
+  width: 100%;
+  max-height: 280px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Acciones */
+.np-actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+.np-btn{
+  background: #5469ff;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.np-btn:disabled{ opacity: .6; cursor: not-allowed; }
+.np-btn.ghost{
+  background: #fff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+}
+
+/* Responsive */
+@media (max-width: 720px){
+  .np-grid{ grid-template-columns: 1fr; }
+  .np-col-2{ grid-column: auto; }
+}

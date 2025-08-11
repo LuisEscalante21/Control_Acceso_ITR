@@ -120,15 +120,17 @@ const permissionsSchema = new Schema(
       default: null,
     },
     incapacityType: {
-      type: String,
-      enum: ["Initial", "Extension"],
-      default: null,
-    },
+    type: String,
+    enum: ["Initial", "Extension"],
+    required: false,       // ⬅️ opcional
+    default: undefined,    // ⬅️ NO null
+},
     illnessType: {
-      type: String,
-      enum: ["Common illness", "Work accident"],
-      default: null,
-    },
+    type: String,
+    enum: ["Common illness", "Work accident"],
+    required: false,       // ⬅️ opcional
+    default: undefined,    // ⬅️ NO null
+},
 
     //================================[ Comentarios y sistema ]================================
 
