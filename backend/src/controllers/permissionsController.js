@@ -14,36 +14,15 @@ permissionsController.InsertPermission = async (req, res) => {
 
     // 1) Subir archivo si viene (imagen o PDF) a Cloudinary
     let supportingDocumentUrl = req.body.supportingDocument || null;
-    let supportingPublicId = null;
-    let supportingResourceType = null;
-
     if (req.file) {
-      const mime = req.file?.mimetype || "";
-      const isPdf = mime === "application/pdf";
-      const resourceType = isPdf ? "raw" : "image";
-
-      const uploadOptions = {
-        folder: "permisos",
-        resource_type: resourceType,
-        use_filename: true,
-        unique_filename: true,
-        overwrite: false,
-      };
-
-      // Forzar extensión PDF si corresponde
-      if (isPdf) uploadOptions.format = "pdf";
-
       const uploadResult = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-          uploadOptions,
+          { folder: "permisos", resource_type: "auto" },
           (error, result) => (error ? reject(error) : resolve(result))
         );
         stream.end(req.file.buffer);
       });
-
       supportingDocumentUrl = uploadResult.secure_url;
-      supportingPublicId = uploadResult.public_id;
-      supportingResourceType = uploadResult.resource_type;
     }
 
     // 2) Armar payload con fallback y normalizaciones
@@ -51,17 +30,15 @@ permissionsController.InsertPermission = async (req, res) => {
       ...req.body,
       employeeNumber: user.numEmpleado,
       employeeName: `${user.names ?? ""} ${user.surnames ?? ""}`.trim() || user.fullName,
-      department: req.body.department || user.department,
+      department: req.body.department || user.department,    // ⬅️ fallback aquí
       idTeam: user.idTeam ?? user.IdTeam,
       createdBy: user._id,
       Discount: req.body.Discount === "true" || req.body.Discount === true,
       quantityDiscount: Number(req.body.quantityDiscount || 0),
       supportingDocument: supportingDocumentUrl,
-      supportingPublicId,
-      supportingResourceType,
     };
 
-    // 2.1) BORRAR campos que no aplican según el tipo
+    // 2.1) BORRAR campos que NO aplican según el tipo (evita enum/null)
     if (permissionType !== "minor") {
       delete permissionData.permissionDate;
       delete permissionData.startTime;
@@ -74,8 +51,8 @@ permissionsController.InsertPermission = async (req, res) => {
     if (permissionType !== "incapacity") {
       delete permissionData.sickLeaveDateFrom;
       delete permissionData.sickLeaveDateTo;
-      delete permissionData.incapacityType;
-      delete permissionData.illnessType;
+      delete permissionData.incapacityType;  // ⬅️ muy importante
+      delete permissionData.illnessType;     // ⬅️ muy importante
     }
 
     // -------- Validaciones comunes --------
@@ -130,6 +107,7 @@ permissionsController.InsertPermission = async (req, res) => {
     res.status(500).json({ message: "Error interno al crear permiso" });
   }
 };
+
 
 // ===================== Ver documento asociado =====================
 permissionsController.getDocument = async (req, res) => {

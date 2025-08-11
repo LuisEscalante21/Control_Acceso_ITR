@@ -53,33 +53,43 @@ loginController.login = async (req, res) => {
         return res.status(403).json({ message: "Usuario inactivo. Contacte al administrador." });
       }
 
+      // Normalizar campos por si vienen undefined
+      userFound.loginAttempts = userFound.loginAttempts || 0;
+      userFound.lockTime = userFound.lockTime || 0;
+
       // Bloqueo de acceso por intentos fallidos
-      if (userFound.lockTime > Date.now()) {
-      const remainingMin = Math.ceil((userFound.lockTime - Date.now()) / 60000);
-      return res.status(403).json({
-      message: "Cuenta bloqueada. Inténtelo de nuevo en: " + remainingMin + " minutos.",
-      });
-}
-      const isMatch = await bcryptjs.compare(password, userFound.password);
-      if (!isMatch) 
-
-      userFound.loginAttempts = userFound.loginAttempts + 1;
-
-      if (userFound.loginAttempts > maxAttempts) {
-        userFound.lockTime = Date.now() + lockTime; // Bloquear cuenta por
-        await userFound.save();
-        return res.status(403).json({message: "Cuenta esta bloqueada."})
+      if ((userFound.lockTime || 0) > Date.now()) {
+        const remainingMin = Math.ceil((userFound.lockTime - Date.now()) / 60000);
+        return res.status(403).json({
+          message: "Cuenta bloqueada. Inténtelo de nuevo en: " + remainingMin + " minutos.",
+        });
       }
 
-      await userFound.save(); // Guardar cambios en la BD
-      
-      return res.status(401).json({ message: "Contraseña incorrecta" });
+      const isMatch = await bcryptjs.compare(password, userFound.password);
+
+      // ❗ Si NO coincide la contraseña, incrementar intentos y manejar bloqueo
+      if (!isMatch) {
+        userFound.loginAttempts = (userFound.loginAttempts || 0) + 1;
+
+        if (userFound.loginAttempts > maxAttempts) {
+          userFound.lockTime = Date.now() + lockTime; // Bloquear cuenta
+          await userFound.save();
+          return res.status(403).json({ message: "Cuenta esta bloqueada." });
+        }
+
+        await userFound.save(); // Guardar cambios en la BD
+        return res.status(401).json({ message: "Contraseña incorrecta" });
+      }
+      // Si la contraseña es correcta, no hagas nada aquí: seguimos abajo al éxito
     }
 
     // Si llegamos aquí, el usuario fue encontrado y la contraseña es correcta
-    userFound.loginAttempts = 0; // Reiniciar contador de intentos fallidos
-    lockTime = null; // Reiniciar tiempo de bloqueo
-    await userFound.save(); // Guardar cambios en la BD
+    // Resetear contadores SOLO si es un documento de Mongoose (tiene .save)
+    if (userFound && typeof userFound.save === "function") {
+      userFound.loginAttempts = 0; // Reiniciar contador de intentos fallidos
+      userFound.lockTime = 0; // Reiniciar tiempo de bloqueo del usuario
+      await userFound.save(); // Guardar cambios en la BD
+    }
 
     // Payload JWT para backend
     tokenPayload = {
