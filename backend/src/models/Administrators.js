@@ -58,6 +58,18 @@ const AdministratorSchema = new Schema(
         type: String, // Puede ser una URL o el nombre del archivo
         required: false, // No es obligatorio
     },
+
+    
+    //Contador de intentos fallidos de inicio de sesión
+    loginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    //tiempo del último intento fallido de inicio de sesión
+    lockTime: {
+      type: Date,
+      default: null,
+    },
     }
 );
 

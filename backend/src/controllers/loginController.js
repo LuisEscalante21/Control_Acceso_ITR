@@ -9,6 +9,12 @@ import parseExpirationToMs from "../utils/parseExpirationToMs.js";
 
 const loginController = {};
 
+// Declarar 2 constantes
+//Una que guarde el numero de intentos fallidos de inicio de sesión
+//Otra que guarde el tiempo del último intento fallido de inicio de sesión
+const maxAttempts = 2; // Número máximo de intentos fallidos
+const lockTime = 15 * 60 * 1000; // Tiempo de bloqueo en milisegundos (15 minutos)
+
 loginController.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -47,9 +53,33 @@ loginController.login = async (req, res) => {
         return res.status(403).json({ message: "Usuario inactivo. Contacte al administrador." });
       }
 
+      // Bloqueo de acceso por intentos fallidos
+      if (userFound.lockTime > Date.now()) {
+      const remainingMin = Math.ceil((userFound.lockTime - Date.now()) / 60000);
+      return res.status(403).json({
+      message: "Cuenta bloqueada. Inténtelo de nuevo en: " + remainingMin + " minutos.",
+      });
+}
       const isMatch = await bcryptjs.compare(password, userFound.password);
-      if (!isMatch) return res.status(401).json({ message: "Contraseña incorrecta" });
+      if (!isMatch) 
+
+      userFound.loginAttempts = userFound.loginAttempts + 1;
+
+      if (userFound.loginAttempts > maxAttempts) {
+        userFound.lockTime = Date.now() + lockTime; // Bloquear cuenta por
+        await userFound.save();
+        return res.status(403).json({message: "Cuenta esta bloqueada."})
+      }
+
+      await userFound.save(); // Guardar cambios en la BD
+      
+      return res.status(401).json({ message: "Contraseña incorrecta" });
     }
+
+    // Si llegamos aquí, el usuario fue encontrado y la contraseña es correcta
+    userFound.loginAttempts = 0; // Reiniciar contador de intentos fallidos
+    lockTime = null; // Reiniciar tiempo de bloqueo
+    await userFound.save(); // Guardar cambios en la BD
 
     // Payload JWT para backend
     tokenPayload = {
