@@ -3,8 +3,12 @@ import PermissionsModel from "../models/Permissions.js";
 import cloudinary from "../lib/cloudinary.js";
 
 const permissionsController = {};
+import path from "path";
 
 // ===================== Crear un nuevo permiso =====================
+
+
+
 permissionsController.InsertPermission = async (req, res) => {
   try {
     const user = req.user;
@@ -12,33 +16,48 @@ permissionsController.InsertPermission = async (req, res) => {
 
     const { permissionType } = req.body;
 
-    // 1) Subir archivo si viene (imagen o PDF) a Cloudinary
-    let supportingDocumentUrl = req.body.supportingDocument || null;
-    if (req.file) {
-      const uploadResult = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { folder: "permisos", resource_type: "auto" },
-          (error, result) => (error ? reject(error) : resolve(result))
-        );
-        stream.end(req.file.buffer);
-      });
-      supportingDocumentUrl = uploadResult.secure_url;
+    if (!req.body.applicationDay?.trim() || !req.body.department?.trim()) {
+      return res.status(400).json({ message: "Faltan campos obligatorios" });
     }
 
-    // 2) Armar payload con fallback y normalizaciones
+    let supportingDocumentUrl = req.body.supportingDocument || null;
+    let supportingResourceType = null;
+    let supportingPublicId = null;
+
+    if (req.file) {
+  const up = await cloudinary.uploader.upload(req.file.path, {
+    upload_preset: "permisos_public", // Debe ser Access: public, Type: upload
+    resource_type: "auto",            // PDF -> raw
+    folder: "permisos",
+    use_filename: true,
+    unique_filename: false
+  });
+
+  // NO modifiques la URL
+  supportingDocumentUrl  = up.secure_url;      // <- usa esta URL tal cual
+  supportingResourceType = up.resource_type;   // 'raw' para PDF
+  supportingPublicId     = up.public_id;       // ej: 'permisos/mi-archivo' (a veces sin .pdf)
+  
+
+    }
+
+
+
     const permissionData = {
       ...req.body,
       employeeNumber: user.numEmpleado,
       employeeName: `${user.names ?? ""} ${user.surnames ?? ""}`.trim() || user.fullName,
-      department: req.body.department || user.department,    // ⬅️ fallback aquí
+      department: req.body.department || user.department,
       idTeam: user.idTeam ?? user.IdTeam,
       createdBy: user._id,
       Discount: req.body.Discount === "true" || req.body.Discount === true,
       quantityDiscount: Number(req.body.quantityDiscount || 0),
       supportingDocument: supportingDocumentUrl,
+      supportingResourceType,
+      supportingPublicId,
     };
 
-    // 2.1) BORRAR campos que NO aplican según el tipo (evita enum/null)
+    // Limpiezas por tipo
     if (permissionType !== "minor") {
       delete permissionData.permissionDate;
       delete permissionData.startTime;
@@ -51,31 +70,16 @@ permissionsController.InsertPermission = async (req, res) => {
     if (permissionType !== "incapacity") {
       delete permissionData.sickLeaveDateFrom;
       delete permissionData.sickLeaveDateTo;
-      delete permissionData.incapacityType;  // ⬅️ muy importante
-      delete permissionData.illnessType;     // ⬅️ muy importante
+      delete permissionData.incapacityType;
+      delete permissionData.illnessType;
     }
 
-    // -------- Validaciones comunes --------
-    if (!permissionData.department) {
-      return res.status(400).json({ message: "El departamento es obligatorio." });
-    }
-    if (!permissionData.applicationDay) {
-      return res.status(400).json({ message: "El día de solicitud es obligatorio." });
-    }
-    if (typeof permissionData.Discount !== "boolean") {
-      return res.status(400).json({ message: "El campo Discount debe ser booleano." });
-    }
-    if (permissionData.Discount && (isNaN(permissionData.quantityDiscount) || permissionData.quantityDiscount < 0)) {
-      return res.status(400).json({ message: "Cantidad de descuento inválida." });
-    }
-
-    // -------- Validaciones por tipo --------
+    // Validaciones por tipo
     if (permissionType === "minor") {
       if (!permissionData.permissionDate || !permissionData.startTime || !permissionData.endTime) {
         return res.status(400).json({ message: "Campos requeridos para permiso menor faltantes." });
       }
     }
-
     if (permissionType === "major") {
       if (!permissionData.permissionDateFrom || !permissionData.permissionDateTo) {
         return res.status(400).json({ message: "Fechas requeridas para permiso mayor." });
@@ -84,7 +88,6 @@ permissionsController.InsertPermission = async (req, res) => {
         return res.status(400).json({ message: "Debe proporcionar una razón o documento para permiso mayor." });
       }
     }
-
     if (permissionType === "incapacity") {
       if (!permissionData.sickLeaveDateFrom || !permissionData.sickLeaveDateTo) {
         return res.status(400).json({ message: "Fechas requeridas para incapacidad." });
@@ -97,16 +100,19 @@ permissionsController.InsertPermission = async (req, res) => {
       }
     }
 
-    // 3) Guardar
     const newPermission = new PermissionsModel(permissionData);
     await newPermission.save();
 
-    res.status(201).json({ message: "Permiso creado exitosamente", data: newPermission });
+    return res.status(201).json({ message: "Permiso creado exitosamente", data: newPermission });
   } catch (error) {
-    console.error("Error creando permiso:", error);
-    res.status(500).json({ message: "Error interno al crear permiso" });
+    console.error("Error backend:", error);
+    return res.status(500).json({ message: "Error creando permiso", error: error.message });
   }
 };
+
+
+
+
 
 
 // ===================== Ver documento asociado =====================

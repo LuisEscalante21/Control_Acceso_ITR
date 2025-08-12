@@ -77,6 +77,18 @@ const employeesSchema = new Schema(
       default: null,
     },
 
+    //Booleano para la restablecimiento de contraseña
+    resetPassword: {
+      type: Boolean,
+      default: false,
+    },
+    //Boleano para solicitar restablecimiento de contraseña
+    requestResetPassword: {
+      type: Boolean,
+      default: false,
+    },
+
+
 
   },
   {
