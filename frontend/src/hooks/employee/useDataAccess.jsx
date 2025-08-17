@@ -120,7 +120,7 @@ const useDataAccess = () => {
 
   useEffect(() => {
     fetchAccessRecords();
-    fetchJustifications(); // Se ejecuta al cargar
+    fetchJustifications();
   }, []);
 
   return {

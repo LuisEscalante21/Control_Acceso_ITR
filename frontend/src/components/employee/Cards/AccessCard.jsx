@@ -14,6 +14,7 @@ const AccessCard = ({
   showJustifyButton,
   onJustifyClick,
   isJustified,
+  resultLabel, // "Tarde", "Antes", etc.
 }) => {
   // Validar que time sea fecha válida
   const horaFormateada = time
@@ -30,13 +31,19 @@ const AccessCard = ({
       ? iconSalida
       : null;
 
+  const isLateOrEarly = resultLabel === "Tarde" || resultLabel === "Antes";
+
   return (
     <div className={`access-card ${showJustifyButton ? "late-access" : ""}`}>
       <span className="status-dot" />
 
       <div className="access-avatar">
         {avatar ? (
-          <img src={avatar} alt={`${name || "Empleado"} avatar`} className="access-avatar-img" />
+          <img
+            src={avatar}
+            alt={`${name || "Empleado"} avatar`}
+            className="access-avatar-img"
+          />
         ) : (
           <UserCircle size={48} className="access-avatar-icon" />
         )}
@@ -47,7 +54,14 @@ const AccessCard = ({
       <div className="access-time">
         {icono && <img src={icono} alt={`Ícono de ${tipoRegistro}`} />}
         <span>
-          {timeLabel}: {horaFormateada}
+          {isLateOrEarly ? (
+            <span style={{ color: "red", fontWeight: "bold" }}>
+              {resultLabel}:
+            </span>
+          ) : (
+            `${timeLabel}:`
+          )}{" "}
+          {horaFormateada}
         </span>
       </div>
 

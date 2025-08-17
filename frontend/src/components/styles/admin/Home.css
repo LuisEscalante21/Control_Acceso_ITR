@@ -14,7 +14,7 @@
   margin-bottom: 2rem;
 }
 
-/* Contenedor de los 3 widgets superiores */
+/* Contenedor superior principal: Greeting + Gráfica + Progreso */
 .dashboard-widgets {
   display: flex;
   flex-wrap: nowrap;
@@ -24,10 +24,52 @@
   margin-bottom: 2rem;
 }
 
-/* Estilo general para todos los widgets */
-.dashboard-widgets .widget {
-  flex: 1;
-  min-width: 0;
+/* Columna izquierda: GreetingCard + Gráfica */
+.dashboard-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 2;
+}
+
+/* Widget de saludo (GreetingCard) */
+.widget-day {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.widget-day h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #000;
+}
+
+.widget-day .day-number {
+  font-size: 2.8rem;
+  font-weight: bold;
+  color: #7b8494;
+  margin-top: 0.5rem;
+}
+
+/* Contenedor de la gráfica de llegadas */
+.widget-late-chart {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  height: 300px; /* Altura fija para la gráfica */
+  width: 100%;
+}
+
+/* Widget de progreso */
+.widget-progress {
   background-color: #ffffff;
   border-radius: 20px;
   padding: 1.5rem;
@@ -36,10 +78,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
+  flex: 1;
 }
 
-/* Gráfico circular dinámico */
+/* Gráfico circular dinámico dentro del widget de progreso */
 .widget-progress .progress-circle {
   width: 120px;
   height: 120px;
@@ -72,27 +114,6 @@
   font-weight: 600;
   margin: 0;
   color: #000;
-}
-
-/* Estilos específicos del gráfico de barras */
-.widget-bar-chart {
-  min-height: 150px;
-  width: 100%;
-}
-
-/* Estilos del saludo (GreetingCard) */
-.widget-day h3 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0;
-  color: #000;
-}
-
-.widget-day .day-number {
-  font-size: 2.8rem;
-  font-weight: bold;
-  color: #7b8494;
-  margin-top: 0.5rem;
 }
 
 /* Widget inferior de gráfico de líneas — ocupa 100% del ancho */

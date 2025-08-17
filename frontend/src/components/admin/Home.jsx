@@ -3,6 +3,7 @@ import CryptoJS from "crypto-js";
 import "../../components/styles/admin/Home.css";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
+import LateArrivalsChart from "../../components/Tools/graphics/LateArrivalsChart.jsx";
 
 export default function AdminHome() {
   const [greeting, setGreeting] = useState("");
@@ -11,7 +12,6 @@ export default function AdminHome() {
   const secretKey = import.meta.env.VITE_JWT_SECRET;
 
   useEffect(() => {
-    // Leer y parsear la cookie userInfo
     const userInfoCookie = document.cookie
       .split("; ")
       .find((row) => row.startsWith("userInfo="));
@@ -21,12 +21,8 @@ export default function AdminHome() {
         const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
         const bytes = CryptoJS.AES.decrypt(encrypted, secretKey);
         const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
-
-        if (!decryptedStr)
-          throw new Error("No se pudo descifrar correctamente.");
-
+        if (!decryptedStr) throw new Error("No se pudo descifrar correctamente.");
         const userInfo = JSON.parse(decryptedStr);
-
         setUserName(userInfo.fullName || "Usuario");
       } catch (err) {
         console.error("Error al descifrar userInfo:", err);
@@ -36,30 +32,30 @@ export default function AdminHome() {
 
   return (
     <div className="dashboard-home-container">
-      {/* Mostrar saludo solo si existe */}
+      {/* Saludo principal */}
       <h2>
         {greeting
           ? `${greeting}, ${userName}`
           : `Hola, ${userName || "Usuario"}`}
       </h2>
 
-      {/* Fila superior con 3 widgets distribuidos horizontalmente */}
-      <div className="dashboard-widgets">
-        <div className="widget widget-bar-chart">
-          <p>Gráfico de barras (ejemplo)</p>
-        </div>
+      {/* Fila superior: Gráfica de llegadas dentro de su contenedor */}
+      <div className="widget-late-chart">
+        <LateArrivalsChart empleadoId={"123"} />
+      </div>
 
-        <div className="widget widget-day">
+      {/* Fila inferior: Día/fecha + Progreso del año */}
+      <div className="dashboard-widgets">
+        <div className="widget-day">
           <GreetingCard onGreetingReady={setGreeting} />
         </div>
-
-        <div className="widget widget-progress">
+        <div className="widget-progress">
           <SchoolYearProgress />
         </div>
       </div>
 
-      {/* Widget inferior que ocupa el ancho completo */}
-      <div className="widget widget-line-chart">
+      {/* Widget inferior de gráfico de líneas */}
+      <div className="widget-line-chart">
         <p>Gráfico de líneas (ejemplo)</p>
       </div>
     </div>

@@ -33,7 +33,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
         password: "",
       });
       setPhotoPreview(empleado.photo || "");
-      setPhotoFile(null); // Reset archivo cuando cambia empleado
+      setPhotoFile(null);
       setEditMode(false);
     }
   }, [empleado, reset]);
@@ -43,12 +43,10 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
 
     const formData = new FormData();
 
-    // Agregar todos los campos excepto photo
     for (const key in data) {
       formData.append(key, data[key]);
     }
 
-    // Agregar archivo solo si hay uno nuevo
     if (photoFile) {
       formData.append("photo", photoFile);
     }
@@ -78,7 +76,19 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validar tipo de archivo (solo imagen)
+      if (!file.type.match("image.*")) {
+        Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
+        return;
+      }
+      // Validar tamaño máximo 2MB
+      if (file.size > 2 * 1024 * 1024) {
+        Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
+        return;
+      }
+
       setPhotoFile(file); // Guardar archivo real para FormData
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -117,6 +127,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
           </div>
           {!editMode ? (
             <>
+              {/* Mostrar campos igual */}
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Nombres y apellidos</span>
                 <span className="cvcard-value">{empleado.names} {empleado.surnames}</span>
@@ -148,22 +159,25 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
             </>
           ) : (
             <form className="cvcard-form" onSubmit={handleSubmit(onSubmit)} style={{ width: "100%", marginTop: 10 }}>
-              {/* Campos... (igual que antes) */}
               <div className="form-field">
                 <label>Código de empleado:</label>
                 <input {...register("numEmpleado", { required: true })} />
+                {errors.numEmpleado && <span className="error-message">Código obligatorio</span>}
               </div>
               <div className="form-field">
                 <label>Nombres:</label>
                 <input {...register("names", { required: true })} />
+                {errors.names && <span className="error-message">Nombres obligatorios</span>}
               </div>
               <div className="form-field">
                 <label>Apellidos:</label>
                 <input {...register("surnames", { required: true })} />
+                {errors.surnames && <span className="error-message">Apellidos obligatorios</span>}
               </div>
               <div className="form-field">
                 <label>Correo electrónico:</label>
-                <input {...register("email", { required: true })} />
+                <input type="email" {...register("email", { required: true })} />
+                {errors.email && <span className="error-message">Correo obligatorio</span>}
               </div>
               <div className="form-field">
                 <label>Nueva contraseña:</label>
@@ -177,18 +191,22 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
               <div className="form-field">
                 <label>Número telefónico:</label>
                 <input {...register("telephone", { required: true })} />
+                {errors.telephone && <span className="error-message">Teléfono obligatorio</span>}
               </div>
               <div className="form-field">
                 <label>Dirección de residencia:</label>
                 <input {...register("address", { required: true })} />
+                {errors.address && <span className="error-message">Dirección obligatoria</span>}
               </div>
               <div className="form-field">
                 <label>DUI:</label>
                 <input {...register("DUI", { required: true })} />
+                {errors.DUI && <span className="error-message">DUI obligatorio</span>}
               </div>
               <div className="form-field">
                 <label>Fecha de nacimiento:</label>
                 <input type="date" {...register("birthday", { required: true })} />
+                {errors.birthday && <span className="error-message">Fecha obligatoria</span>}
               </div>
               <div className="form-field">
                 <label htmlFor="status">Estado:</label>
@@ -196,6 +214,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
                 </select>
+                {errors.status && <span className="error-message">Estado obligatorio</span>}
               </div>
               <div className="form-field">
                 <label htmlFor="photo">Imagen de perfil:</label>

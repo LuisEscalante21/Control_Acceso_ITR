@@ -17,13 +17,17 @@ CORS(app)
 MONGO_URI = os.getenv("DB_URI")
 DB_NAME = os.getenv("DB_NAME")
 ACCESS_COLLECTION_NAME = "registrationAccess"
+EMPLOYEE_COLLECTION_NAME = "employees"  # Colección de empleados
 
 API_ACCESS_KEY = os.getenv("API_ACCESS_KEY")
 
 # Conexión a MongoDB
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
+
+# Definir colecciones después de crear la conexión
 access_collection = db[ACCESS_COLLECTION_NAME]
+employee_collection = db[EMPLOYEE_COLLECTION_NAME]
 
 # Decorador para validar API Key en header Authorization
 def require_api_key(f):
@@ -39,7 +43,7 @@ def require_api_key(f):
         return f(*args, **kwargs)
     return decorated
 
-# Función para validar horario (igual que tu función)
+# Función para validar horario
 def validar_horario(schedule, ahora, tipo):
     dias = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
     dia = dias[ahora.weekday()]
@@ -67,7 +71,7 @@ def convert_objectid(obj):
 
 # Utilidad para limpiar documentos de MongoDB para JSON
 def limpiar_registro(reg):
-    reg = convert_objectid(reg)  # convierte ObjectId a string en todo el documento
+    reg = convert_objectid(reg)  # convierte ObjectId a string
     if "entry_time" in reg and reg["entry_time"]:
         reg["entry_time"] = reg["entry_time"].isoformat()
     if "exit_time" in reg and reg["exit_time"]:
@@ -86,33 +90,37 @@ def crear_o_actualizar_acceso():
 
     filter_query = {"id_Employee": employee_code, "date": date_str}
     update_data = {}
-
-    # Variables para identificar tipo de registro
     tiene_entrada = False
     tiene_salida = False
 
+    empleado = employee_collection.find_one({"_id": ObjectId(employee_code)})
+    if not empleado:
+        return jsonify({"error": "Empleado no encontrado"}), 404
+
+    horario = empleado.get("schedule", {})
+
     if "entry_time" in data:
         try:
-            update_data["entry_time"] = datetime.fromisoformat(data["entry_time"])
+            entry_time = datetime.fromisoformat(data["entry_time"])
+            update_data["entry_time"] = entry_time
+            update_data["entry_result"] = validar_horario(horario, entry_time, "entrada")
             tiene_entrada = True
         except Exception:
             return jsonify({"error": "Formato inválido para entry_time"}), 400
-    if "entry_result" in data:
-        update_data["entry_result"] = data["entry_result"]
-        tiene_entrada = True
+
     if "entry_photo" in data:
         update_data["entry_photo"] = data["entry_photo"]
         tiene_entrada = True
 
     if "exit_time" in data:
         try:
-            update_data["exit_time"] = datetime.fromisoformat(data["exit_time"])
+            exit_time = datetime.fromisoformat(data["exit_time"])
+            update_data["exit_time"] = exit_time
+            update_data["exit_result"] = validar_horario(horario, exit_time, "salida")
             tiene_salida = True
         except Exception:
             return jsonify({"error": "Formato inválido para exit_time"}), 400
-    if "exit_result" in data:
-        update_data["exit_result"] = data["exit_result"]
-        tiene_salida = True
+
     if "exit_photo" in data:
         update_data["exit_photo"] = data["exit_photo"]
         tiene_salida = True
@@ -122,7 +130,6 @@ def crear_o_actualizar_acceso():
 
     update_data["date"] = date_str
 
-    # Agregar campo "tipo_registro"
     if tiene_entrada and tiene_salida:
         update_data["tipo_registro"] = "entrada y salida"
     elif tiene_entrada:
@@ -138,7 +145,6 @@ def crear_o_actualizar_acceso():
         return jsonify({"message": "Registro de acceso creado o actualizado exitosamente"}), 201
     else:
         return jsonify({"message": "No se modificó ningún registro"}), 200
-
 
 # Obtener todos los registros
 @app.route("/api/access", methods=["GET"])

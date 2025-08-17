@@ -108,7 +108,7 @@ def determinar_tipo_acceso(schedule, ahora):
         return "salida"
     return None
 
-def registrar_acceso_via_api(id_employee, tipo):
+def registrar_acceso_via_api(id_employee, tipo, area="Sin área"):
     ahora = datetime.now()
     headers = {
         "Authorization": f"Bearer {ACCESS_API_KEY}",
@@ -116,7 +116,8 @@ def registrar_acceso_via_api(id_employee, tipo):
     }
     data = {
         "id_Employee": id_employee,
-        "date": ahora.strftime("%Y-%m-%d")
+        "date": ahora.strftime("%Y-%m-%d"),
+        "employeeArea": area    
     }
     if tipo == "entrada":
         data["entry_time"] = ahora.isoformat()
@@ -138,6 +139,7 @@ def registrar_acceso_via_api(id_employee, tipo):
     except Exception as e:
         print(f"Excepción al registrar acceso: {e}")
         return False
+
 
 def log():
     while True:
@@ -201,6 +203,7 @@ def generar_frames():
                     face_doc = collection.find_one({"employee_code": matched_id})
                     if face_doc:
                         schedule_id = face_doc.get("schedule_id")
+                        area = face_doc.get("area_id", "Sin área")
                         res = requests.get(SCHEDULES_URL)
                         if res.status_code == 200:
                             schedules = res.json()
@@ -208,7 +211,7 @@ def generar_frames():
                             if schedule:
                                 tipo = determinar_tipo_acceso(schedule, datetime.now())
                                 if tipo:
-                                    registrar_acceso_via_api(matched_id, tipo)
+                                    registrar_acceso_via_api(matched_id, tipo, area)
 
                     color = (0, 255, 0)
                     label = f"{matched_id}"

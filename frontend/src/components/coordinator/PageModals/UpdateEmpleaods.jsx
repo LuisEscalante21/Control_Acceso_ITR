@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { useForm } from "react-hook-form";
-import "../../../../styles/Admin/Empleados.css";
-import Icon from "../../../assets/icon.jpg";
+import "../../../styles/Admin/Empleados.css";
 import { Pencil, Trash2 } from "lucide-react";
 
 // Convierte una fecha a formato yyyy-mm-dd para input[type="date"]
@@ -15,27 +14,74 @@ const toInputDateFormat = (date) => {
 };
 
 export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose }) {
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm();
   const [editMode, setEditMode] = useState(false);
 
-  // Cada vez que cambia el empleado seleccionado, resetea el formulario y sale del modo edición
+  // Estado para manejar imagen seleccionada (archivo) y preview (data URL)
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(empleado?.photo || "");
+
+  // Reset formulario y estados cuando cambia empleado
   useEffect(() => {
     reset({
       ...empleado,
       birthday: toInputDateFormat(empleado?.birthday),
     });
+    setPhotoPreview(empleado?.photo || "");
+    setPhotoFile(null);
     setEditMode(false);
   }, [empleado, reset]);
 
-  // Al enviar el formulario, llama a onSave con los datos y el _id del empleado
-  const onSubmit = async (data) => {
-    await onSave(data, empleado._id);
-    Swal.fire("Actualizado", "El empleado ha sido actualizado exitosamente.", "success");
-    setEditMode(false);
-    onClose();
+  // Validar y cargar preview de imagen al seleccionar archivo
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validar tipo imagen
+    if (!file.type.startsWith("image/")) {
+      Swal.fire("Error", "Por favor selecciona un archivo de imagen válido.", "error");
+      return;
+    }
+
+    // Validar tamaño max 2MB
+    if (file.size > 2 * 1024 * 1024) {
+      Swal.fire("Error", "La imagen no debe superar los 2MB.", "error");
+      return;
+    }
+
+    setPhotoFile(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Confirmar y eliminar empleado
+  const onSubmit = async (data) => {
+    try {
+      const formData = new FormData();
+
+      // Agregar campos normales
+      for (const key in data) {
+        formData.append(key, data[key]);
+      }
+
+      // Agregar archivo de imagen solo si hay uno nuevo
+      if (photoFile) {
+        formData.append("photo", photoFile);
+      }
+
+      await onSave(formData, empleado._id);
+
+      Swal.fire("Actualizado", "El empleado ha sido actualizado exitosamente.", "success");
+      setEditMode(false);
+      onClose();
+    } catch (error) {
+      Swal.fire("Error", "No se pudo actualizar el empleado.", "error");
+    }
+  };
+
   const handleDelete = () => {
     Swal.fire({
       title: "¿Eliminar empleado?",
@@ -57,14 +103,21 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
   return (
     <div className="modal-overlay active">
       <div className="cvcard-modal cvcard-modal-scroll">
-        <button className="close-modal" onClick={onClose} aria-label="Cerrar modal">×</button>
+        <button
+          className="close-modal"
+          onClick={onClose}
+          aria-label="Cerrar modal"
+          type="button"
+        >
+          ×
+        </button>
 
         <div className="cvcard-header">
-          <img
-            src={empleado.photo || Icon}
-            alt="Avatar"
-            className="cvcard-avatar"
-          />
+          {photoPreview ? (
+            <img src={photoPreview} alt="Avatar" className="cvcard-avatar" />
+          ) : (
+            <UserCircle className="cvcard-avatar-placeholder" size={80} />
+          )}
           <div className="cvcard-nombre">{empleado.names} {empleado.surnames}</div>
         </div>
 
@@ -135,40 +188,113 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
             >
               <div className="form-field">
                 <label htmlFor="numEmpleado">Código de empleado:</label>
-                <input id="numEmpleado" {...register("numEmpleado", { required: true })} />
+                <input
+                  id="numEmpleado"
+                  {...register("numEmpleado", { required: "Código obligatorio" })}
+                />
+                {errors.numEmpleado && (
+                  <span className="error-message">{errors.numEmpleado.message}</span>
+                )}
               </div>
               <div className="form-field">
                 <label htmlFor="names">Nombres:</label>
-                <input id="names" {...register("names", { required: true })} />
+                <input
+                  id="names"
+                  {...register("names", { required: "Nombres obligatorios" })}
+                />
+                {errors.names && (
+                  <span className="error-message">{errors.names.message}</span>
+                )}
               </div>
               <div className="form-field">
                 <label htmlFor="surnames">Apellidos:</label>
-                <input id="surnames" {...register("surnames", { required: true })} />
+                <input
+                  id="surnames"
+                  {...register("surnames", { required: "Apellidos obligatorios" })}
+                />
+                {errors.surnames && (
+                  <span className="error-message">{errors.surnames.message}</span>
+                )}
               </div>
               <div className="form-field">
                 <label htmlFor="email">Correo electrónico:</label>
-                <input id="email" type="email" {...register("email", { required: true })} />
+                <input
+                  id="email"
+                  type="email"
+                  {...register("email", { required: "Correo obligatorio" })}
+                />
+                {errors.email && (
+                  <span className="error-message">{errors.email.message}</span>
+                )}
               </div>
               <div className="form-field">
                 <label htmlFor="telephone">Número telefónico:</label>
-                <input id="telephone" {...register("telephone", { required: true })} />
+                <input
+                  id="telephone"
+                  {...register("telephone", { required: "Teléfono obligatorio" })}
+                />
+                {errors.telephone && (
+                  <span className="error-message">{errors.telephone.message}</span>
+                )}
               </div>
               <div className="form-field">
                 <label htmlFor="address">Dirección de residencia:</label>
-                <input id="address" {...register("address", { required: true })} />
+                <input
+                  id="address"
+                  {...register("address", { required: "Dirección obligatoria" })}
+                />
+                {errors.address && (
+                  <span className="error-message">{errors.address.message}</span>
+                )}
               </div>
               <div className="form-field">
                 <label htmlFor="DUI">DUI:</label>
-                <input id="DUI" {...register("DUI", { required: true })} />
+                <input
+                  id="DUI"
+                  {...register("DUI", { required: "DUI obligatorio" })}
+                />
+                {errors.DUI && (
+                  <span className="error-message">{errors.DUI.message}</span>
+                )}
               </div>
               <div className="form-field">
                 <label htmlFor="birthday">Fecha de nacimiento:</label>
                 <input
                   id="birthday"
                   type="date"
-                  {...register("birthday", { required: true })}
+                  {...register("birthday", { required: "Fecha obligatoria" })}
                 />
+                {errors.birthday && (
+                  <span className="error-message">{errors.birthday.message}</span>
+                )}
               </div>
+
+              {/* Imagen */}
+              <div className="form-field">
+                <label htmlFor="photo">Imagen de perfil:</label>
+                <div className="image-upload-container">
+                  <label htmlFor="photo" className="custom-image-upload">
+                    <Camera className="camera-icon" />
+                    <span>{photoPreview ? "Cambiar imagen" : "Agregar imagen"}</span>
+                    <input
+                      id="photo"
+                      name="photo"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      style={{ display: "none" }}
+                    />
+                  </label>
+                  <div className="image-preview-area">
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="Preview" className="image-preview" />
+                    ) : (
+                      <UserCircle className="image-preview-placeholder" size={80} />
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <button type="submit" className="btn-guardar">
                 ACTUALIZAR
               </button>
