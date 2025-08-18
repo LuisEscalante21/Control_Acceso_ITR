@@ -67,11 +67,20 @@ const LoginPage = () => {
       const data = await response.json();
 
       if (response.status === 403) {
-        Swal.fire({
-          icon: "warning",
-          title: "Usuario inactivo",
-          text: "Tu cuenta está inactiva. Por favor, contacta al administrador.",
-        });
+        // Si el mensaje incluye "bloqueada", mostrar mensaje de bloqueo con tiempo
+        if (data.message && data.message.toLowerCase().includes("bloqueada")) {
+          Swal.fire({
+            icon: "error",
+            title: "Cuenta bloqueada",
+            text: data.message,
+          });
+        } else {
+          Swal.fire({
+            icon: "warning",
+            title: "Usuario inactivo",
+            text: "Tu cuenta está inactiva. Por favor, contacta al administrador.",
+          });
+        }
         return;
       }
 
