@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { useForm } from "react-hook-form";
 import "../../../styles/Admin/Empleados.css";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Camera, UserCircle } from "lucide-react";
 
 // Convierte una fecha a formato yyyy-mm-dd para input[type="date"]
 const toInputDateFormat = (date) => {

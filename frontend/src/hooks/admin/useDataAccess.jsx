@@ -7,12 +7,14 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT_ACCESS;
 const API_URL = `${BASE_URL}${PORT}/api`;
 const EMPLOYEE_API_URL = `${BASE_URL}${PORT}/api/employee`;
+const TEAM_API_URL = `${BASE_URL}${PORT}/api/teams`;
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY || "";
 
-const useDataAccess = (empleadoId) => {
+const useDataAccess = (userId = null) => {
   const [accessRecords, setAccessRecords] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [justificationMap, setJustificationMap] = useState({});
+  const [teams, setTeams] = useState([]);
   const navigate = useNavigate();
 
   const axiosConfig = {
@@ -33,10 +35,9 @@ const useDataAccess = (empleadoId) => {
 
   const fetchEmployeeById = async (id_Employee) => {
     try {
-      const res = await axios.get(
-        `${EMPLOYEE_API_URL}/search?id=${id_Employee}`,
-        { timeout: 7000 }
-      );
+      const res = await axios.get(`${EMPLOYEE_API_URL}/search?id=${id_Employee}`, {
+        timeout: 7000,
+      });
       if (Array.isArray(res.data)) return res.data[0] || null;
       return res.data;
     } catch (error) {
@@ -45,77 +46,83 @@ const useDataAccess = (empleadoId) => {
     }
   };
 
+  const fetchTeams = async () => {
+    try {
+      const res = await axios.get(`${TEAM_API_URL}`, axiosConfig);
+      setTeams(res.data || []);
+    } catch (error) {
+      console.error("Error al obtener áreas:", error);
+    }
+  };
+
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(`${API_URL}/justifications`, axiosConfig);
       const justifications = res.data;
-
       const map = {};
       justifications.forEach((j) => {
-        if (j.userId === empleadoId && j.idAccess) map[j.idAccess] = true;
+        if (j.idAccess) map[j.idAccess] = true;
       });
-
       setJustificationMap(map);
     } catch (error) {
       console.error("Error al obtener justificaciones:", error);
     }
   };
 
-  // Nuevo: función para calcular rango de semana
+  // ⚡ Calcula rango semanal
   const getWeekRange = () => {
     const today = new Date();
-    const day = today.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+    const day = today.getDay();
     let start, end;
 
-    if (day === 6 || day === 0) { // sábado o domingo
+    if (day === 6 || day === 0) {
       start = new Date(today);
-      start.setDate(today.getDate() - day + 1); // lunes de esta semana
+      start.setDate(today.getDate() - day + 1);
       end = new Date(today);
-      end.setDate(today.getDate() - day + 7); // domingo de esta semana
-    } else if (day === 1) { // lunes
+      end.setDate(today.getDate() - day + 7);
+    } else if (day === 1) {
       start = new Date(today);
-      start.setDate(today.getDate() - 7); // lunes anterior
+      start.setDate(today.getDate() - 7);
       end = new Date(today);
-      end.setDate(today.getDate()); // lunes actual
-    } else { // cualquier otro día
+      end.setDate(today.getDate());
+    } else {
       start = new Date(today);
-      start.setDate(today.getDate() - day + 1); // lunes de esta semana
+      start.setDate(today.getDate() - day + 1);
       end = new Date(today);
-      end.setDate(today.getDate() + (7 - day)); // domingo de esta semana
+      end.setDate(today.getDate() + (7 - day));
     }
 
-    // Ajustar horas a inicio y fin del día
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
     return { start, end };
   };
 
-  const fetchAccessRecords = async () => {
-    if (!empleadoId) {
-      console.warn("No hay empleadoId para filtrar registros de acceso");
-      setAccessRecords([]);
-      return;
-    }
-
+  // ⚡ Traer accesos (con filtro opcional)
+  const fetchAccessRecords = async ({ teamId = null, onlyMine = false } = {}) => {
     try {
-      const res = await axios.get(
-        `${API_URL}/access?employeeId=${empleadoId}`,
-        axiosConfig
-      );
-      const registros = res.data;
+      const res = await axios.get(`${API_URL}/access`, axiosConfig);
+      let registros = res.data;
 
-      // Filtrar registros por semana
+      // Filtrar por semana
       const { start, end } = getWeekRange();
-      const registrosFiltrados = registros.filter((reg) => {
+      registros = registros.filter((reg) => {
         const fecha = new Date(reg.date);
         return fecha >= start && fecha <= end;
       });
 
-      const uniqueEmployeeIds = [
-        ...new Set(registrosFiltrados.map((reg) => reg.id_Employee)),
-      ];
+      // Filtrar por usuario
+      if (onlyMine && userId) {
+        registros = registros.filter((reg) => reg.id_Employee === userId);
+      }
 
+      // Filtrar por área
+      if (teamId) {
+        registros = registros.filter((reg) => String(reg.id_Team) === String(teamId));
+      }
+
+      // Buscar empleados únicos
+      const uniqueEmployeeIds = [...new Set(registros.map((reg) => reg.id_Employee))];
       const empleadosMap = {};
       await Promise.all(
         uniqueEmployeeIds.map(async (id) => {
@@ -124,13 +131,11 @@ const useDataAccess = (empleadoId) => {
         })
       );
 
-      const registrosConEmpleado = registrosFiltrados.map((reg) => {
+      const registrosConEmpleado = registros.map((reg) => {
         const empleado = empleadosMap[reg.id_Employee];
         return {
           ...reg,
-          employeeName: empleado
-            ? `${empleado.names} ${empleado.surnames}`
-            : "Empleado no encontrado",
+          employeeName: empleado ? `${empleado.names} ${empleado.surnames}` : "Empleado no encontrado",
           employeeAvatar: empleado?.photo || null,
         };
       });
@@ -179,11 +184,10 @@ const useDataAccess = (empleadoId) => {
   const handleCloseForm = () => setShowForm(false);
 
   useEffect(() => {
-    if (empleadoId) {
-      fetchAccessRecords();
-      fetchJustifications();
-    }
-  }, [empleadoId]);
+    fetchAccessRecords();
+    fetchJustifications();
+    fetchTeams();
+  }, []);
 
   return {
     accessRecords,
@@ -195,6 +199,8 @@ const useDataAccess = (empleadoId) => {
     showForm,
     setShowForm,
     handleCloseForm,
+    teams,
+    fetchTeams,
   };
 };
 

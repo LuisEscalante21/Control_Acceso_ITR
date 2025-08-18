@@ -13,16 +13,19 @@ const Accesos = () => {
   const docentesRef = useRef(null);
   const salidasRef = useRef(null);
 
+  const userId = localStorage.getItem("userId");
+
   const {
     accessRecords,
     fetchAccessRecords,
-    fetchTeams, // si implementas filtrado por docente/equipo
+    fetchTeams,
     teams: docentesOptions,
-  } = useAccessControl();
+  } = useAccessControl(userId);
 
+  // cargar al inicio
   useEffect(() => {
-    fetchAccessRecords();
-    fetchTeams && fetchTeams(); // si tienes equipos implementados
+    fetchAccessRecords(); // todos
+    fetchTeams(); // áreas disponibles
   }, []);
 
   useEffect(() => {
@@ -54,19 +57,31 @@ const Accesos = () => {
     setOpenDropdown(openDropdown === dropdown ? null : dropdown);
   };
 
-  const handleSelectDocente = (option) => {
+  const handleSelectDocente = async (option) => {
     setSelectedDocente(option);
     setOpenDropdown(null);
+
+    if (option === "Todos") {
+      fetchAccessRecords();
+    } else if (option === "Mios") {
+      fetchAccessRecords({ onlyMine: true });
+    } else {
+      // cuando selecciona un área
+      const team = docentesOptions.find((t) => t.name === option);
+      if (team) {
+        fetchAccessRecords({ teamId: team._id }); // ✅ usar _id
+      }
+    }
   };
+
 
   const handleSelectSalida = (option) => {
     setSelectedSalida(option);
     setOpenDropdown(null);
   };
 
-  // 👉 Filtrar registros según tipo_registro en lugar de entry_time/exit_time
+  // Filtrar registros según tipo_registro
   const filteredAccess = accessRecords.filter((person) => {
-    // Filtrar por tipo_registro según filtro seleccionado
     if (selectedSalida === "Entrada") {
       return (
         person.tipo_registro === "entrada" ||
@@ -91,6 +106,7 @@ const Accesos = () => {
         </div>
 
         <div className="filters">
+          {/* Filtro de docente/área */}
           <div className="dropdown" ref={docentesRef}>
             <button
               className="filter-button docentes"
@@ -100,19 +116,32 @@ const Accesos = () => {
             </button>
             {openDropdown === "docentes" && (
               <div className="dropdown-menu docentes">
-                {["Todos", ...docentesOptions].map((option) => (
+                <button
+                  onClick={() => handleSelectDocente("Todos")}
+                  className={selectedDocente === "Todos" ? "selected" : ""}
+                >
+                  Todos
+                </button>
+                <button
+                  onClick={() => handleSelectDocente("Mios")}
+                  className={selectedDocente === "Mios" ? "selected" : ""}
+                >
+                  Mis accesos
+                </button>
+                {docentesOptions.map((area) => (
                   <button
-                    key={option}
-                    onClick={() => handleSelectDocente(option)}
-                    className={selectedDocente === option ? "selected" : ""}
+                    key={area._id}
+                    onClick={() => handleSelectDocente(area.name)}
+                    className={selectedDocente === area.name ? "selected" : ""}
                   >
-                    {option}
+                    {area.name}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
+          {/* Filtro de tipo de horario */}
           <div className="dropdown" ref={salidasRef}>
             <button
               className="filter-button salidas"
@@ -137,6 +166,7 @@ const Accesos = () => {
         </div>
       </div>
 
+      {/* Lista de accesos */}
       <div className="access-list-container">
         <div className="access-list">
           {filteredAccess.length === 0 ? (
