@@ -12,15 +12,25 @@ const toInputDateFormat = (date) => {
   return localDate.toISOString().split("T")[0];
 };
 
+// 👉 Función para dar formato al número
+const formatPhone = (value) => {
+  value = value.replace(/\D/g, ""); // quitar todo lo que no sea número
+  if (value.length > 4) {
+    return value.slice(0, 4) + "-" + value.slice(4, 8);
+  }
+  return value;
+};
+
 export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose }) {
   const [editMode, setEditMode] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(empleado?.photo || "");
-  const [photoFile, setPhotoFile] = useState(null); // <-- Nuevo estado para archivo real
+  const [photoFile, setPhotoFile] = useState(null);
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,   // 👈 lo usamos para modificar el valor del teléfono
     formState: { errors },
   } = useForm();
 
@@ -28,6 +38,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
     if (empleado) {
       reset({
         ...empleado,
+        telephone: formatPhone(empleado.telephone || ""), // 👈 mostramos con formato
         birthday: toInputDateFormat(empleado.birthday),
         status: empleado.status ? "activo" : "inactivo",
         password: "",
@@ -40,9 +51,10 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
 
   const onSubmit = async (data) => {
     data.status = data.status === "activo";
+    // 👉 Guardar sin guion en BD
+    data.telephone = data.telephone.replace(/\D/g, "");
 
     const formData = new FormData();
-
     for (const key in data) {
       formData.append(key, data[key]);
     }
@@ -76,18 +88,16 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validar tipo de archivo (solo imagen)
       if (!file.type.match("image.*")) {
         Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
         return;
       }
-      // Validar tamaño máximo 2MB
       if (file.size > 2 * 1024 * 1024) {
         Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
         return;
       }
 
-      setPhotoFile(file); // Guardar archivo real para FormData
+      setPhotoFile(file);
 
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -127,7 +137,6 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
           </div>
           {!editMode ? (
             <>
-              {/* Mostrar campos igual */}
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Nombres y apellidos</span>
                 <span className="cvcard-value">{empleado.names} {empleado.surnames}</span>
@@ -190,7 +199,13 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
               </div>
               <div className="form-field">
                 <label>Número telefónico:</label>
-                <input {...register("telephone", { required: true })} />
+                <input
+                  {...register("telephone", { required: true })}
+                  onChange={(e) => {
+                    const formatted = formatPhone(e.target.value);
+                    setValue("telephone", formatted, { shouldValidate: true });
+                  }}
+                />
                 {errors.telephone && <span className="error-message">Teléfono obligatorio</span>}
               </div>
               <div className="form-field">

@@ -12,6 +12,15 @@ const toInputDateFormat = (date) => {
   return localDate.toISOString().split("T")[0];
 };
 
+// 👉 Función para formatear el teléfono con guion cada 4 dígitos
+const formatPhone = (value) => {
+  value = value.replace(/\D/g, ""); // eliminar caracteres no numéricos
+  if (value.length > 4) {
+    return value.slice(0, 4) + "-" + value.slice(4, 8);
+  }
+  return value;
+};
+
 export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   const [editMode, setEditMode] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(admin?.photo || "");
@@ -28,6 +37,7 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
     if (admin) {
       reset({
         ...admin,
+        telephone: formatPhone(admin.telephone || ""), 
         birthday: toInputDateFormat(admin.birthday),
         status: admin.status ? "activo" : "inactivo",
         password: "",
@@ -40,6 +50,8 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
 
   const onSubmit = async (data) => {
     data.status = data.status === "activo";
+
+    data.telephone = data.telephone.replace(/\D/g, "");
 
     const formData = new FormData();
     for (const key in data) {
@@ -78,19 +90,16 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validar tipo de archivo imagen
       if (!file.type.match("image.*")) {
         Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
         return;
       }
-      // Validar tamaño max 2MB
       if (file.size > 2 * 1024 * 1024) {
         Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
         return;
       }
 
       setPhotoFile(file);
-
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -139,7 +148,7 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
               </div>
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Número telefónico:</span>
-                <span className="cvcard-value">{admin.telephone}</span>
+                <span className="cvcard-value">{formatPhone(admin.telephone)}</span>
               </div>
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Dirección de residencia:</span>
@@ -190,7 +199,12 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
               </div>
               <div className="form-field">
                 <label>Número telefónico:</label>
-                <input {...register("telephone", { required: true })} />
+                <input
+                  {...register("telephone", { required: true })}
+                  onChange={(e) => {
+                    e.target.value = formatPhone(e.target.value);
+                  }}
+                />
                 {errors.telephone && <span className="error-message">Teléfono obligatorio</span>}
               </div>
               <div className="form-field">

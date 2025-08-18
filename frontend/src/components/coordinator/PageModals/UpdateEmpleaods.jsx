@@ -13,8 +13,17 @@ const toInputDateFormat = (date) => {
   return localDate.toISOString().split("T")[0];
 };
 
+// Función para formatear el teléfono con guion después de 4 dígitos
+const formatPhone = (value) => {
+  value = value.replace(/\D/g, ""); // elimina todo lo que no sea número
+  if (value.length > 4) {
+    return value.slice(0, 4) + "-" + value.slice(4, 8);
+  }
+  return value;
+};
+
 export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose }) {
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset, formState: { errors }, setValue } = useForm();
   const [editMode, setEditMode] = useState(false);
 
   // Estado para manejar imagen seleccionada (archivo) y preview (data URL)
@@ -26,6 +35,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
     reset({
       ...empleado,
       birthday: toInputDateFormat(empleado?.birthday),
+      telephone: formatPhone(empleado?.telephone || ""), // mostrar ya formateado
     });
     setPhotoPreview(empleado?.photo || "");
     setPhotoFile(null);
@@ -37,24 +47,18 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validar tipo imagen
     if (!file.type.startsWith("image/")) {
       Swal.fire("Error", "Por favor selecciona un archivo de imagen válido.", "error");
       return;
     }
-
-    // Validar tamaño max 2MB
     if (file.size > 2 * 1024 * 1024) {
       Swal.fire("Error", "La imagen no debe superar los 2MB.", "error");
       return;
     }
 
     setPhotoFile(file);
-
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhotoPreview(reader.result);
-    };
+    reader.onloadend = () => setPhotoPreview(reader.result);
     reader.readAsDataURL(file);
   };
 
@@ -62,12 +66,17 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
     try {
       const formData = new FormData();
 
-      // Agregar campos normales
+      // Normalizar teléfono (sin guiones para guardar en BD)
+      const cleanTelephone = data.telephone.replace(/-/g, "");
+      formData.append("telephone", cleanTelephone);
+
+      // Agregar otros campos
       for (const key in data) {
-        formData.append(key, data[key]);
+        if (key !== "telephone") {
+          formData.append(key, data[key]);
+        }
       }
 
-      // Agregar archivo de imagen solo si hay uno nuevo
       if (photoFile) {
         formData.append("photo", photoFile);
       }
@@ -232,6 +241,10 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                 <input
                   id="telephone"
                   {...register("telephone", { required: "Teléfono obligatorio" })}
+                  onChange={(e) => {
+                    const formatted = formatPhone(e.target.value);
+                    setValue("telephone", formatted); // react-hook-form actualiza el valor
+                  }}
                 />
                 {errors.telephone && (
                   <span className="error-message">{errors.telephone.message}</span>

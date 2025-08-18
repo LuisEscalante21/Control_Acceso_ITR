@@ -12,10 +12,19 @@ const toInputDateFormat = (date) => {
   return localDate.toISOString().split("T")[0];
 };
 
+// 👉 Función para formatear teléfono
+const formatPhone = (value) => {
+  value = value.replace(/\D/g, ""); // quitar todo lo que no sea número
+  if (value.length > 4) {
+    return value.slice(0, 4) + "-" + value.slice(4, 8);
+  }
+  return value;
+};
+
 export default function UpdateCoordinators({ coordinator, onSave, onDelete, onClose }) {
   const [editMode, setEditMode] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(coordinator?.photo || "");
-  const [photoFile, setPhotoFile] = useState(null); // Estado para archivo real
+  const [photoFile, setPhotoFile] = useState(null);
 
   const {
     register,
@@ -28,6 +37,7 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
     if (coordinator) {
       reset({
         ...coordinator,
+        telephone: formatPhone(coordinator.telephone || ""), // 👈 aplica formato al cargar
         birthday: toInputDateFormat(coordinator.birthday),
         status: coordinator.status ? "activo" : "inactivo",
         password: "",
@@ -41,7 +51,9 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
   const onSubmit = async (data) => {
     data.status = data.status === "activo";
 
-    // Crear FormData para enviar, incluyendo archivo si existe
+    // 👇 Limpiar el teléfono (sin guiones) antes de guardar
+    data.telephone = data.telephone.replace(/\D/g, "");
+
     const formData = new FormData();
     for (const key in data) {
       formData.append(key, data[key]);
@@ -79,12 +91,10 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validar tipo de archivo
       if (!file.type.match("image.*")) {
         Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
         return;
       }
-      // Validar tamaño máximo 2MB
       if (file.size > 2 * 1024 * 1024) {
         Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
         return;
@@ -139,7 +149,7 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
               </div>
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Número telefónico:</span>
-                <span className="cvcard-value">{coordinator.telephone}</span>
+                <span className="cvcard-value">{formatPhone(coordinator.telephone)}</span>
               </div>
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Dirección de residencia:</span>
@@ -190,7 +200,12 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
               </div>
               <div className="form-field">
                 <label>Número telefónico:</label>
-                <input {...register("telephone", { required: true })} />
+                <input
+                  {...register("telephone", { required: true })}
+                  onChange={(e) => {
+                    e.target.value = formatPhone(e.target.value);
+                  }}
+                />
                 {errors.telephone && <span className="error-message">Teléfono obligatorio</span>}
               </div>
               <div className="form-field">
