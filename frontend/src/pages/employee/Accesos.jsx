@@ -1,36 +1,67 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, ChevronDown } from "lucide-react";
-import "../../styles/Admin/Accesos.css";
-import useAccessControl from "../../hooks/admin/useDataAccess.jsx";
-import AccessCard from "../../components/admin/Cards/AccessCard.jsx";
+import Cookies from "js-cookie";
+import CryptoJS from "crypto-js";
+import "../../styles/employee/Accesos.css";
+import useDataAccess from "../../hooks/employee/useDataAccess.jsx";
+import AccessCard from "../../components/employee/Cards/AccessCard.jsx";
+import JustifyModal from "../../components/employee/PageModals/justifictions.jsx";
 
 const HorarioOptions = ["Entrada", "Salida"];
+const JustificationFilterOptions = ["Todos", "Justificados", "Pendientes"];
 
 const Accesos = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [selectedDocente, setSelectedDocente] = useState("Todos");
+  const [selectedJustificationFilter, setSelectedJustificationFilter] = useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
-  const docentesRef = useRef(null);
+  const [searchText, setSearchText] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [justificarInfo, setJustificarInfo] = useState(null);
+
+  const justificationFilterRef = useRef(null);
   const salidasRef = useRef(null);
 
+  // Leer y descifrar info del usuario desde cookie cifrada con AES
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
+  let userInfo = null;
+  const encryptedUserInfo = Cookies.get("userInfo");
+  if (encryptedUserInfo && secretKey) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
+      const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+      userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
+    } catch (error) {
+      console.error("Error al descifrar userInfo:", error);
+      userInfo = null;
+    }
+  }
+
+  const empleadoId = userInfo?._id || null;
+
+  // Extraemos datos y funciones del hook
   const {
     accessRecords,
+    justificationMap = {},
     fetchAccessRecords,
-    fetchTeams, // si implementas filtrado por docente/equipo
-    teams: docentesOptions,
-  } = useAccessControl();
+    fetchJustifications,
+  } = useDataAccess(empleadoId);
+
+  // Refrescar registros y justificaciones
+  const refreshAccessData = async () => {
+    await fetchAccessRecords();
+    await fetchJustifications();
+  };
 
   useEffect(() => {
-    fetchAccessRecords();
-    fetchTeams && fetchTeams(); // si tienes equipos implementados
-  }, []);
+    refreshAccessData();
+  }, [empleadoId]);
 
   useEffect(() => {
     function handleClickOutside(event) {
       if (
-        (openDropdown === "docentes" &&
-          docentesRef.current &&
-          !docentesRef.current.contains(event.target)) ||
+        (openDropdown === "justificationFilter" &&
+          justificationFilterRef.current &&
+          !justificationFilterRef.current.contains(event.target)) ||
         (openDropdown === "salidas" &&
           salidasRef.current &&
           !salidasRef.current.contains(event.target))
@@ -54,8 +85,8 @@ const Accesos = () => {
     setOpenDropdown(openDropdown === dropdown ? null : dropdown);
   };
 
-  const handleSelectDocente = (option) => {
-    setSelectedDocente(option);
+  const handleSelectJustificationFilter = (option) => {
+    setSelectedJustificationFilter(option);
     setOpenDropdown(null);
   };
 
@@ -64,21 +95,44 @@ const Accesos = () => {
     setOpenDropdown(null);
   };
 
-  // 👉 Filtrar registros según tipo_registro en lugar de entry_time/exit_time
-  const filteredAccess = accessRecords.filter((person) => {
-    // Filtrar por tipo_registro según filtro seleccionado
-    if (selectedSalida === "Entrada") {
-      return (
-        person.tipo_registro === "entrada" ||
-        person.tipo_registro === "entrada y salida"
-      );
-    } else {
-      return (
-        person.tipo_registro === "salida" ||
-        person.tipo_registro === "entrada y salida"
-      );
-    }
-  });
+  const handleOpenJustifyModal = (person) => {
+    setJustificarInfo(person);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setJustificarInfo(null);
+  };
+
+  // Filtrar accesos según usuario, tipo, estado justificación, y búsqueda
+  const filteredAccess = (accessRecords || [])
+    .filter((person) => person.id_Employee === empleadoId)
+    .filter((person) => {
+      if (selectedSalida === "Entrada") {
+        return (
+          person.tipo_registro === "entrada" ||
+          person.tipo_registro === "entrada y salida"
+        );
+      } else {
+        return (
+          person.tipo_registro === "salida" ||
+          person.tipo_registro === "entrada y salida"
+        );
+      }
+    })
+    // Filtro nuevo según justificación:
+    .filter((person) => {
+      const isJustified = !!justificationMap?.[person._id];
+      if (selectedJustificationFilter === "Justificados") return isJustified;
+      if (selectedJustificationFilter === "Pendientes") return !isJustified;
+      return true; // "Todos"
+    })
+    .filter((person) => {
+      if (!searchText.trim()) return true;
+      const nombre = person.employeeName.toLowerCase();
+      return nombre.includes(searchText.toLowerCase());
+    });
 
   return (
     <div className="access-history-container">
@@ -87,24 +141,29 @@ const Accesos = () => {
 
         <div className="buscador">
           <Search className="search-icon" />
-          <input type="text" placeholder="Buscar por nombre o apellido" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre o apellido"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
         </div>
 
         <div className="filters">
-          <div className="dropdown" ref={docentesRef}>
+          <div className="dropdown" ref={justificationFilterRef}>
             <button
-              className="filter-button docentes"
-              onClick={() => handleDropdown("docentes")}
+              className="filter-button justification-filter"
+              onClick={() => handleDropdown("justificationFilter")}
             >
-              {selectedDocente} <ChevronDown size={16} />
+              {selectedJustificationFilter} <ChevronDown size={16} />
             </button>
-            {openDropdown === "docentes" && (
-              <div className="dropdown-menu docentes">
-                {["Todos", ...docentesOptions].map((option) => (
+            {openDropdown === "justificationFilter" && (
+              <div className="dropdown-menu justification-filter">
+                {JustificationFilterOptions.map((option) => (
                   <button
                     key={option}
-                    onClick={() => handleSelectDocente(option)}
-                    className={selectedDocente === option ? "selected" : ""}
+                    onClick={() => handleSelectJustificationFilter(option)}
+                    className={selectedJustificationFilter === option ? "selected" : ""}
                   >
                     {option}
                   </button>
@@ -144,25 +203,49 @@ const Accesos = () => {
           ) : (
             filteredAccess.map((person, index) => {
               const time =
+                selectedSalida === "Entrada" ? person.entry_time : person.exit_time;
+
+              if (!time) return null;
+
+              const horaActual = new Date(time);
+              const horaEsperada = new Date(time);
+              horaEsperada.setHours(selectedSalida === "Entrada" ? 7 : 15);
+              horaEsperada.setMinutes(30);
+              horaEsperada.setSeconds(0);
+
+              const isLateOrEarly =
                 selectedSalida === "Entrada"
-                  ? person.entry_time
-                  : person.exit_time;
+                  ? horaActual > horaEsperada
+                  : horaActual < horaEsperada;
 
               return (
                 <AccessCard
-                  key={index}
+                  key={person._id || index}
                   name={person.employeeName}
                   avatar={person.employeeAvatar}
                   timeLabel={selectedSalida}
                   time={time}
                   tipoRegistro={person.tipo_registro}
                   docente={person.docente}
+                  showJustifyButton={isLateOrEarly && !justificationMap?.[person._id]}
+                  isJustified={!!justificationMap?.[person._id]}
+                  onJustifyClick={() => handleOpenJustifyModal(person)}
                 />
               );
             })
           )}
         </div>
       </div>
+
+      {isModalOpen && (
+        <JustifyModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          record={justificarInfo}
+          currentUser={userInfo}
+          refreshAccessRecords={refreshAccessData}
+        />
+      )}
     </div>
   );
 };
