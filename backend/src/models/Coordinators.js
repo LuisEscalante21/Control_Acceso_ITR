@@ -64,6 +64,10 @@ const coordinatorsSchema = new Schema(
       type: String, // Puede ser una URL o el nombre del archivo
       required: false, // No es obligatorio
     },
+    updatePassBoolean: {
+      type: Boolean,
+      default: false,
+    },
 
 
     //Contador de intentos fallidos de inicio de sesión

@@ -5,6 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import LogoRedondo from "../../img/logo_redondo.png";
 
+// ✅ Modal "¿Olvidaste tu contraseña?"
+import RecoveryPasswordModal from "../../components/Tools/PageModals/RecoveryPassword";
+
+// ✅ Modal de NUEVA contraseña (forzado tras login con temporal)
+import NewPass from "../../components/Tools/PageModals/newPass";
+
 const BASE = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${BASE}${PORT}/api`;
@@ -14,6 +20,12 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Modales
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [pendingRoute, setPendingRoute] = useState(null); // a dónde navegar después de actualizar
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,14 +49,8 @@ const LoginPage = () => {
             navigate("/employee-dashboard");
           }
         }
-      } catch (error) {
-        Swal.fire({
-          icon: "error",
-          title: "Error de autenticación",
-          text: `Usuario no autenticado o error al verificar sesión: ${
-            error.message || error
-          }`,
-        });
+      } catch {
+        // silencioso
       } finally {
         setLoading(false);
       }
@@ -67,7 +73,6 @@ const LoginPage = () => {
       const data = await response.json();
 
       if (response.status === 403) {
-        // Si el mensaje incluye "bloqueada", mostrar mensaje de bloqueo con tiempo
         if (data.message && data.message.toLowerCase().includes("bloqueada")) {
           Swal.fire({
             icon: "error",
@@ -91,34 +96,45 @@ const LoginPage = () => {
       }
 
       if (data.message === "login successful") {
+        // Ruta de destino según rol
+        const nextRoute =
+          data.userType === "Admin"
+            ? "/admin-dashboard"
+            : data.userType === "Coordinator"
+            ? "/coordinator-dashboard"
+            : "/employee-dashboard";
+
+        // ¿Debe forzar cambio de contraseña?
+        const requires =
+          data.requiresPasswordUpdate === true ||
+          data.requiresPasswordUpdate === "true";
+
+        if (requires) {
+          // No navegamos aún; abrimos modal bloqueante
+          setPendingRoute(nextRoute);
+          setShowNewPass(true);
+          return;
+        }
+
+        // Sin forzar cambio -> flujo normal
         Swal.fire({
           icon: "success",
           title: "¡Inicio de sesión exitoso!",
           text: `Bienvenido, ${data.fullName}`,
-          timer: 1850,
+          timer: 1600,
           showConfirmButton: false,
         });
 
-        if (data.userType === "Admin") {
-          navigate("/admin-dashboard");
-        } else if (data.userType === "Coordinator") {
-          navigate("/coordinator-dashboard");
-        } else if (data.userType === "Employee") {
-          navigate("/employee-dashboard");
-        }
+        navigate(nextRoute);
       }
     } catch (error) {
-      if (
-        error.message === "Failed to fetch" ||
-        error.message.includes("503")
-      ) {
+      if (error.message === "Failed to fetch" || error.message.includes("503")) {
         navigate("/503");
       } else {
         Swal.fire({
           icon: "error",
           title: "Error al iniciar sesión",
-          text:
-            error.message || "Ocurrió un error. Inténtalo de nuevo más tarde.",
+          text: error.message || "Ocurrió un error. Inténtalo de nuevo más tarde.",
         });
       }
     } finally {
@@ -173,13 +189,41 @@ const LoginPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-        
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="password-toggle-btn"
+              aria-label={
+                showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+              }
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
 
           <button type="submit" className="login-button" disabled={loading}>
             {loading ? "Cargando..." : <b>Iniciar sesión</b>}
           </button>
         </form>
+
+        {/* 🔗 Enlace para recuperar contraseña (abre el modal de RECOVERY) */}
+        <div style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={() => setShowRecovery(true)}
+            className="link-button"
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#1e88e5",
+              textDecoration: "underline",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+        </div>
 
         <div className="footer">
           <b>
@@ -200,6 +244,30 @@ const LoginPage = () => {
           </b>
         </div>
       </div>
+
+      {/* 🪟 Modal Recuperación */}
+      <RecoveryPasswordModal
+        open={showRecovery}
+        onClose={() => setShowRecovery(false)}
+      />
+
+      {/* 🪟 Modal Nueva Contraseña (BLOQUEANTE, solo se cierra en éxito) */}
+      <NewPass
+        open={showNewPass}
+        onSuccess={async () => {
+          setShowNewPass(false);
+          setPassword(""); // limpia por seguridad
+          await Swal.fire({
+            icon: "success",
+            title: "Restablecimiento correcto",
+            text: "¡Inicia sesión ahora!",
+            timer: 2200,
+            showConfirmButton: false,
+          });
+          // Navega a la ruta pendiente
+          if (pendingRoute) navigate(pendingRoute);
+        }}
+      />
     </div>
   );
 };

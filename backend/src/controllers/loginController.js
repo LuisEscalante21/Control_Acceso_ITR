@@ -21,7 +21,7 @@ loginController.login = async (req, res) => {
     let userType;
     let tokenPayload = {};
 
-    // Admin .env
+    // Admin .env (login directo sin DB)
     if (email === config.emailAdmin.email && password === config.emailAdmin.password) {
       userType = "Admin";
       userFound = {
@@ -31,6 +31,8 @@ loginController.login = async (req, res) => {
         department: null,
         numEmpleado: null,
         photo: null,
+        updatePassStatus: false,        // asegúrate que no obligue cambio
+        updatePassBoolean: false,
       };
     } else {
       // Buscar usuario por rol
@@ -83,10 +85,14 @@ loginController.login = async (req, res) => {
       await userFound.save();
     }
 
-    // ✅ payload siempre con el id del usuario
+    // ✅ calcula el flag una sola vez
+    const requiresPasswordUpdate = !!(userFound.updatePassStatus || userFound.updatePassBoolean);
+
+    // ✅ payload siempre con el id del usuario (+ flag opcional)
     tokenPayload = {
-      id: userFound._id,   // <-- aquí va el _id
+      id: userFound._id,
       userType,
+      updatePassStatus: requiresPasswordUpdate, // útil si lo lees server-side
     };
 
     const safePhoto = (photo) => {
@@ -135,15 +141,16 @@ loginController.login = async (req, res) => {
           maxAge: cookieMaxAge,
         });
 
-        // Info de usuario cifrada para el frontend
+        // Info de usuario cifrada para el frontend (incluye el flag)
         const userInfo = {
-          _id: userFound._id,                 // ✅ incluye el id para el FE
+          _id: userFound._id,
           userType,
           fullName: tokenPayload.fullName,
           idTeam: tokenPayload.idTeam,
           numEmpleado: tokenPayload.numEmpleado,
           department: tokenPayload.department,
           photo: tokenPayload.photo,
+          requiresPasswordUpdate, // 👈 queda también accesible en cookie si la lees en FE
         };
 
         const encryptedUserInfo = CryptoJS.AES.encrypt(
@@ -159,14 +166,15 @@ loginController.login = async (req, res) => {
           maxAge: cookieMaxAge,
         });
 
-        // ✅ devuelve también el userId explícito
+        // ⬇️⬇️⬇️ CAMBIO CLAVE: devolver el flag en el JSON ⬇️⬇️⬇️
         return res.json({
           message: "login successful",
           userType,
           token,
-          userId: userFound._id,               // <-- aquí te lo llevas al FE si lo necesitas
+          userId: userFound._id,
           fullName: tokenPayload.fullName,
           idTeam: tokenPayload.idTeam,
+          requiresPasswordUpdate, // 👈 AHORA el FE lo recibe aquí y puede abrir el modal
         });
       }
     );

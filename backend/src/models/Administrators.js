@@ -54,6 +54,10 @@ const AdministratorSchema = new Schema(
             type: String,
             required: true
         },
+        updatePassBoolean: {
+        type: Boolean,
+        default: false,
+        },
         photo: {
         type: String, // Puede ser una URL o el nombre del archivo
         required: false, // No es obligatorio

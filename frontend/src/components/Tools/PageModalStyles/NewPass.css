@@ -1,0 +1,42 @@
+.np-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2300;
+  padding: 16px;
+}
+.np-card {
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+  padding: 20px;
+  position: relative;
+}
+
+.np-title { margin: 0 0 6px 0; }
+.np-subtitle { margin-top: 0; color: #666; }
+
+.np-actions { display: flex; gap: 10px; margin-top: 18px; }
+.np-hint { margin-top: 12px; font-size: 12px; color: #888; }
+.np-error { color: #e53935; font-size: 12px; }
+
+@media (max-width: 480px) {
+  .np-card { padding: 16px; }
+}
+
+/* Animaciones */
+@keyframes npFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes npScaleIn {
+  from { transform: scale(.96) translateY(8px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+.np-fade-in  { animation: npFadeIn .22s ease-out; }
+.np-scale-in { animation: npScaleIn .22s ease-out; }

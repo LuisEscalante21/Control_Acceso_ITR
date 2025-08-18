@@ -6,6 +6,7 @@ import coordinatorsRoutes from "./src/routes/coordinatorsRoutes.js"
 import administratorsRoutes from "./src/routes/administratorsRoutes.js";
 import registerAdministratorsRoutes from "./src/routes/registerAdministrators.js";
 import loginRoutes from "./src/routes/login.js"
+import newPasswordRoutes from "./src/routes/newPassController.js";
 import permissionsRoutes from "./src/routes/permissionsRoute.js";
 import justificationsRoutes from "./src/routes/justificationsRoutes.js";
 import cookieParser from "cookie-parser"
@@ -19,6 +20,8 @@ import ScheduleRoutes from "./src/routes/schedules.js";
 import swaggerUi from "swagger-ui-express";
 import fs from "fs";
 import path from "path";
+
+import recoveryPasswordRoutes from "./src/routes/recoveryPasswordRoutes.js";
 
 const app = express();
 
@@ -47,6 +50,9 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use(express.json());
 
+app.use("/api/forcePasswordUpdate", newPasswordRoutes);
+
+app.use("/api/recoveryPassword", recoveryPasswordRoutes); // Ruta para recuperación de contraseña
 // Definir las rutas de la API
 app.use("/api/employee", employeeRoutes) // Ruta para los empleados
 app.use("/api/schedules", ScheduleRoutes); // Ruta para los horarios

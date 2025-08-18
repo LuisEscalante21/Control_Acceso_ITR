@@ -79,15 +79,10 @@ const employeesSchema = new Schema(
     },
 
     //Booleano para la restablecimiento de contraseña
-    resetPassword: {
+    updatePassBoolean: {
       type: Boolean,
       default: false,
-    },
-    //Boleano para solicitar restablecimiento de contraseña
-    requestResetPassword: {
-      type: Boolean,
-      default: false,
-    },
+    }
 
 
 
