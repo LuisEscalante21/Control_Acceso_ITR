@@ -3,10 +3,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${BASE_URL}${PORT}/api`;
-
 const useDataEmployee = () => {
   const [employees, setEmployees] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -29,7 +25,7 @@ const useDataEmployee = () => {
   // Obtener todos los empleados
   const fetchEmployees = async () => {
     try {
-      const res = await axios.get(`${API_URL}/employee`);
+      const res = await axios.get("http://localhost:4000/api/employee");
       setEmployees(res.data);
     } catch (error) {
       handleNetworkError(error);
@@ -40,7 +36,7 @@ const useDataEmployee = () => {
   // Obtener empleados por equipo (coordinación)
   const fetchEmployeesByTeam = async (teamId) => {
     try {
-      const res = await axios.get(`${API_URL}/employee/search`, {
+      const res = await axios.get("http://localhost:4000/api/employee/search", {
         params: { teamId },
       });
       setEmployeesByTeam(res.data);
@@ -54,22 +50,30 @@ const useDataEmployee = () => {
     }
   };
 
-  // Crear o actualizar empleado
-  // data = objeto con datos, idToUpdate = _id para actualizar
+  // Guardar o actualizar empleado
   const saveEmployee = async (data, idToUpdate = null) => {
     try {
       if (idToUpdate) {
-        await axios.put(`${API_URL}/employee/${idToUpdate}`, data);
-        Swal.fire(
-          "¡Actualizado!",
-          "El empleado ha sido actualizado.",
-          "success"
-        );
+        // Si es actualización, eliminar IdTeam para que no se actualice
+        if (data instanceof FormData) {
+          data.delete("IdTeam");
+        }
+
+        await axios.put(`http://localhost:4000/api/employee/${idToUpdate}`, data, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
       } else {
-        await axios.post(`${API_URL}/registerEmployees`, data);
+        await axios.post("http://localhost:4000/api/registerEmployees", data, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
         Swal.fire("¡Guardado!", "El empleado ha sido creado.", "success");
       }
-      await fetchEmployees(); // Refrescar lista
+      await fetchEmployees();
       handleCloseForm();
     } catch (error) {
       handleNetworkError(error);
@@ -91,7 +95,7 @@ const useDataEmployee = () => {
     if (!result.isConfirmed) return;
 
     try {
-      await axios.delete(`${API_URL}/employee/${id}`);
+      await axios.delete(`http://localhost:4000/api/employee/${id}`);
       Swal.fire("¡Eliminado!", "El empleado ha sido eliminado.", "success");
       await fetchEmployees(); // Refrescar lista
     } catch (error) {
