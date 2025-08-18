@@ -1,10 +1,13 @@
 import React, { useState, useMemo, useEffect } from "react";
+import CryptoJS from "crypto-js";
 import "../../styles/Admin/Empleados.css";
 import EmpleadoCard from "../../components/coordinator/Cards/employeeCard.jsx";
 import { Search, CirclePlus } from "lucide-react";
-import ModalEmpleado from "../../components/admin/PageModals/EmpleadosModal/NewEmpleadosModal.jsx";
-import EditEmpleadoModal from "../../components/admin/PageModals/EmpleadosModal/UpdateEmpleaods.jsx";
+import ModalEmpleado from "../../components/coordinator/PageModals/NewEmpleadosModal.jsx";
+import EditEmpleadoModal from "../../components/coordinator/PageModals/UpdateEmpleaods.jsx";
 import useEmployees from "../../hooks/coordinators/useDataEmployee.jsx";
+
+const JWT_SECRET = import.meta.env.VITE_JWT_SECRET;
 
 const Empleados = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,20 +23,32 @@ const Empleados = () => {
   } = useEmployees();
 
   useEffect(() => {
-    // Extraer el teamId desde la cookie `userInfo`
-    const userInfoCookie = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("userInfo="));
+    // Función para obtener cookie por nombre
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(";").shift();
+      return null;
+    }
 
-    if (userInfoCookie) {
+    const encryptedUserInfo = getCookie("userInfo");
+
+    if (encryptedUserInfo) {
       try {
-        const userInfo = JSON.parse(decodeURIComponent(userInfoCookie.split("=")[1]));
+        // Desencriptar cookie usando crypto-js AES
+        const bytes = CryptoJS.AES.decrypt(decodeURIComponent(encryptedUserInfo), JWT_SECRET);
+        const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!decryptedText) throw new Error("No se pudo desencriptar userInfo");
+
+        const userInfo = JSON.parse(decryptedText);
+
         if (userInfo?.idTeam) {
           setTeamId(userInfo.idTeam);
           fetchEmployeesByTeam(userInfo.idTeam);
         }
       } catch (err) {
-        console.error("Error al parsear userInfo cookie:", err);
+        console.error("Error al desencriptar o parsear userInfo cookie:", err);
       }
     }
   }, []);
@@ -59,7 +74,10 @@ const Empleados = () => {
 
   return (
     <>
-      <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+      <div
+        className="encabezado"
+        style={{ display: "flex", flexDirection: "column", gap: "15px" }}
+      >
         <h1 className="titulo">Gestión de Empleados</h1>
         <div className="busqueda-bar-G">
           <div className="buscador-G">
@@ -69,11 +87,13 @@ const Empleados = () => {
               placeholder="Buscar por nombres y apellidos"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Buscar empleados"
             />
           </div>
           <button
             className="nuevo-empleado-btn-G"
             onClick={() => setShowNewEmpleado(true)}
+            aria-label="Agregar nuevo empleado"
           >
             <CirclePlus size={20} />
             Nuevo Empleado
@@ -106,6 +126,9 @@ const Empleados = () => {
         <div
           className={`employee-modal-overlay ${showNewEmpleado ? "active" : ""}`}
           onClick={() => setShowNewEmpleado(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-nuevo-empleado"
         >
           <div
             className="modal-content"
@@ -114,6 +137,7 @@ const Empleados = () => {
           >
             <ModalEmpleado
               tipo="empleado"
+              teamId={teamId}
               onSaved={() => {
                 if (teamId) fetchEmployeesByTeam(teamId);
                 setShowNewEmpleado(false);

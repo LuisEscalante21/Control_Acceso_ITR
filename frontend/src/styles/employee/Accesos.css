@@ -69,19 +69,19 @@
   position: relative;
   white-space: nowrap;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-.filter-button.docentes {
-  width: 320px;
+  /* Para que el ancho no cambie */
+  width: 220px;
 }
 
 .filter-button.salidas {
-  width: 110px;
+  width: 120px; /* ancho fijo más pequeño */
 }
 
 .dropdown {
   position: relative;
   display: inline-block;
+  /* Opcional: asegura mínimo ancho igual al botón */
+  min-width: 220px;
 }
 
 .dropdown-menu {
@@ -95,19 +95,23 @@
   border-radius: 8px;
   padding: 0.25rem 0;
   animation: fadeIn 0.15s;
-}
-
-.dropdown-menu.docentes {
-  width: 210px;
+  /* Ancho fijo igual al botón */
+  width: 220px;
 }
 
 .dropdown-menu.salidas {
-  width: 120px;
+  width: 120px; /* mismo ancho que botón salidas */
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-8px);}
-  to { opacity: 1; transform: translateY(0);}
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dropdown-menu button {

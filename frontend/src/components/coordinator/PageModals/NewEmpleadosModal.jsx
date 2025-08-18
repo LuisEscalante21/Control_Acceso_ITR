@@ -3,9 +3,9 @@ import { useForm } from "react-hook-form";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { Camera } from "lucide-react";
-import "../../../../components/styles/Modal.css";
+import "../../../components/styles/Modal.css";
 
-// Componente reutilizable para campos del formulario
+// Componente reutilizable para campos del formulario (input)
 const FormField = ({ label, name, register, errors, validation = {}, type = "text", ...props }) => (
   <div className={`form-field ${errors[name] ? "has-error" : ""}`}>
     <label htmlFor={name}>
@@ -27,7 +27,7 @@ const FormField = ({ label, name, register, errors, validation = {}, type = "tex
   </div>
 );
 
-// Componente para selects
+// Componente reutilizable para selects
 const FormSelect = ({ label, name, register, errors, options, loading, validation = {}, ...props }) => (
   <div className={`form-field ${errors[name] ? "has-error" : ""}`}>
     <label htmlFor={name}>
@@ -59,7 +59,7 @@ const FormSelect = ({ label, name, register, errors, options, loading, validatio
   </div>
 );
 
-// Función para formatear fechas
+// Función para formatear fechas a YYYY-MM-DD para inputs tipo date
 const toInputDateFormat = (date) => {
   if (!date) return "";
   const d = new Date(date);
@@ -68,7 +68,7 @@ const toInputDateFormat = (date) => {
   return localDate.toISOString().split("T")[0];
 };
 
-export default function NewEmployeesModal({ onSaved, onClose }) {
+export default function NewEmployeesModal({ onSaved, onClose, teamId }) {
   const {
     register,
     handleSubmit,
@@ -79,12 +79,10 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
   } = useForm({
     mode: "onBlur",
     defaultValues: {
-      status: "activo"
-    }
+      status: "activo",
+    },
   });
 
-  const [teams, setTeams] = useState([]);
-  const [loadingTeams, setLoadingTeams] = useState(true);
   const [image, setImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
@@ -123,38 +121,22 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     }
   }, [hireDate, birthday, setValue]);
 
-  // Cargar equipos
-  useEffect(() => {
-    const fetchTeams = async () => {
-      try {
-        const res = await axios.get("http://localhost:4000/api/teams");
-        setTeams(res.data.map(team => ({ value: team._id, label: team.name })));
-      } catch (error) {
-        console.error("Error al cargar equipos:", error);
-        setTeams([]);
-      } finally {
-        setLoadingTeams(false);
-      }
-    };
-    fetchTeams();
-  }, []);
-
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
+
       // Validar tipo de imagen
       if (!file.type.match("image.*")) {
         Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
         return;
       }
-      
+
       // Validar tamaño de imagen (2MB máximo)
       if (file.size > 2 * 1024 * 1024) {
         Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
         return;
       }
-      
+
       setImage(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
@@ -162,7 +144,10 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
 
   const onSubmit = async (data) => {
     const formData = new FormData();
-    
+
+    // Insertar el teamId directamente aquí, sin usar input
+    formData.append("IdTeam", teamId);
+
     // Agregar campos al FormData
     Object.entries(data).forEach(([key, value]) => {
       if (key === "birthday" || key === "hireDate") {
@@ -188,15 +173,13 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         icon: "success",
         title: "¡Guardado!",
         text: "El empleado ha sido registrado exitosamente.",
-        timer: 2000
+        timer: 2000,
       });
 
-      // Resetear formulario
       reset();
       setImage(null);
       setPreviewUrl(null);
 
-      // Ejecutar callback
       if (onSaved) {
         const result = onSaved();
         if (result instanceof Promise) await result;
@@ -205,12 +188,13 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     } catch (error) {
       console.error("Error al guardar:", error);
       let errorMessage = "Verifica que los campos estén correctos.";
-      
+
       if (error.response) {
-        errorMessage = error.response.data.message || 
+        errorMessage =
+          error.response.data.message ||
           (error.response.status === 409 ? "El empleado ya existe" : errorMessage);
       }
-      
+
       await Swal.fire({
         icon: "error",
         title: "Error al guardar",
@@ -230,7 +214,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
       >
         ×
       </button>
-      
+
       <h2>Crear un nuevo empleado</h2>
 
       <FormField
@@ -242,12 +226,12 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           minLength: {
             value: 3,
-            message: "Mínimo 3 caracteres"
+            message: "Mínimo 3 caracteres",
           },
           pattern: {
             value: /^[a-zA-Z0-9]+$/,
-            message: "Solo se permiten letras y números"
-          }
+            message: "Solo se permiten letras y números",
+          },
         }}
       />
 
@@ -260,8 +244,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$/,
-            message: "Solo se permiten letras"
-          }
+            message: "Solo se permiten letras",
+          },
         }}
       />
 
@@ -274,8 +258,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$/,
-            message: "Solo se permiten letras"
-          }
+            message: "Solo se permiten letras",
+          },
         }}
       />
 
@@ -288,8 +272,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^\d{8}-\d{1}$/,
-            message: "Formato: 12345678-9"
-          }
+            message: "Formato: 12345678-9",
+          },
         }}
         maxLength={10}
         placeholder="12345678-9"
@@ -305,8 +289,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           max: {
             value: toInputDateFormat(new Date()),
-            message: "La fecha no puede ser futura"
-          }
+            message: "La fecha no puede ser futura",
+          },
         }}
       />
 
@@ -319,8 +303,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^\d{4}-\d{4}$/,
-            message: "Formato: 1234-5678"
-          }
+            message: "Formato: 1234-5678",
+          },
         }}
         maxLength={9}
         placeholder="1234-5678"
@@ -336,8 +320,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^[^\s@]+@ricaldone\.edu\.sv$/,
-            message: "Debe ser un correo @ricaldone.edu.sv"
-          }
+            message: "Debe ser un correo @ricaldone.edu.sv",
+          },
         }}
         placeholder="usuario@ricaldone.edu.sv"
       />
@@ -352,12 +336,12 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           minLength: {
             value: 8,
-            message: "Mínimo 8 caracteres"
+            message: "Mínimo 8 caracteres",
           },
           pattern: {
             value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
-            message: "Debe incluir mayúsculas, minúsculas y números"
-          }
+            message: "Debe incluir mayúsculas, minúsculas y números",
+          },
         }}
       />
 
@@ -369,22 +353,11 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         errors={errors}
         validation={{
           required: "Este campo es requerido",
-          validate: value => {
+          validate: (value) => {
             if (!birthday) return true;
-            return new Date(value) > new Date(birthday) || 
-              "Debe ser posterior a la fecha de nacimiento";
-          }
+            return new Date(value) > new Date(birthday) || "Debe ser posterior a la fecha de nacimiento";
+          },
         }}
-      />
-
-      <FormSelect
-        label="Equipo:"
-        name="IdTeam"
-        register={register}
-        errors={errors}
-        options={teams}
-        loading={loadingTeams}
-        validation={{ required: "Debes seleccionar un equipo" }}
       />
 
       <FormSelect
@@ -394,7 +367,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         errors={errors}
         options={[
           { value: "activo", label: "Activo" },
-          { value: "inactivo", label: "Inactivo" }
+          { value: "inactivo", label: "Inactivo" },
         ]}
       />
 
@@ -407,8 +380,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           minLength: {
             value: 5,
-            message: "Mínimo 5 caracteres"
-          }
+            message: "Mínimo 5 caracteres",
+          },
         }}
       />
 
@@ -426,17 +399,14 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
               accept="image/*"
               onChange={handleImageChange}
               style={{ display: "none" }}
+              disabled={isSubmitting}
             />
           </label>
           <div className="image-preview-area">
             {isSubmitting ? (
               <div className="image-uploading-spinner"></div>
             ) : previewUrl ? (
-              <img
-                src={previewUrl}
-                alt="Vista previa"
-                className="image-preview"
-              />
+              <img src={previewUrl} alt="Vista previa" className="image-preview" />
             ) : (
               <div className="image-placeholder">Sin imagen</div>
             )}
@@ -444,9 +414,9 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         </div>
       </div>
 
-      <button 
-        type="submit" 
-        className="btn-guardar" 
+      <button
+        type="submit"
+        className="btn-guardar"
         disabled={isSubmitting}
         aria-busy={isSubmitting}
       >
@@ -455,7 +425,9 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
             <span className="spinner" aria-hidden="true"></span>
             <span className="sr-only">Guardando...</span>
           </>
-        ) : "GUARDAR"}
+        ) : (
+          "GUARDAR"
+        )}
       </button>
     </form>
   );

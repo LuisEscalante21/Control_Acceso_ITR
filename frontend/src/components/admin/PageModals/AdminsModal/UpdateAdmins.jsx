@@ -15,7 +15,7 @@ const toInputDateFormat = (date) => {
 export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   const [editMode, setEditMode] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(admin?.photo || "");
-  const [photoFile, setPhotoFile] = useState(null); // <-- Archivo real para subir
+  const [photoFile, setPhotoFile] = useState(null);
 
   const {
     register,
@@ -33,7 +33,7 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
         password: "",
       });
       setPhotoPreview(admin.photo || "");
-      setPhotoFile(null); // reset archivo al cambiar admin
+      setPhotoFile(null);
       setEditMode(false);
     }
   }, [admin, reset]);
@@ -78,7 +78,19 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validar tipo de archivo imagen
+      if (!file.type.match("image.*")) {
+        Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
+        return;
+      }
+      // Validar tamaño max 2MB
+      if (file.size > 2 * 1024 * 1024) {
+        Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
+        return;
+      }
+
       setPhotoFile(file);
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);

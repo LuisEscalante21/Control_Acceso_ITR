@@ -79,6 +79,17 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validar tipo de archivo
+      if (!file.type.match("image.*")) {
+        Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
+        return;
+      }
+      // Validar tamaño máximo 2MB
+      if (file.size > 2 * 1024 * 1024) {
+        Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
+        return;
+      }
+
       setPhotoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -118,7 +129,6 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
           </div>
           {!editMode ? (
             <>
-              {/* Mostrar datos igual */}
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Nombres y apellidos:</span>
                 <span className="cvcard-value">{coordinator.names} {coordinator.surnames}</span>

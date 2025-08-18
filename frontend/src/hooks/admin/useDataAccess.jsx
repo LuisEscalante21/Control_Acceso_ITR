@@ -24,11 +24,7 @@ const useDataAccess = (empleadoId) => {
   };
 
   const handleNetworkError = (err) => {
-    if (
-      !err.response ||
-      err.code === "ERR_NETWORK" ||
-      err.response?.status === 503
-    ) {
+    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
       navigate("/503");
     } else {
       console.error("Error:", err);
@@ -39,16 +35,12 @@ const useDataAccess = (empleadoId) => {
     try {
       const res = await axios.get(
         `${EMPLOYEE_API_URL}/search?id=${id_Employee}`,
-        {
-          timeout: 7000,
-        }
+        { timeout: 7000 }
       );
-      if (Array.isArray(res.data)) {
-        return res.data[0] || null;
-      }
+      if (Array.isArray(res.data)) return res.data[0] || null;
       return res.data;
     } catch (error) {
-      console.log("Error:", error);
+      console.error("Error:", error);
       return null;
     }
   };
@@ -60,15 +52,43 @@ const useDataAccess = (empleadoId) => {
 
       const map = {};
       justifications.forEach((j) => {
-        if (j.userId === empleadoId && j.idAccess) {
-          map[j.idAccess] = true; // Guardar justificación por idAccess
-        }
+        if (j.userId === empleadoId && j.idAccess) map[j.idAccess] = true;
       });
 
       setJustificationMap(map);
     } catch (error) {
       console.error("Error al obtener justificaciones:", error);
     }
+  };
+
+  // Nuevo: función para calcular rango de semana
+  const getWeekRange = () => {
+    const today = new Date();
+    const day = today.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+    let start, end;
+
+    if (day === 6 || day === 0) { // sábado o domingo
+      start = new Date(today);
+      start.setDate(today.getDate() - day + 1); // lunes de esta semana
+      end = new Date(today);
+      end.setDate(today.getDate() - day + 7); // domingo de esta semana
+    } else if (day === 1) { // lunes
+      start = new Date(today);
+      start.setDate(today.getDate() - 7); // lunes anterior
+      end = new Date(today);
+      end.setDate(today.getDate()); // lunes actual
+    } else { // cualquier otro día
+      start = new Date(today);
+      start.setDate(today.getDate() - day + 1); // lunes de esta semana
+      end = new Date(today);
+      end.setDate(today.getDate() + (7 - day)); // domingo de esta semana
+    }
+
+    // Ajustar horas a inicio y fin del día
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
   };
 
   const fetchAccessRecords = async () => {
@@ -85,21 +105,26 @@ const useDataAccess = (empleadoId) => {
       );
       const registros = res.data;
 
+      // Filtrar registros por semana
+      const { start, end } = getWeekRange();
+      const registrosFiltrados = registros.filter((reg) => {
+        const fecha = new Date(reg.date);
+        return fecha >= start && fecha <= end;
+      });
+
       const uniqueEmployeeIds = [
-        ...new Set(registros.map((reg) => reg.id_Employee)),
+        ...new Set(registrosFiltrados.map((reg) => reg.id_Employee)),
       ];
 
       const empleadosMap = {};
       await Promise.all(
         uniqueEmployeeIds.map(async (id) => {
           const empleado = await fetchEmployeeById(id);
-          if (empleado) {
-            empleadosMap[id] = empleado;
-          }
+          if (empleado) empleadosMap[id] = empleado;
         })
       );
 
-      const registrosConEmpleado = registros.map((reg) => {
+      const registrosConEmpleado = registrosFiltrados.map((reg) => {
         const empleado = empleadosMap[reg.id_Employee];
         return {
           ...reg,
@@ -120,11 +145,7 @@ const useDataAccess = (empleadoId) => {
   const saveAccessRecord = async (data) => {
     try {
       await axios.post(`${API_URL}/access`, data, axiosConfig);
-      Swal.fire(
-        "¡Guardado!",
-        "El registro de acceso ha sido guardado.",
-        "success"
-      );
+      Swal.fire("¡Guardado!", "El registro de acceso ha sido guardado.", "success");
       await fetchAccessRecords();
       handleCloseForm();
     } catch (error) {
@@ -147,11 +168,7 @@ const useDataAccess = (empleadoId) => {
 
     try {
       await axios.delete(`${API_URL}/access/${id}`, axiosConfig);
-      Swal.fire(
-        "¡Eliminado!",
-        "El registro de acceso ha sido eliminado.",
-        "success"
-      );
+      Swal.fire("¡Eliminado!", "El registro de acceso ha sido eliminado.", "success");
       await fetchAccessRecords();
     } catch (error) {
       handleNetworkError(error);
