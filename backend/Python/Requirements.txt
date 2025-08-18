@@ -13,3 +13,4 @@ cloudinary
 faiss-cpu
 cmake
 requests
+dotenv
