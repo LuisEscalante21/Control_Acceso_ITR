@@ -28,7 +28,6 @@ const useDataPermissions = () => {
     }
   };
 
-
   // GET /api/permissions/mine
   const fetchPermissions = async () => {
     try {
@@ -61,13 +60,56 @@ const useDataPermissions = () => {
   };
 
   // DELETE /api/permissions/:id
-   const deletePermission = async (id) => {
-   return fetch(`${API_URL}/${id}`, {
+  const deletePermission = async (id) => {
+    return fetch(`${API_URL}/${id}`, {
       method: "DELETE",
       credentials: "include",
     });
   };
 
+  // ================== AGREGADOS PARA COORDINADORES ==================
+
+  // GET /api/permissions/team  (permisos del área del coordinador)
+  const fetchTeamPermissions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`${API_URL}/team`, { credentials: "include" });
+      if (!res.ok) {
+        const msg = await safeJsonMessage(res);
+        throw new Error(msg || `Error ${res.status} al obtener permisos del área`);
+      }
+      const body = await res.json();
+      setPermissions(Array.isArray(body?.data) ? body.data : []);
+      return res;
+    } catch (err) {
+      setError(err);
+      handleNetworkError(err);
+      Swal.fire("Error", err.message || "No se pudieron obtener los permisos del área.", "error");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // PATCH /api/permissions/:id/status  (aprobar/rechazar, comentario y descuento)
+  const updatePermissionStatus = async (id, { status, supervisorComments, Discount, quantityDiscount }) => {
+    return fetch(`${API_URL}/${id}/status`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status,
+        supervisorComments: supervisorComments ?? "",
+        // Si tu backend lo soporta, se guardan; si no, serán ignorados sin romper nada.
+        Discount: typeof Discount === "boolean" ? Discount : undefined,
+        quantityDiscount:
+          typeof quantityDiscount === "number" ? quantityDiscount : undefined,
+      }),
+    });
+  };
+
+  // ================================================================
 
   useEffect(() => { fetchPermissions(); }, []);
 
@@ -77,9 +119,13 @@ const useDataPermissions = () => {
     error,
     fetchPermissions,
     postPermissionMultipart,
-    deletePermission,      // 👈 nuevo
+    deletePermission,
+    // 👇 agregados para coordinadores
+    fetchTeamPermissions,
+    updatePermissionStatus,
     showModal,
     setShowModal,
+    setPermissions, // por si lo necesitas en páginas
   };
 };
 

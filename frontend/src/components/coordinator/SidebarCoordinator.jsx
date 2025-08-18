@@ -22,7 +22,7 @@ export default function Sidebar() {
     },
     {
       name: "Gestión de permisos",
-      path: "/coordinator-dashboard/permisos",
+      path: "/coordinator-dashboard/permisosC",
       icon: FileCheck,
     },
     {

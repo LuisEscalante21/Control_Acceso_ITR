@@ -65,7 +65,8 @@
   padding: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   height: 300px; /* Altura fija para la gráfica */
-  width: 100%;
+  width: 95%;
+  margin:  0 0 40px 0;
 }
 
 /* Widget de progreso */

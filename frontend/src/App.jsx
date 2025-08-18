@@ -23,7 +23,8 @@ import Rostros from "./pages/admin/Rostros.jsx";
 import CoordinatorDashboard from "./pages/coordinator/Dashboard.jsx";
 import HomeCoordinator from "./components/coordinator/home.jsx";
 import EmpleadosC from "./pages/coordinator/Empleados.jsx";
-import CoordinatorAccesos from "./pages/coordinator/Accesos.jsx";
+import CoordinatorAccesos from "./pages/employee/Accesos.jsx";
+import CoordinatorPermisos from "./pages/coordinator/Permisos.jsx";
 
 // Employee
 import EmployeeDashboard from "./pages/employee/Dashboard.jsx";
@@ -88,7 +89,7 @@ function App() {
           <Route path="" element={<Navigate to="dashboard" />} />
           <Route path="dashboard" element={<HomeCoordinator />} />
           <Route path="empleado" element={<EmpleadosC />} />
-          <Route path="permisos" element={<h1>Gestión de Permisos</h1>} />
+          <Route path="permisosC" element={<CoordinatorPermisos/>}/>
           <Route path="historial" element={<CoordinatorAccesos />} />
 
           <Route path="*" element={<Error404 />} />
