@@ -3,7 +3,10 @@ import { Schema, model } from "mongoose";
 // Esquema principal de permisos
 const permissionsSchema = new Schema(
   {
-    // Datos comunes del colaborador
+    idUser: {
+      type: String,
+      required: true,
+    },
     employeeNumber: {
       type: String,
       required: true,

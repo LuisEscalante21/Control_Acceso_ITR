@@ -2,18 +2,27 @@
 import express from "express";
 import permissionsController from "../controllers/permissionsController.js";
 import verifyToken from "../middleware/verifyToken.js";
-import multer from "multer";
 
-const upload = multer({ dest: "public/permissions/" }); // asegúrate que exista la carpeta
+// 👇 usa tu middleware con filtro y límites
+import { uploadPermissions } from "../middleware/upload.js";
 
 const router = express.Router();
 
+// ⚠️ IMPORTANTE: coloca primero las rutas "estáticas" con paths largos,
+// para que no choquen con "/:id".
+router.delete(
+  "/clear/all",
+  verifyToken,
+  permissionsController.clearAllPermissions
+);
+
 // Crear nuevo permiso (archivo opcional -> campo "supportingDocumentFile")
+// FE debe enviar: fd.append("supportingDocumentFile", file)
 router
   .route("/")
   .post(
     verifyToken,
-    upload.single("supportingDocumentFile"),
+    uploadPermissions.single("supportingDocumentFile"),
     permissionsController.InsertPermission
   )
   .get(verifyToken, permissionsController.getAllPermissions);
@@ -24,10 +33,10 @@ router.get("/mine", verifyToken, permissionsController.getMyPermissions);
 // Permisos del equipo (coordinadores)
 router.get("/team", verifyToken, permissionsController.getTeamPermissions);
 
-// Descargar documento adjunto
+// Descargar / redirigir al documento adjunto
 router.get("/:id/document", verifyToken, permissionsController.getDocument);
 
-// Ver uno (detalle) y borrar
+// Ver uno (detalle) y borrar uno
 router
   .route("/:id")
   .get(verifyToken, permissionsController.getOne)
@@ -35,8 +44,5 @@ router
 
 // Cambiar estado (coord/admin)
 router.patch("/:id/status", verifyToken, permissionsController.updateStatus);
-
-// Borrar todos (solo admin, requiere ?confirm=REMOVE)
-router.delete("/clear/all", verifyToken, permissionsController.clearAllPermissions);
 
 export default router;

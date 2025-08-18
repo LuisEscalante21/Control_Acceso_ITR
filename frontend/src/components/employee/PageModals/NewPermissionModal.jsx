@@ -8,9 +8,6 @@ import "../PageModalStyles/NewPermissionModal.css";
 import useDataCredentials from "../../../hooks/Global/useDataCredentials";
 import useDataTeams from "../../../hooks/Global/useDataTeams";
 
-// URL fija al backend (sin .env del frontend)
-const PERMISSIONS_URL = "http://localhost:4000/api/permissions";
-
 // Departamentos SV
 const DEPARTAMENTOS = [
   "Ahuachapán","Santa Ana","Sonsonate","La Libertad","Chalatenango",
@@ -18,7 +15,7 @@ const DEPARTAMENTOS = [
   "Usulután","San Miguel","Morazán","La Unión"
 ];
 
-export default function NewPermissionModal({ isOpen, onClose, onSaved }) {
+export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermissionMultipart }) {
   const { user, loading } = useDataCredentials();
   const { getTeamNameById } = useDataTeams() || {};
 
@@ -147,14 +144,6 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved }) {
     return null;
   };
 
-  const postPermissionMultipart = async (formData) => {
-    return fetch(PERMISSIONS_URL, {
-      method: "POST",
-      credentials: "include",
-      body: formData, // NO poner Content-Type manual
-    });
-  };
-
   const handleHttpError = async (res) => {
     let msg = "";
     try {
@@ -213,6 +202,10 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved }) {
 
       if (file) fd.append("supportingDocumentFile", file); // multer.single("supportingDocumentFile")
 
+      // 👇 agregado: idUser explícito desde el hook de credenciales
+      if (user?._id) fd.append("idUser", String(user._id));
+
+      // usar la función del hook (sin rutas aquí)
       const res = await postPermissionMultipart(fd);
       if (!res.ok) {
         Swal.close();

@@ -4,8 +4,6 @@ import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
 import "../PageModalStyles/ViewPermissionModal.css";
 
-const API_URL = "http://localhost:4000/api/permissions";
-
 /** Corrige URLs de Cloudinary para PDFs guardados como RAW */
 function normalizeCloudinaryUrl(url) {
   if (!url) return url;
@@ -16,7 +14,7 @@ function normalizeCloudinaryUrl(url) {
   return url;
 }
 
-export default function ViewPermissionModal({ isOpen, onClose, permission, onDeleted }) {
+export default function ViewPermissionModal({ isOpen, onClose, permission, onDeleted, deletePermission }) {
   if (!isOpen || !permission) return null;
 
   const {
@@ -103,10 +101,8 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
     try {
       Swal.fire({ title: "Eliminando...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-      const res = await fetch(`${API_URL}/${_id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      // usar función del hook (sin rutas aquí)
+      const res = await deletePermission(_id);
 
       Swal.close();
 

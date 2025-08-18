@@ -1,19 +1,17 @@
+// src/controllers/loginController.js
 import EmployeesModel from "../models/Employees.js";
 import CoordinatorsModel from "../models/Coordinators.js";
 import AdministratorsModel from "../models/Administrators.js";
 import bcryptjs from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
-import CryptoJS from "crypto-js";       
+import CryptoJS from "crypto-js";
 import { config } from "../config.js";
 import parseExpirationToMs from "../utils/parseExpirationToMs.js";
 
 const loginController = {};
 
-// Declarar 2 constantes
-//Una que guarde el numero de intentos fallidos de inicio de sesión
-//Otra que guarde el tiempo del último intento fallido de inicio de sesión
-const maxAttempts = 2; // Número máximo de intentos fallidos
-const lockTime = 15 * 60 * 1000; // Tiempo de bloqueo en milisegundos (15 minutos)
+const maxAttempts = 2;
+const lockTime = 15 * 60 * 1000;
 
 loginController.login = async (req, res) => {
   const { email, password } = req.body;
@@ -23,7 +21,7 @@ loginController.login = async (req, res) => {
     let userType;
     let tokenPayload = {};
 
-    // Validar admin hardcoded en .env
+    // Admin .env
     if (email === config.emailAdmin.email && password === config.emailAdmin.password) {
       userType = "Admin";
       userFound = {
@@ -35,7 +33,7 @@ loginController.login = async (req, res) => {
         photo: null,
       };
     } else {
-      // Buscar admin, coordinator, empleado en BD...
+      // Buscar usuario por rol
       userFound = await AdministratorsModel.findOne({ email });
       if (userFound) userType = "Admin";
       else {
@@ -53,11 +51,9 @@ loginController.login = async (req, res) => {
         return res.status(403).json({ message: "Usuario inactivo. Contacte al administrador." });
       }
 
-      // Normalizar campos por si vienen undefined
       userFound.loginAttempts = userFound.loginAttempts || 0;
       userFound.lockTime = userFound.lockTime || 0;
 
-      // Bloqueo de acceso por intentos fallidos
       if ((userFound.lockTime || 0) > Date.now()) {
         const remainingMin = Math.ceil((userFound.lockTime - Date.now()) / 60000);
         return res.status(403).json({
@@ -66,34 +62,30 @@ loginController.login = async (req, res) => {
       }
 
       const isMatch = await bcryptjs.compare(password, userFound.password);
-
-      // ❗ Si NO coincide la contraseña, incrementar intentos y manejar bloqueo
       if (!isMatch) {
         userFound.loginAttempts = (userFound.loginAttempts || 0) + 1;
 
         if (userFound.loginAttempts > maxAttempts) {
-          userFound.lockTime = Date.now() + lockTime; // Bloquear cuenta
+          userFound.lockTime = Date.now() + lockTime;
           await userFound.save();
           return res.status(403).json({ message: "Cuenta esta bloqueada." });
         }
 
-        await userFound.save(); // Guardar cambios en la BD
+        await userFound.save();
         return res.status(401).json({ message: "Contraseña incorrecta" });
       }
-      // Si la contraseña es correcta, no hagas nada aquí: seguimos abajo al éxito
     }
 
-    // Si llegamos aquí, el usuario fue encontrado y la contraseña es correcta
-    // Resetear contadores SOLO si es un documento de Mongoose (tiene .save)
+    // Reset bloqueo si aplica
     if (userFound && typeof userFound.save === "function") {
-      userFound.loginAttempts = 0; // Reiniciar contador de intentos fallidos
-      userFound.lockTime = 0; // Reiniciar tiempo de bloqueo del usuario
-      await userFound.save(); // Guardar cambios en la BD
+      userFound.loginAttempts = 0;
+      userFound.lockTime = 0;
+      await userFound.save();
     }
 
-    // Payload JWT para backend
+    // ✅ payload siempre con el id del usuario
     tokenPayload = {
-      id: userFound._id,
+      id: userFound._id,   // <-- aquí va el _id
       userType,
     };
 
@@ -103,11 +95,11 @@ loginController.login = async (req, res) => {
       return null;
     };
 
-    // Agregar info extra
+    // Enriquecer payload para frontend (nombres, equipo, etc.)
     if (userType === "Admin") {
-      tokenPayload.fullName = userFound.fullName || (userFound.names && userFound.surnames
-        ? `${userFound.names} ${userFound.surnames}`
-        : "Admin");
+      tokenPayload.fullName =
+        userFound.fullName ||
+        (userFound.names && userFound.surnames ? `${userFound.names} ${userFound.surnames}` : "Admin");
       tokenPayload.idTeam = userFound.IdTeam || null;
       tokenPayload.department = userFound.department || null;
       tokenPayload.numEmpleado = userFound.numEmpleado || null;
@@ -124,7 +116,6 @@ loginController.login = async (req, res) => {
 
     const cookieMaxAge = parseExpirationToMs(config.JWT.expiresIn);
 
-    // Firmar JWT backend
     jsonwebtoken.sign(
       tokenPayload,
       config.JWT.secret,
@@ -135,7 +126,7 @@ loginController.login = async (req, res) => {
           return res.status(500).json({ message: "Error generando el token" });
         }
 
-        // Cookie httpOnly backend
+        // Cookie httpOnly con el token
         res.cookie("authToken", token, {
           httpOnly: true,
           secure: false,
@@ -144,9 +135,9 @@ loginController.login = async (req, res) => {
           maxAge: cookieMaxAge,
         });
 
-        // Crear objeto userInfo plano
+        // Info de usuario cifrada para el frontend
         const userInfo = {
-          _id: userFound._id,
+          _id: userFound._id,                 // ✅ incluye el id para el FE
           userType,
           fullName: tokenPayload.fullName,
           idTeam: tokenPayload.idTeam,
@@ -155,13 +146,11 @@ loginController.login = async (req, res) => {
           photo: tokenPayload.photo,
         };
 
-        // Cifrar userInfo con AES usando crypto-js y clave secreta
         const encryptedUserInfo = CryptoJS.AES.encrypt(
           JSON.stringify(userInfo),
           config.JWT.secret
         ).toString();
 
-        // Enviar cookie no httpOnly accesible en frontend con userInfo cifrada
         res.cookie("userInfo", encryptedUserInfo, {
           httpOnly: false,
           secure: false,
@@ -170,10 +159,12 @@ loginController.login = async (req, res) => {
           maxAge: cookieMaxAge,
         });
 
+        // ✅ devuelve también el userId explícito
         return res.json({
           message: "login successful",
           userType,
           token,
+          userId: userFound._id,               // <-- aquí te lo llevas al FE si lo necesitas
           fullName: tokenPayload.fullName,
           idTeam: tokenPayload.idTeam,
         });

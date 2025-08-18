@@ -2,6 +2,7 @@ import { Schema, model } from "mongoose";
 
 const employeesSchema = new Schema(
   {
+    
     numEmpleado: {
       type: String,
       required: true,

@@ -1,14 +1,11 @@
 // src/controllers/permissionsController.js
 import PermissionsModel from "../models/Permissions.js";
 import cloudinary from "../lib/cloudinary.js";
+import fs from "fs/promises";
 
 const permissionsController = {};
 
-
-
-import fs from "fs/promises";
-
-// Función para validar tipos de archivo permitidos
+// ✅ Extiende los tipos permitidos para que coincidan con el mensaje de error
 const isValidFileType = (mimetype) => {
   const allowedTypes = [
     "application/pdf",
@@ -16,18 +13,13 @@ const isValidFileType = (mimetype) => {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    // Imágenes (ya las mencionabas en el mensaje de error)
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
   ];
   return allowedTypes.includes(mimetype);
 };
-
-// ===================== Crear un nuevo permiso =====================
-// src/controllers/permissionsController.js
-
-
-
-
-
-
 
 // ===================== Crear un nuevo permiso =====================
 permissionsController.InsertPermission = async (req, res) => {
@@ -44,14 +36,12 @@ permissionsController.InsertPermission = async (req, res) => {
 
     const files = req.files || (req.file && [req.file]);
 
-    // Declarar fuera para que estén disponibles después del bucle
     let documentUrls = "";
-    let cloudinaryIds = [];
+    let supportingPublicId = null;
+    let supportingResourceType = null;
 
-    // Subir pdf(s)
     if (files) {
       for (const file of files) {
-        // Validar tipo de archivo
         if (!isValidFileType(file.mimetype)) {
           await fs.unlink(file.path).catch(console.error);
           return res.status(400).json({
@@ -61,25 +51,20 @@ permissionsController.InsertPermission = async (req, res) => {
         }
 
         try {
-          // Para archivos, usar resource_type "auto"
+          // 👇 aquí usamos tu config (que da secure_url correcto)
           const result = await cloudinary.uploader.upload(file.path, {
-            folder: "documents",
-            resource_type: "auto",
+            folder: "Permissions",
+            resource_type: "auto",   // detecta pdf como raw
             use_filename: true,
             unique_filename: false,
             format: file.originalname.split(".").pop(),
           });
 
+          // 👇 guardamos TODO: url, public_id y tipo de recurso
           documentUrls = result.secure_url;
-          cloudinaryIds.push(result.public_id);
+          supportingPublicId = result.public_id;
+          supportingResourceType = result.resource_type;
 
-          console.log("Archivo subido exitosamente:");
-          console.log("- URL:", result.secure_url);
-          console.log("- Public ID:", result.public_id);
-          console.log("- Resource Type:", result.resource_type);
-          console.log("- Format:", result.format);
-
-          // Eliminar archivo temporal
           await fs.unlink(file.path).catch(console.error);
         } catch (uploadError) {
           await fs.unlink(file.path).catch(console.error);
@@ -90,15 +75,21 @@ permissionsController.InsertPermission = async (req, res) => {
 
     const permissionData = {
       ...req.body,
+      idUser: String(user._id),
       employeeNumber: user.numEmpleado,
       employeeName:
         `${user.names ?? ""} ${user.surnames ?? ""}`.trim() || user.fullName,
       department: req.body.department || user.department,
       idTeam: user.idTeam ?? user.IdTeam,
       createdBy: user._id,
+
       Discount: req.body.Discount === "true" || req.body.Discount === true,
       quantityDiscount: Number(req.body.quantityDiscount || 0),
-      supportingDocument: documentUrls, // ahora sí tiene valor
+
+      // guardamos siempre los tres
+      supportingDocument: documentUrls,
+      supportingPublicId,
+      supportingResourceType,
     };
 
     // Limpiezas por tipo
@@ -130,6 +121,7 @@ permissionsController.InsertPermission = async (req, res) => {
           .json({ message: "Campos requeridos para permiso menor faltantes." });
       }
     }
+
     if (permissionType === "major") {
       if (
         !permissionData.permissionDateFrom ||
@@ -146,6 +138,7 @@ permissionsController.InsertPermission = async (req, res) => {
         });
       }
     }
+
     if (permissionType === "incapacity") {
       if (
         !permissionData.sickLeaveDateFrom ||
@@ -170,9 +163,11 @@ permissionsController.InsertPermission = async (req, res) => {
     const newPermission = new PermissionsModel(permissionData);
     await newPermission.save();
 
-    return res
-      .status(201)
-      .json({ message: "Permiso creado exitosamente", data: newPermission });
+    return res.status(201).json({
+      message: "Permiso creado exitosamente",
+      id: newPermission._id,
+      data: newPermission,
+    });
   } catch (error) {
     console.error("Error backend:", error);
     return res
@@ -180,8 +175,6 @@ permissionsController.InsertPermission = async (req, res) => {
       .json({ message: "Error creando permiso", error: error.message });
   }
 };
-
-
 
 
 // ===================== Ver documento asociado =====================
@@ -195,7 +188,6 @@ permissionsController.getDocument = async (req, res) => {
 
     let viewUrl = perm.supportingDocument;
 
-    // Si es PDF pero no tiene extensión, agregarla
     if (
       (perm.supportingResourceType === "raw" ||
         /\/raw\/upload\//.test(viewUrl)) &&
@@ -211,11 +203,15 @@ permissionsController.getDocument = async (req, res) => {
   }
 };
 
-// ===================== Mis permisos =====================
+// ===================== Mis permisos (filtra por idUser) =====================
 permissionsController.getMyPermissions = async (req, res) => {
   try {
+    const userId = String(req.user._id);
+
     const permissions = await PermissionsModel.find({
-      employeeNumber: req.user.numEmpleado,
+      idUser: userId,
+      // 🔁 Fallback opcional si tienes datos antiguos sin idUser:
+      // $or: [{ idUser: userId }, { employeeNumber: req.user.numEmpleado }],
     }).sort({ createdAt: -1 });
 
     res.json({ data: permissions });
@@ -225,7 +221,7 @@ permissionsController.getMyPermissions = async (req, res) => {
   }
 };
 
-// ===================== Permisos del equipo (solo coordinador) =====================
+// ===================== Permisos del equipo (coord) =====================
 permissionsController.getTeamPermissions = async (req, res) => {
   try {
     const user = req.user;
@@ -237,7 +233,7 @@ permissionsController.getTeamPermissions = async (req, res) => {
 
     const teamPermissions = await PermissionsModel.find({
       idTeam: user.idTeam ?? user.IdTeam,
-      employeeNumber: { $ne: user.numEmpleado },
+      idUser: { $ne: String(user._id) }, // ✅ excluye los propios por idUser
     }).sort({ createdAt: -1 });
 
     res.json({ data: teamPermissions });
@@ -247,7 +243,7 @@ permissionsController.getTeamPermissions = async (req, res) => {
   }
 };
 
-// ===================== Todos los permisos (solo Admin) =====================
+// ===================== Todos los permisos (Admin) =====================
 permissionsController.getAllPermissions = async (req, res) => {
   try {
     const user = req.user;
@@ -267,7 +263,7 @@ permissionsController.getAllPermissions = async (req, res) => {
   }
 };
 
-// ===================== Obtener UNO (ver detalle) =====================
+// ===================== Obtener UNO =====================
 permissionsController.getOne = async (req, res) => {
   try {
     const { id } = req.params;
@@ -302,7 +298,7 @@ permissionsController.updateStatus = async (req, res) => {
       if (
         permission.idTeam?.toString() !==
           (user.idTeam ?? user.IdTeam)?.toString() ||
-        permission.employeeNumber === user.numEmpleado
+        String(permission.idUser) === String(user._id) // ✅ no puede gestionar el propio
       ) {
         return res
           .status(403)
@@ -341,8 +337,20 @@ permissionsController.deleteOne = async (req, res) => {
         .json({ message: "Solo puedes eliminar permisos pendientes" });
     }
 
+    // Borrar archivo en Cloudinary si existe
+    try {
+      if (perm.supportingPublicId) {
+        await cloudinary.uploader.destroy(perm.supportingPublicId, {
+          resource_type: perm.supportingResourceType || "raw",
+          invalidate: true,
+        });
+      }
+    } catch (e) {
+      console.warn("No se pudo borrar en Cloudinary:", e?.message || e);
+    }
+
     if (user.userType === "Employee") {
-      if (perm.employeeNumber !== user.numEmpleado) {
+      if (String(perm.idUser) !== String(user._id)) {
         return res
           .status(403)
           .json({ message: "No autorizado para borrar este permiso" });
@@ -350,7 +358,7 @@ permissionsController.deleteOne = async (req, res) => {
     } else if (user.userType === "Coordinator") {
       if (
         perm.idTeam?.toString() !== (user.idTeam ?? user.IdTeam)?.toString() ||
-        perm.employeeNumber === user.numEmpleado
+        String(perm.idUser) === String(user._id)
       ) {
         return res
           .status(403)
@@ -368,7 +376,8 @@ permissionsController.deleteOne = async (req, res) => {
   }
 };
 
-// ===================== Borrar TODOS (solo Admin) =====================
+
+// ===================== Borrar TODOS (Admin) =====================
 permissionsController.clearAllPermissions = async (req, res) => {
   try {
     const user = req.user;

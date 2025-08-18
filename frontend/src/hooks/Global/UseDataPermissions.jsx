@@ -1,8 +1,8 @@
+// src/hooks/Global/useDataPermissions.js
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
-// Detecta backend local
 const API_BASE =
   window.location.hostname === "localhost" ? "http://localhost:4000" : "";
 const API_URL = `${API_BASE}/api/permissions`;
@@ -12,14 +12,11 @@ const useDataPermissions = () => {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
   const [showModal, setShowModal] = useState(false);
-
   const navigate = useNavigate();
 
   const handleNetworkError = (err) => {
     console.error("useDataPermissions error:", err);
-    if (err instanceof TypeError) {
-      navigate("/503");
-    }
+    if (err instanceof TypeError) navigate("/503");
   };
 
   const safeJsonMessage = async (res) => {
@@ -31,18 +28,17 @@ const useDataPermissions = () => {
     }
   };
 
+
   // GET /api/permissions/mine
   const fetchPermissions = async () => {
     try {
       setLoading(true);
       setError(null);
-
       const res = await fetch(`${API_URL}/mine`, { credentials: "include" });
       if (!res.ok) {
         const msg = await safeJsonMessage(res);
         throw new Error(msg || `Error ${res.status} al obtener permisos`);
       }
-
       const body = await res.json();
       setPermissions(Array.isArray(body?.data) ? body.data : []);
     } catch (err) {
@@ -54,15 +50,24 @@ const useDataPermissions = () => {
     }
   };
 
-  // POST /api/permissions (multipart) – el modal maneja la UI
-  const postPermissionMultipart = async (formData /* FormData */) => {
+  // POST /api/permissions (multipart)
+  const postPermissionMultipart = async (formData) => {
     const res = await fetch(API_URL, {
       method: "POST",
       credentials: "include",
-      body: formData, // NO poner Content-Type manual
+      body: formData,
     });
     return res;
   };
+
+  // DELETE /api/permissions/:id
+   const deletePermission = async (id) => {
+   return fetch(`${API_URL}/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+  };
+
 
   useEffect(() => { fetchPermissions(); }, []);
 
@@ -72,6 +77,7 @@ const useDataPermissions = () => {
     error,
     fetchPermissions,
     postPermissionMultipart,
+    deletePermission,      // 👈 nuevo
     showModal,
     setShowModal,
   };

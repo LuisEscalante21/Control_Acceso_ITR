@@ -128,6 +128,7 @@ export default function Permissions() {
         onClose={closeView}
         permission={selected}
         onDeleted={handleDeleted}
+        deletePermission={deletePermission}
       />
     </div>
   );
