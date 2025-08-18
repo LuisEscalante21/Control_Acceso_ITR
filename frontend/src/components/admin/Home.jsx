@@ -4,6 +4,7 @@ import "../../components/styles/admin/Home.css";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
 import LateArrivalsChart from "../../components/Tools/graphics/LateArrivalsChart.jsx";
+import EmployeesByAreaChart from "../../components/Tools/graphics/EmployeesByAreaChart.jsx";
 
 export default function AdminHome() {
   const [greeting, setGreeting] = useState("");
@@ -56,7 +57,7 @@ export default function AdminHome() {
 
       {/* Widget inferior de gráfico de líneas */}
       <div className="widget-line-chart">
-        <p>Gráfico de líneas (ejemplo)</p>
+        <EmployeesByAreaChart />
       </div>
     </div>
   );
