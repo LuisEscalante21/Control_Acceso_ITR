@@ -4,7 +4,7 @@ import iconEntrada from "../../../img/Entrada_acceso.png";
 import { UserCircle } from "lucide-react";
 import "../../../components/styles/AccessCard.css";
 
-const AccessCard = ({ name, avatar, employeeId, timeLabel, time, tipoRegistro }) => {
+const AccessCard = ({ name, avatar, timeLabel, time, tipoRegistro }) => {
   const horaFormateada = new Date(time).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -29,10 +29,7 @@ const AccessCard = ({ name, avatar, employeeId, timeLabel, time, tipoRegistro })
         )}
       </div>
 
-      <div className="access-name">
-        {name || "Sin nombre"}
-        <div className="access-id">{employeeId ? `ID: ${employeeId}` : ""}</div>
-      </div>
+      <div className="access-name">{name || "Sin nombre"}</div>
 
       <div className="access-time">
         {icono && <img src={icono} alt="Ícono de acceso" />}

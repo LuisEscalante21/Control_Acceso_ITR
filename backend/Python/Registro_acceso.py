@@ -146,15 +146,100 @@ def crear_o_actualizar_acceso():
     else:
         return jsonify({"message": "No se modificó ningún registro"}), 200
 
-# Obtener todos los registros
+# Obtener todos los registros (con nombre/foto y filtros)
 @app.route("/api/access", methods=["GET"])
 @require_api_key
 def obtener_todos_registros():
-    registros = []
-    cursor = access_collection.find()
-    for reg in cursor:
-        registros.append(limpiar_registro(reg))
-    return jsonify(registros)
+    try:
+        team_id = request.args.get("teamId")
+        exclude_employee_id = request.args.get("excludeEmployeeId")
+        only_employee_id = request.args.get("onlyEmployeeId")
+
+        pipeline = []
+
+        # --- Filtros iniciales sobre el campo string id_Employee ---
+        pre_match = {}
+        if only_employee_id:
+            pre_match["id_Employee"] = only_employee_id
+        if exclude_employee_id:
+            # si ya hay un $match previo, se puede combinar según tu caso;
+            # aquí hacemos un $ne simple
+            pre_match["id_Employee"] = {"$ne": exclude_employee_id} if "id_Employee" not in pre_match else pre_match["id_Employee"]
+        if pre_match:
+            pipeline.append({"$match": pre_match})
+
+        # Convertir id_Employee (string) -> ObjectId para poder hacer lookup
+        pipeline.append({"$addFields": {"idEmpObj": {"$toObjectId": "$id_Employee"}}})
+
+        # --- Filtro por área: employees con IdTeam._id === teamId ---
+        if team_id:
+            try:
+                team_object_id = ObjectId(team_id)
+            except Exception:
+                return jsonify({"error": "teamId inválido"}), 400
+
+            empleados_cursor = employee_collection.find(
+                {"IdTeam._id": team_object_id},
+                {"_id": 1}
+            )
+            emp_ids = [e["_id"] for e in empleados_cursor]
+            if not emp_ids:
+                return jsonify([])  # no hay empleados en esa área
+
+            pipeline.append({"$match": {"idEmpObj": {"$in": emp_ids}}})
+
+        # --- Lookup para traer datos del empleado
+        pipeline += [
+            {
+                "$lookup": {
+                    "from": "employees",
+                    "localField": "idEmpObj",
+                    "foreignField": "_id",
+                    "as": "employee"
+                }
+            },
+            {"$unwind": {"path": "$employee", "preserveNullAndEmptyArrays": True}},
+            {
+                "$project": {
+                    # Campos del acceso
+                    "_id": 1,
+                    "date": 1,
+                    "entry_photo": 1,
+                    "entry_result": 1,
+                    "entry_time": 1,
+                    "exit_photo": 1,
+                    "exit_result": 1,
+                    "exit_time": 1,
+                    "id_Employee": 1, 
+                    "tipo_registro": 1,
+
+                    # Derivados del empleado
+                    "employeeName": {
+                        "$trim": {
+                            "input": {
+                                "$concat": [
+                                    {"$ifNull": ["$employee.names", ""]},
+                                    " ",
+                                    {"$ifNull": ["$employee.surnames", ""]}
+                                ]
+                            }
+                        }
+                    },
+                    "employeeAvatar": "$employee.photo"
+                }
+            }
+        ]
+
+        cursor = access_collection.aggregate(pipeline)
+        registros = []
+        for reg in cursor:
+            reg = limpiar_registro(reg) 
+            registros.append(reg)
+
+        return jsonify(registros)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # Obtener registro por ID
 @app.route("/api/access/<id>", methods=["GET"])
@@ -168,7 +253,7 @@ def obtener_registro_por_id(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# Editar registro por ID (PATCH)
+# Editar registro por ID 
 @app.route("/api/access/<id>", methods=["PATCH"])
 @require_api_key
 def editar_registro(id):

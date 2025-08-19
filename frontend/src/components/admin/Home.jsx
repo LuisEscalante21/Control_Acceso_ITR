@@ -7,7 +7,7 @@ import LateArrivalsChart from "../../components/Tools/graphics/LateArrivalsChart
 import EmployeesByAreaChart from "../../components/Tools/graphics/EmployeesByAreaChart.jsx";
 
 export default function AdminHome() {
-  const [greeting, setGreeting] = useState("");
+  const [greeting, setGreeting] = useState(""); // Saludo personalizado
   const [userName, setUserName] = useState("");
 
   const secretKey = import.meta.env.VITE_JWT_SECRET;

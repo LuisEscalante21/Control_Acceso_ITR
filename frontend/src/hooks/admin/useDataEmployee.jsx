@@ -1,11 +1,11 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-
+ 
 const useDataEmployee = () => {
   const [employees, setEmployees] = useState([]);
   const [showForm, setShowForm] = useState(false);
-
+ 
   // Obtener todos los empleados
   const fetchEmployees = async () => {
     try {
@@ -16,7 +16,7 @@ const useDataEmployee = () => {
       Swal.fire("Error", "No se pudo obtener la lista de empleados.", "error");
     }
   };
-
+ 
   // Crear o actualizar empleado
   const saveEmployee = async (employeeData, idToUpdate = null) => {
     try {
@@ -25,7 +25,7 @@ const useDataEmployee = () => {
         if (employeeData instanceof FormData) {
           employeeData.delete("IdTeam");
         }
-
+ 
         await axios.put(
           `http://localhost:4000/api/employee/${idToUpdate}`,
           employeeData,
@@ -55,7 +55,7 @@ const useDataEmployee = () => {
       Swal.fire("Error", "No se pudo guardar el empleado.", "error");
     }
   };
-
+ 
   // Eliminar empleado con confirmación
   const deleteEmployee = async (id) => {
     const result = await Swal.fire({
@@ -66,7 +66,7 @@ const useDataEmployee = () => {
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
-
+ 
     if (result.isConfirmed) {
       try {
         await axios.delete(`http://localhost:4000/api/employee/${id}`);
@@ -78,16 +78,16 @@ const useDataEmployee = () => {
       }
     }
   };
-
+ 
   // Cerrar formulario
   const handleCloseForm = () => {
     setShowForm(false);
   };
-
+ 
   useEffect(() => {
     fetchEmployees();
   }, []);
-
+ 
   return {
     employees,
     showForm,
@@ -98,5 +98,5 @@ const useDataEmployee = () => {
     handleCloseForm,
   };
 };
-
+ 
 export default useDataEmployee;

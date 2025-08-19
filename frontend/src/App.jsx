@@ -24,7 +24,7 @@ import PermisosAdmin from "./pages/admin/Permissions.jsx";
 import CoordinatorDashboard from "./pages/coordinator/Dashboard.jsx";
 import HomeCoordinator from "./components/coordinator/home.jsx";
 import EmpleadosC from "./pages/coordinator/Empleados.jsx";
-import CoordinatorAccesos from "./pages/employee/Accesos.jsx";
+import CoordinatorAccesos from "./pages/coordinator/Accesos.jsx";
 import CoordinatorPermisos from "./pages/coordinator/Permisos.jsx";
 
 // Employee

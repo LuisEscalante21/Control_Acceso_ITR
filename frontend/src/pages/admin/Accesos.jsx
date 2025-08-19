@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, ChevronDown } from "lucide-react";
+import Cookies from "js-cookie";
+import CryptoJS from "crypto-js";
 import "../../styles/Admin/Accesos.css";
-import useAccessControl from "../../hooks/admin/useDataAccess";
+import useDataAccess from "../../hooks/admin/useDataAccess";
+import useDataTeams from "../../hooks/admin/useDataTeams";
 import AccessCard from "../../components/admin/Cards/AccessCard.jsx";
 
 const HorarioOptions = ["Entrada", "Salida"];
@@ -10,22 +13,35 @@ const Accesos = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [selectedDocente, setSelectedDocente] = useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
+  const [searchText, setSearchText] = useState("");
   const docentesRef = useRef(null);
   const salidasRef = useRef(null);
 
-  const userId = localStorage.getItem("userId");
+  // Leer y descifrar info del usuario desde cookie cifrada con AES
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
+  let userInfo = null;
+  const encryptedUserInfo = Cookies.get("userInfo");
+  if (encryptedUserInfo && secretKey) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
+      const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+      userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
+    } catch (error) {
+      console.error("Error al descifrar userInfo:", error);
+      userInfo = null;
+    }
+  }
+  const empleadoId = userInfo?._id || null;
 
-  const {
-    accessRecords,
-    fetchAccessRecords,
-    fetchTeams,
-    teams: docentesOptions,
-  } = useAccessControl(userId);
+  // Hook para accesos
+  const { accessRecords, fetchAccessRecords } = useDataAccess(empleadoId);
 
-  // cargar al inicio
+  // Hook para áreas/equipos
+  const { teams: areaOptions, fetchTeams } = useDataTeams();
+
   useEffect(() => {
-    fetchAccessRecords(); // todos
-    fetchTeams(); // áreas disponibles
+    fetchAccessRecords();
+    fetchTeams();
   }, []);
 
   useEffect(() => {
@@ -62,38 +78,46 @@ const Accesos = () => {
     setOpenDropdown(null);
 
     if (option === "Todos") {
-      fetchAccessRecords();
-    } else if (option === "Mios") {
-      fetchAccessRecords({ onlyMine: true });
+      await fetchAccessRecords();
+    } else if (option === "Mis registros") {
+      await fetchAccessRecords({ onlyMine: true });
     } else {
       // cuando selecciona un área
-      const team = docentesOptions.find((t) => t.name === option);
+      const team = areaOptions.find((t) => t.name === option);
       if (team) {
-        fetchAccessRecords({ teamId: team._id }); // ✅ usar _id
+        await fetchAccessRecords({ teamId: team._id });
       }
     }
   };
-
 
   const handleSelectSalida = (option) => {
     setSelectedSalida(option);
     setOpenDropdown(null);
   };
 
-  // Filtrar registros según tipo_registro
-  const filteredAccess = accessRecords.filter((person) => {
-    if (selectedSalida === "Entrada") {
-      return (
-        person.tipo_registro === "entrada" ||
-        person.tipo_registro === "entrada y salida"
-      );
-    } else {
-      return (
-        person.tipo_registro === "salida" ||
-        person.tipo_registro === "entrada y salida"
-      );
-    }
-  });
+  // Filtrar registros según tipo_registro y búsqueda
+  const filteredAccess = accessRecords
+    .filter((person) => {
+      if (selectedSalida === "Entrada") {
+        return (
+          person.tipo_registro === "entrada" ||
+          person.tipo_registro === "entrada y salida"
+        );
+      } else {
+        return (
+          person.tipo_registro === "salida" ||
+          person.tipo_registro === "entrada y salida"
+        );
+      }
+    })
+    .filter((person) => {
+      if (!searchText.trim()) return true;
+      const nombre = person.employeeName?.toLowerCase() || "";
+      return nombre.includes(searchText.toLowerCase());
+    });
+
+  // LOG para depuración
+  console.log("Áreas disponibles:", areaOptions);
 
   return (
     <div className="access-history-container">
@@ -102,7 +126,12 @@ const Accesos = () => {
 
         <div className="buscador">
           <Search className="search-icon" />
-          <input type="text" placeholder="Buscar por nombre o apellido" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre o apellido"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
         </div>
 
         <div className="filters">
@@ -123,12 +152,14 @@ const Accesos = () => {
                   Todos
                 </button>
                 <button
-                  onClick={() => handleSelectDocente("Mios")}
-                  className={selectedDocente === "Mios" ? "selected" : ""}
+                  onClick={() => handleSelectDocente("Mis registros")}
+                  className={
+                    selectedDocente === "Mis registros" ? "selected" : ""
+                  }
                 >
                   Mis accesos
                 </button>
-                {docentesOptions.map((area) => (
+                {areaOptions.map((area) => (
                   <button
                     key={area._id}
                     onClick={() => handleSelectDocente(area.name)}
@@ -180,13 +211,11 @@ const Accesos = () => {
 
               return (
                 <AccessCard
-                  key={index}
                   name={person.employeeName}
                   avatar={person.employeeAvatar}
                   timeLabel={selectedSalida}
                   time={time}
                   tipoRegistro={person.tipo_registro}
-                  docente={person.docente}
                 />
               );
             })
