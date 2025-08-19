@@ -20,10 +20,12 @@ loginController.login = async (req, res) => {
     let userFound;
     let userType;
     let tokenPayload = {};
+    let isReadOnly = false; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-    // Admin .env (login directo sin DB)
+    // Admin .env (login directo sin DB) -> READ ONLY
     if (email === config.emailAdmin.email && password === config.emailAdmin.password) {
       userType = "Admin";
+      isReadOnly = true; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< el admin de .env es solo lectura
       userFound = {
         _id: "Admin",
         fullName: config.emailAdmin.fullName,
@@ -31,7 +33,7 @@ loginController.login = async (req, res) => {
         department: null,
         numEmpleado: null,
         photo: null,
-        updatePassStatus: false,        // asegúrate que no obligue cambio
+        updatePassStatus: false,
         updatePassBoolean: false,
       };
     } else {
@@ -58,41 +60,35 @@ loginController.login = async (req, res) => {
 
       if ((userFound.lockTime || 0) > Date.now()) {
         const remainingMin = Math.ceil((userFound.lockTime - Date.now()) / 60000);
-        return res.status(403).json({
-          message: "Cuenta bloqueada. Inténtelo de nuevo en: " + remainingMin + " minutos.",
-        });
+        return res.status(403).json({ message: "Cuenta bloqueada. Inténtelo de nuevo en: " + remainingMin + " minutos." });
       }
 
       const isMatch = await bcryptjs.compare(password, userFound.password);
       if (!isMatch) {
         userFound.loginAttempts = (userFound.loginAttempts || 0) + 1;
-
         if (userFound.loginAttempts > maxAttempts) {
           userFound.lockTime = Date.now() + lockTime;
           await userFound.save();
           return res.status(403).json({ message: "Cuenta esta bloqueada." });
         }
-
         await userFound.save();
         return res.status(401).json({ message: "Contraseña incorrecta" });
       }
     }
 
-    // Reset bloqueo si aplica
     if (userFound && typeof userFound.save === "function") {
       userFound.loginAttempts = 0;
       userFound.lockTime = 0;
       await userFound.save();
     }
 
-    // ✅ calcula el flag una sola vez
     const requiresPasswordUpdate = !!(userFound.updatePassStatus || userFound.updatePassBoolean);
 
-    // ✅ payload siempre con el id del usuario (+ flag opcional)
     tokenPayload = {
       id: userFound._id,
       userType,
-      updatePassStatus: requiresPasswordUpdate, // útil si lo lees server-side
+      isReadOnly,              // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+      updatePassStatus: requiresPasswordUpdate,
     };
 
     const safePhoto = (photo) => {
@@ -101,7 +97,6 @@ loginController.login = async (req, res) => {
       return null;
     };
 
-    // Enriquecer payload para frontend (nombres, equipo, etc.)
     if (userType === "Admin") {
       tokenPayload.fullName =
         userFound.fullName ||
@@ -132,7 +127,6 @@ loginController.login = async (req, res) => {
           return res.status(500).json({ message: "Error generando el token" });
         }
 
-        // Cookie httpOnly con el token
         res.cookie("authToken", token, {
           httpOnly: true,
           secure: false,
@@ -141,16 +135,16 @@ loginController.login = async (req, res) => {
           maxAge: cookieMaxAge,
         });
 
-        // Info de usuario cifrada para el frontend (incluye el flag)
         const userInfo = {
           _id: userFound._id,
           userType,
+          isReadOnly,           // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
           fullName: tokenPayload.fullName,
           idTeam: tokenPayload.idTeam,
           numEmpleado: tokenPayload.numEmpleado,
           department: tokenPayload.department,
           photo: tokenPayload.photo,
-          requiresPasswordUpdate, // 👈 queda también accesible en cookie si la lees en FE
+          requiresPasswordUpdate,
         };
 
         const encryptedUserInfo = CryptoJS.AES.encrypt(
@@ -166,7 +160,6 @@ loginController.login = async (req, res) => {
           maxAge: cookieMaxAge,
         });
 
-        // ⬇️⬇️⬇️ CAMBIO CLAVE: devolver el flag en el JSON ⬇️⬇️⬇️
         return res.json({
           message: "login successful",
           userType,
@@ -174,7 +167,8 @@ loginController.login = async (req, res) => {
           userId: userFound._id,
           fullName: tokenPayload.fullName,
           idTeam: tokenPayload.idTeam,
-          requiresPasswordUpdate, // 👈 AHORA el FE lo recibe aquí y puede abrir el modal
+          isReadOnly,          // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+          requiresPasswordUpdate,
         });
       }
     );

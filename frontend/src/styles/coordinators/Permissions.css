@@ -1,0 +1,82 @@
+/* ====== Estilo coordinadores, igual al de empleados ====== */
+.cpg{
+  --text:#0f172a; --muted:#6b7280; --card:#fff;
+  --green-500:#22c55e; --yellow-500:#f59e0b; --red-500:#ef4444; --violet-500:#7c3aed;
+
+  min-height:100vh;
+  background:#f7f2f0;
+  padding:0% 5%;
+  color:var(--text);
+
+  display:flex; justify-content:flex-start;
+  overflow:hidden; /* scroll dentro del contenedor */
+}
+.cpg__container{ width:100%; max-width:1360px; }
+
+.cpg__header{ margin:12px 0 16px; }
+.cpg__title{ font-size:20px; font-weight:600; }
+
+/* botón NUEVO afuera del contenedor blanco */
+.cpg__newWrap{ padding:0 0 1.5% 0; }
+.cpg__new{
+  align-self:flex-start;
+  padding:8px 16px; border-radius:12px;
+  background:#fff; color:#858585;
+  border:1px solid rgb(225,225,225);
+  font-size:14px; font-weight:500; cursor:pointer;
+  transition:filter .2s ease;
+}
+.cpg__new:hover{ filter:brightness(0.95); }
+
+/* contenedor blanco */
+.cpg__sheet{
+  background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.05);
+  padding:20px; display:flex; flex-direction:column; gap:20px;
+  height:520px; overflow:hidden; /* la lista scrollea */
+}
+
+/* filtros/chips adentro */
+.cpg__actions{ flex:0 0 auto; display:flex; flex-direction:column; gap:14px; }
+.cpg__filters{ display:flex; gap:10px; flex-wrap:wrap; }
+.cpg__chip{
+  border:1px solid #ffffff; border-radius:8px; padding:7px;
+  display:flex; align-items:center; gap:8px; background:#fff;
+}
+.cpg__input,.cpg__select{
+  border:none; outline:none; background:transparent;
+  font-size:13px; color:var(--muted);
+}
+
+/* lista con scroll */
+.cpg__list{
+  flex:1 1 0; min-height:0; overflow-y:auto; padding-right:6px;
+  display:flex; flex-direction:column;
+}
+.cpg__list::-webkit-scrollbar{ width:8px; }
+.cpg__list::-webkit-scrollbar-track{ background:#f6f6f6; border-radius:8px; }
+.cpg__list::-webkit-scrollbar-thumb{ background:#d4d4d8; border-radius:8px; }
+.cpg__list::-webkit-scrollbar-thumb:hover{ background:#bdbdc2; }
+
+.cpg__empty{ padding:36px; color:var(--muted); text-align:center; }
+
+/* filas tipo tarjeta */
+.cpg__row{
+  background:#f3f3f3; border:none; border-bottom:1px solid #f1f5f9;
+  padding:16px 18px; border-radius:5px; margin:5px;
+  display:flex; align-items:center; justify-content:space-between;
+  cursor:pointer; transition:background .15s ease; text-align:left;
+}
+.cpg__row:hover{ background:#f9fafb; }
+
+.cpg__rowLeft{ display:flex; align-items:center; gap:12px; min-width:0; }
+.cpg__dot{ width:8px; height:8px; border-radius:999px; background:#3b82f6; display:inline-block; }
+.cpg__doc{ font-size:16px; opacity:.8; }
+.cpg__rowTitle{ font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; }
+.cpg__rowRight{ display:flex; align-items:center; gap:8px; }
+
+/* badges */
+.cpg__badge{ font-size:13px; font-weight:600; }
+.cpg__badge.aprobado{ color:var(--green-500); }
+.cpg__badge.pendiente{ color:var(--yellow-500); }
+.cpg__badge.rechazado{ color:var(--red-500); }
+.cpg__badge.urgente{ color:var(--violet-500); }

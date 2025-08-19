@@ -1,0 +1,65 @@
+/* ==== Modal Ver Permiso ==== */
+.modal-view-permission {
+  max-width: 700px;
+  width: 100%;
+  background: #fff;
+  border-radius: 14px;
+  padding: 2rem;
+}
+
+.modal-view-permission h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.permission-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.permission-details label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.permission-details input,
+.permission-details textarea {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #f9fafb;
+}
+
+.permission-details textarea {
+  resize: none;
+  min-height: 60px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+.modal-footer .btn-delete {
+  background: #dc2626;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.modal-footer .btn-close {
+  background: #f3f4f6;
+  color: #111827;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 500;
+}

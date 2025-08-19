@@ -1,8 +1,7 @@
-// src/pages/employee/Permissions.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import NewPermissionModal from "../../components/employee/PageModals/NewPermissionModal";
 import ViewPermissionModal from "../../components/employee/PageModals/ViewPermissionModal";
-import useDataPermissions from "../../hooks/Global/useDataPermissions";
+import useDataPermissions from "../../hooks/Global/UseDataPermissions";
 import "../../styles/employee/Permission.css";
 
 const mapStatus = (status) => {
@@ -21,7 +20,7 @@ export default function Permissions() {
     permissions,
     fetchPermissions,
     postPermissionMultipart,
-    deletePermission,     // asegúrate que este llama a DELETE /api/permissions/:id
+    deletePermission,
     showModal,
     setShowModal,
   } = useDataPermissions();
@@ -34,88 +33,111 @@ export default function Permissions() {
   useEffect(() => { fetchPermissions(); }, []);
 
   const filteredPermissions = useMemo(() => {
-    let list = permissions || [];
-    if (searchDate) {
-      list = list.filter((p) => (p.applicationDay || "").includes(searchDate));
-    }
-    if (filterStatus !== "Todos") {
-      const wanted = {
-        Urgente: "urgent",
-        Rechazado: "rejected",
-        Pendiente: "pending",
-        Aprobado: "approved",
-      }[filterStatus];
-      list = list.filter((p) => (p.status || "").toLowerCase() === wanted);
-    }
-    return list;
-  }, [permissions, filterStatus, searchDate]);
+  let list = permissions || [];
 
-  const openView = (perm) => {
-    setSelected(perm);
-    setViewOpen(true);
-  };
-  const closeView = () => setViewOpen(false);
+  if (searchDate) {
+    const selectedDate = new Date(searchDate);
+    list = list.filter(p => {
+      const permDate = new Date(p.applicationDay);
+      return permDate <= selectedDate; // solo permisos de esa fecha o antes
+    });
+  }
 
-  const handleDeleted = async () => {
-    await fetchPermissions();
-  };
+  if (filterStatus !== "Todos") {
+    const wanted = { Urgente:"urgent", Rechazado:"rejected", Pendiente:"pending", Aprobado:"approved" }[filterStatus];
+    list = list.filter(p => (p.status || "").toLowerCase() === wanted);
+  }
+
+  return list;
+}, [permissions, filterStatus, searchDate]);
+
+
+  const openView  = (perm) => { setSelected(perm); setViewOpen(true); };
+  const closeView = () => { setViewOpen(false); setSelected(null); };
+  const handleDeleted = async () => { await fetchPermissions(); };
 
   const handleOpenModal = () => setShowModal(true);
-  const handleCloseModal = async () => {
-    setShowModal(false);
-    await fetchPermissions();
-  };
+  const handleCloseModal = async () => { setShowModal(false); await fetchPermissions(); };
 
   return (
-    <div className="permissions-page">
-      <div className="permissions-header">
-        <h2>Gestión de mis permisos</h2>
-        <button onClick={handleOpenModal} className="btn-new-permission">
-          Adjuntar un nuevo permiso
-        </button>
+    <div className="pgp">
+      <div className="pgp__container">
+        {/* encabezado */}
+        <header className="pgp__header">
+          <h2 className="pgp__title">Gestión de mis permisos</h2>
+        </header>
+
+        <div className="pgp__new1">
+          <button onClick={handleOpenModal} className="pgp__new">
+              Adjuntar un nuevo permiso
+          </button>
+        </div>
+
+        {/* container blanco con filtros y botón */}
+        <section className="pgp__sheet">
+          <div className="pgp__actions">
+            
+
+            <div className="pgp__filters">
+              <div className="pgp__chip">
+                <input
+                  type="date"
+                  value={searchDate}
+                  onChange={(e) => setSearchDate(e.target.value)}
+                  className="pgp__input"
+                  aria-label="Buscar por fecha"
+                />
+              </div>
+              <div className="pgp__chip">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="pgp__select"
+                  aria-label="Estado"
+                >
+                  <option value="Todos">Todos</option>
+                  <option value="Urgente">Urgente</option>
+                  <option value="Rechazado">Rechazado</option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="Aprobado">Aprobado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* lista */}
+          {filteredPermissions.length === 0 ? (
+            <div className="pgp__empty">No hay permisos para mostrar.</div>
+          ) : (
+            <div className="pgp__list">
+              {filteredPermissions.map((perm, idx) => {
+                const { label, cls } = mapStatus(perm.status);
+                return (
+                  <button
+                    key={perm._id}
+                    className={`pgp__row ${idx === filteredPermissions.length - 1 ? "last" : ""}`}
+                    onClick={() => openView(perm)}
+                    title="Ver detalles"
+                  >
+                    <div className="pgp__rowLeft">
+                      <span className="pgp__dot" />
+                      <span className="pgp__doc" aria-hidden>📄</span>
+                      <span className="pgp__rowTitle">
+                        Permiso {perm.applicationDay}
+                      </span>
+                    </div>
+                    <div className="pgp__rowRight">
+                      <span className={`pgp__badge ${cls}`}>{label}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
-      <div className="filters">
-        <input
-          type="date"
-          value={searchDate}
-          onChange={(e) => setSearchDate(e.target.value)}
-          placeholder="Buscar por fecha"
-        />
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-          <option value="Todos">Todos</option>
-          <option value="Urgente">Urgente</option>
-          <option value="Rechazado">Rechazado</option>
-          <option value="Pendiente">Pendiente</option>
-          <option value="Aprobado">Aprobado</option>
-        </select>
-      </div>
-
-      <div className="permissions-list">
-        {filteredPermissions.length === 0 ? (
-          <p>No hay permisos para mostrar.</p>
-        ) : (
-          filteredPermissions.map((perm) => {
-            const { label, cls } = mapStatus(perm.status);
-            return (
-              <button
-                key={perm._id}
-                className={`permission-card ${cls}`}
-                onClick={() => openView(perm)}
-                title="Ver detalles"
-              >
-                <div className="card-left">
-                  <span className="permission-title">📄 Permiso {perm.applicationDay}</span>
-                </div>
-                <div className="card-right">
-                  <span className={`status-label ${cls}`}>{label}</span>
-                </div>
-              </button>
-            );
-          })
-        )}
-      </div>
-
+      {/* modales */}
       <NewPermissionModal
         isOpen={showModal}
         onClose={handleCloseModal}

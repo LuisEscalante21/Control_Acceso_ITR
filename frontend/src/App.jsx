@@ -18,6 +18,7 @@ import Accesos from "./pages/admin/Accesos.jsx";
 import Areas from "./pages/admin/Areas.jsx";
 import Horarios from "./pages/admin/Horarios.jsx";
 import Rostros from "./pages/admin/Rostros.jsx";
+import PermisosAdmin from "./pages/admin/Permissions.jsx";
 
 // Coordinator
 import CoordinatorDashboard from "./pages/coordinator/Dashboard.jsx";
@@ -70,7 +71,7 @@ function App() {
           <Route path="horarios" element={<Horarios />} />
           <Route path="coordinadores" element={<Coordinators />} />
           <Route path="usuarios" element={<Admins />} />
-          <Route path="permisos" element={<h1>Gestión de Permisos</h1>} />
+          <Route path="permisos" element={<PermisosAdmin/>} />
           <Route path="historial" element={<Accesos />} />
           <Route path="registros" element={<Rostros />} />
           <Route path="areas" element={<Areas />} />

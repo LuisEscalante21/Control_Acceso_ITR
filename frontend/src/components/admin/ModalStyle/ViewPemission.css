@@ -1,0 +1,173 @@
+/* ========= Modal base ========= */
+.vp2-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(17,24,39,.55);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+.vp2-modal{
+  width: min(920px, 92vw);
+  max-height: 90vh;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 35px rgba(0,0,0,.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ========= Header ========= */
+.vp2-header{
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #eee;
+}
+.vp2-title{ margin: 0; font-size: 18px; font-weight: 700; color: #111827; }
+.vp2-close{ border: 0; background: transparent; font-size: 22px; cursor: pointer; line-height: 1; }
+
+/* ========= Body ========= */
+.vp2-body{ overflow-y: auto; padding: 6px 18px 18px; }
+
+/* fila de estado + acciones */
+.vp2-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid #f3f3f3;
+}
+
+/* ========= Chips de estado ========= */
+.vp2-status{
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.vp2-status.pending{  background:#fff7ed; color:#c2410c; }
+.vp2-status.approved{ background:#ecfdf5; color:#065f46; }
+.vp2-status.rejected{ background:#fef2f2; color:#991b1b; }
+.vp2-status.urgent{   background:#fef3c7; color:#92400e; }
+
+/* ========= Botones ========= */
+.vp2-actions{ display: flex; gap: 10px; flex-wrap: wrap; }
+.vp2-actions.end{ justify-content: flex-end; }
+
+.vp2-btn{
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 0;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.vp2-btn.ghost{   background:#f3f4f6; color:#111827; }
+.vp2-btn.danger{  background:#dc2626; color:#fff; }
+.vp2-btn.primary{ background:#111827; color:#fff; }
+.vp2-btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+/* ========= Grid ========= */
+.vp2-grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+  margin: 14px 0;
+}
+@media (max-width: 700px){
+  .vp2-grid{ grid-template-columns: 1fr; }
+}
+
+.vp2-field label{
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+.vp2-field div,
+.vp2-field input,
+.vp2-field select,
+.vp2-field textarea{
+  width: 80%;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #111827;
+}
+.vp2-field textarea{ resize: vertical; min-height: 96px; }
+
+/* ========= Subtítulos ========= */
+.vp2-subtitle{
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* ========= Notas ========= */
+.vp2-notes{ display: grid; gap: 8px; margin: 8px 0 12px; }
+.vp2-note label{
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+.vp2-note p{
+  margin: 0;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #111827;
+}
+
+/* ========= Meta ========= */
+.vp2-meta{ margin-top: 8px; color: #6b7280; font-size: 12px; }
+
+/* ========= Barra de descuento ========= */
+.vp2-discountGroup{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #f9fafb00;
+  border: 1px solid #e5e7eb00;
+  border-radius: 12px;
+  padding: 8px 10px;
+  width: 80%;
+}
+.vp2-discountGroup input[type="checkbox"]{
+  width: 16px;
+  height: 16px;
+  accent-color: #111827;
+}
+.vp2-discountInput{
+  flex: 1 1 auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #111827;
+}
+/* Oculta flechitas */
+.vp2-discountInput::-webkit-outer-spin-button,
+.vp2-discountInput::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.vp2-discountInput[type=number] { -moz-appearance: textfield; }
+
+.vp2-help{
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}

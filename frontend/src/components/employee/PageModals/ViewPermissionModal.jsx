@@ -4,7 +4,6 @@ import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
 import "../PageModalStyles/ViewPermissionModal.css";
 
-/** Corrige URLs de Cloudinary para PDFs guardados como RAW */
 function normalizeCloudinaryUrl(url) {
   if (!url) return url;
   const isPdf = /\.pdf(\?|$)/i.test(url);
@@ -44,6 +43,9 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
     supervisorComments,
     createdAt,
     updatedAt,
+    // descuento
+    Discount,
+    quantityDiscount,
   } = permission;
 
   const isPending = (status || "").toLowerCase() === "pending";
@@ -75,7 +77,6 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
     }
   };
 
-  // Cerrar con ESC
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose?.();
     window.addEventListener("keydown", onKey);
@@ -100,10 +101,7 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
 
     try {
       Swal.fire({ title: "Eliminando...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-      // usar función del hook (sin rutas aquí)
       const res = await deletePermission(_id);
-
       Swal.close();
 
       if (!res.ok) {
@@ -123,8 +121,7 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
   };
 
   const openDocument = () => {
-    if (!docUrl) return;
-    window.open(docUrl, "_blank", "noopener,noreferrer");
+    if (docUrl) window.open(docUrl, "_blank", "noopener,noreferrer");
   };
 
   return createPortal(
@@ -136,7 +133,7 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
           <button className="vp2-close" onClick={onClose} aria-label="Cerrar">×</button>
         </div>
 
-        {/* Body scrollable */}
+        {/* Body */}
         <div className="vp2-body">
           <div className="vp2-row">
             <span className={`vp2-status ${status?.toLowerCase()}`}>{labelStatus}</span>
@@ -161,22 +158,10 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
 
           {/* Datos comunes */}
           <div className="vp2-grid">
-            <div className="vp2-field">
-              <label>Colaborador</label>
-              <div>{employeeName || "-"}</div>
-            </div>
-            <div className="vp2-field">
-              <label>Código</label>
-              <div>{employeeNumber || "-"}</div>
-            </div>
-            <div className="vp2-field">
-              <label>Departamento</label>
-              <div>{department || "-"}</div>
-            </div>
-            <div className="vp2-field">
-              <label>Fecha de solicitud</label>
-              <div>{applicationDay || "-"}</div>
-            </div>
+            <div className="vp2-field"><label>Colaborador</label><div>{employeeName || "-"}</div></div>
+            <div className="vp2-field"><label>Código</label><div>{employeeNumber || "-"}</div></div>
+            <div className="vp2-field"><label>Departamento</label><div>{department || "-"}</div></div>
+            <div className="vp2-field"><label>Fecha de solicitud</label><div>{applicationDay || "-"}</div></div>
           </div>
 
           {permissionType === "minor" && (
@@ -212,6 +197,18 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
             </>
           )}
 
+          {/* Resumen de descuento */}
+          {(typeof Discount !== "undefined") && (
+            <>
+              <h4 className="vp2-subtitle">Resumen de descuento</h4>
+              <div className="vp2-grid">
+                <div className="vp2-field"><label>¿Aplica descuento?</label><div>{Discount ? "Sí" : "No"}</div></div>
+                <div className="vp2-field"><label>Cantidad descontada</label><div>{Number(quantityDiscount || 0)}</div></div>
+              </div>
+            </>
+          )}
+
+          {/* Notas */}
           {(reason || supervisorComments || actionBy) && <h4 className="vp2-subtitle">Notas</h4>}
           <div className="vp2-notes">
             {reason && (<div className="vp2-note"><label>Razón del permiso</label><p>{reason}</p></div>)}

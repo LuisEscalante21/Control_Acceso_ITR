@@ -5,7 +5,7 @@ import fs from "fs/promises";
 
 const permissionsController = {};
 
-// ✅ Extiende los tipos permitidos para que coincidan con el mensaje de error
+// Tipos de archivo permitidos
 const isValidFileType = (mimetype) => {
   const allowedTypes = [
     "application/pdf",
@@ -13,7 +13,6 @@ const isValidFileType = (mimetype) => {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    // Imágenes (ya las mencionabas en el mensaje de error)
     "image/jpeg",
     "image/png",
     "image/jpg",
@@ -43,7 +42,7 @@ permissionsController.InsertPermission = async (req, res) => {
     if (files) {
       for (const file of files) {
         if (!isValidFileType(file.mimetype)) {
-          await fs.unlink(file.path).catch(console.error);
+          await fs.unlink(file.path).catch(() => {});
           return res.status(400).json({
             message:
               "Tipo de archivo no permitido. Solo se permiten PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG",
@@ -51,23 +50,21 @@ permissionsController.InsertPermission = async (req, res) => {
         }
 
         try {
-          // 👇 aquí usamos tu config (que da secure_url correcto)
           const result = await cloudinary.uploader.upload(file.path, {
             folder: "Permissions",
-            resource_type: "auto",   // detecta pdf como raw
+            resource_type: "auto",
             use_filename: true,
             unique_filename: false,
             format: file.originalname.split(".").pop(),
           });
 
-          // 👇 guardamos TODO: url, public_id y tipo de recurso
           documentUrls = result.secure_url;
           supportingPublicId = result.public_id;
           supportingResourceType = result.resource_type;
 
-          await fs.unlink(file.path).catch(console.error);
+          await fs.unlink(file.path).catch(() => {});
         } catch (uploadError) {
-          await fs.unlink(file.path).catch(console.error);
+          await fs.unlink(file.path).catch(() => {});
           throw uploadError;
         }
       }
@@ -82,11 +79,8 @@ permissionsController.InsertPermission = async (req, res) => {
       department: req.body.department || user.department,
       idTeam: user.idTeam ?? user.IdTeam,
       createdBy: user._id,
-
       Discount: req.body.Discount === "true" || req.body.Discount === true,
       quantityDiscount: Number(req.body.quantityDiscount || 0),
-
-      // guardamos siempre los tres
       supportingDocument: documentUrls,
       supportingPublicId,
       supportingResourceType,
@@ -176,7 +170,6 @@ permissionsController.InsertPermission = async (req, res) => {
   }
 };
 
-
 // ===================== Ver documento asociado =====================
 permissionsController.getDocument = async (req, res) => {
   try {
@@ -210,8 +203,6 @@ permissionsController.getMyPermissions = async (req, res) => {
 
     const permissions = await PermissionsModel.find({
       idUser: userId,
-      // 🔁 Fallback opcional si tienes datos antiguos sin idUser:
-      // $or: [{ idUser: userId }, { employeeNumber: req.user.numEmpleado }],
     }).sort({ createdAt: -1 });
 
     res.json({ data: permissions });
@@ -228,12 +219,12 @@ permissionsController.getTeamPermissions = async (req, res) => {
     if (user.userType !== "Coordinator") {
       return res
         .status(403)
-        .json({ message: "Solo coordinadores pueden ver permisos del equipo" });
+        .json({ message: "Solo administradores registrados pueden gestionar permisos." });
     }
 
     const teamPermissions = await PermissionsModel.find({
       idTeam: user.idTeam ?? user.IdTeam,
-      idUser: { $ne: String(user._id) }, // ✅ excluye los propios por idUser
+      idUser: { $ne: String(user._id) },
     }).sort({ createdAt: -1 });
 
     res.json({ data: teamPermissions });
@@ -249,7 +240,7 @@ permissionsController.getAllPermissions = async (req, res) => {
     const user = req.user;
     if (user.userType !== "Admin") {
       return res.status(403).json({
-        message: "Solo administradores pueden ver todos los permisos",
+        message: "Solo administradores registrados pueden gestionar permisos.",
       });
     }
 
@@ -263,7 +254,7 @@ permissionsController.getAllPermissions = async (req, res) => {
   }
 };
 
-// ===================== Obtener UNO =====================
+// ===================== Obtener UNO (detalle) =====================
 permissionsController.getOne = async (req, res) => {
   try {
     const { id } = req.params;
@@ -281,8 +272,28 @@ permissionsController.getOne = async (req, res) => {
 permissionsController.updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, supervisorComments } = req.body;
+    let { status, supervisorComments, Discount, quantityDiscount } = req.body;
     const user = req.user;
+
+    // Admin read-only no puede gestionar
+    if (user.userType === "Admin" && user.isReadOnly) {
+      return res.status(403).json({
+        message: "Solo administradores registrados pueden gestionar permisos.",
+      });
+    }
+
+    const statusNorm = String(status || "").toLowerCase();
+    if (!["approved", "rejected", "pending", "urgent"].includes(statusNorm)) {
+      return res.status(400).json({ message: "Estado inválido." });
+    }
+
+    if (typeof Discount === "string") Discount = Discount === "true";
+    else Discount = !!Discount;
+
+    quantityDiscount = Number(quantityDiscount || 0);
+    if (Number.isNaN(quantityDiscount) || quantityDiscount < 0) {
+      return res.status(400).json({ message: "Cantidad de descuento inválida." });
+    }
 
     const permission = await PermissionsModel.findById(id);
     if (!permission)
@@ -295,29 +306,42 @@ permissionsController.updateStatus = async (req, res) => {
     }
 
     if (user.userType === "Coordinator") {
-      if (
-        permission.idTeam?.toString() !==
-          (user.idTeam ?? user.IdTeam)?.toString() ||
-        String(permission.idUser) === String(user._id) // ✅ no puede gestionar el propio
-      ) {
+      const sameTeam =
+        permission.idTeam?.toString() ===
+        (user.idTeam ?? user.IdTeam)?.toString();
+      const isOwn = String(permission.idUser) === String(user._id);
+      if (!sameTeam || isOwn) {
         return res
           .status(403)
-          .json({ message: "No autorizado para modificar este permiso" });
+          .json({ message: "Solo administradores registrados pueden gestionar permisos." });
       }
     } else if (user.userType !== "Admin") {
-      return res.status(403).json({ message: "Acceso denegado" });
+      return res
+        .status(403)
+        .json({ message: "Solo administradores registrados pueden gestionar permisos." });
     }
+
+    if (!Discount) quantityDiscount = 0;
 
     const updated = await PermissionsModel.findByIdAndUpdate(
       id,
-      { status, supervisorComments, actionBy: user.fullName },
+      {
+        status: statusNorm,
+        supervisorComments,
+        actionBy: user.fullName,
+        Discount,
+        quantityDiscount,
+      },
       { new: true }
     );
 
-    res.json({ message: "Estado del permiso actualizado", data: updated });
+    return res.json({
+      message: "Estado del permiso actualizado",
+      data: updated,
+    });
   } catch (error) {
     console.error("Error al actualizar permiso:", error);
-    res.status(500).json({ message: "Error al actualizar permiso" });
+    return res.status(500).json({ message: "Error al actualizar permiso" });
   }
 };
 
@@ -326,6 +350,13 @@ permissionsController.deleteOne = async (req, res) => {
   try {
     const { id } = req.params;
     const user = req.user;
+
+    // Admin read-only no puede eliminar
+    if (user.userType === "Admin" && user.isReadOnly) {
+      return res.status(403).json({
+        message: "Solo administradores registrados pueden gestionar permisos.",
+      });
+    }
 
     const perm = await PermissionsModel.findById(id);
     if (!perm)
@@ -376,8 +407,7 @@ permissionsController.deleteOne = async (req, res) => {
   }
 };
 
-
-// ===================== Borrar TODOS (Admin) =====================
+// ===================== Borrar TODOS (Admin) + limpia Cloudinary =====================
 permissionsController.clearAllPermissions = async (req, res) => {
   try {
     const user = req.user;
@@ -385,21 +415,46 @@ permissionsController.clearAllPermissions = async (req, res) => {
 
     if (user.userType !== "Admin") {
       return res.status(403).json({
-        message:
-          "No autorizado. Solo administradores pueden realizar esta acción.",
+        message: "Solo administradores registrados pueden gestionar permisos.",
+      });
+    }
+
+    if (user.isReadOnly) {
+      return res.status(403).json({
+        message: "Solo administradores registrados pueden gestionar permisos.",
       });
     }
 
     if (confirm !== "REMOVE") {
       return res.status(400).json({
         message:
-          "Confirmación inválida. Debe proporcionar ?confirm=REMOVE para ejecutar esta acción.",
+          "Confirmación inválida. Debe proporcionar ?confirm=REMOVE",
       });
     }
 
+    // 1) Traer todos los permisos
+    const all = await PermissionsModel.find();
+
+    // 2) Borrar archivos en Cloudinary
+    for (const perm of all) {
+      try {
+        if (perm.supportingPublicId) {
+          await cloudinary.uploader.destroy(perm.supportingPublicId, {
+            resource_type: perm.supportingResourceType || "raw",
+            invalidate: true,
+          });
+        }
+      } catch (e) {
+        console.warn("No se pudo borrar en Cloudinary:", e?.message || e);
+      }
+    }
+
+    // 3) Borrar todos en Mongo
     await PermissionsModel.deleteMany({});
+
     res.json({
-      message: "REMOVE: Todos los permisos han sido eliminados correctamente.",
+      message:
+        "REMOVE: Todos los permisos y documentos asociados han sido eliminados correctamente.",
     });
   } catch (error) {
     console.error("Error al eliminar permisos:", error);

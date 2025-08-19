@@ -1,0 +1,90 @@
+/* ====== Estilo Admin, reutiliza el de coordinadores/empleados ====== */
+.apg__page{
+  --text:#0f172a; --muted:#6b7280; --card:#fff;
+  --green-500:#22c55e; --yellow-500:#f59e0b; --red-500:#ef4444; --violet-500:#7c3aed;
+
+  min-height:100vh;
+  background:#f7f2f0;
+  padding:0% 5%;
+  color:var(--text);
+
+  display:flex; justify-content:flex-start;
+  overflow:hidden; /* scroll dentro del contenedor */
+}
+.apg__container{ width:100%; max-width:1360px; }
+
+/* Header + acciones */
+.apg__header{ margin:12px 0 16px; }
+.apg__title{ font-size:20px; font-weight:600; }
+
+.apg__actions{
+  margin-top:12px;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; flex-wrap:wrap;
+}
+.apg__filters{ display:flex; gap:10px; flex-wrap:wrap; }
+.apg__chip{
+  border:1px solid #ffffff;
+  border-radius:8px; padding:7px;
+  display:flex; align-items:center; gap:8px; background:#fff;
+}
+.apg__input,.apg__select{
+  border:none; outline:none; background:transparent;
+  font-size:13px; color:var(--muted);
+}
+
+/* Botón peligro (eliminar todos) */
+.apg__danger{
+  padding:8px 16px; border-radius:12px;
+  background:#fff; color:#dc2626;
+  border:1px solid #f2c2c2;
+  font-size:14px; font-weight:600; cursor:pointer;
+  transition:filter .2s ease, background .2s ease;
+}
+.apg__danger:hover{ filter:brightness(0.97); background:#fff5f5; }
+
+/* Contenedor blanco con scroll interno para la lista */
+.apg__sheet{
+  background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.05);
+  padding: 0 20px 20px 20px; display:flex; flex-direction:column; gap:20px;
+  height:520px; overflow:hidden; /* la lista scrollea */
+}
+.a{
+  padding: 0 0 1.5% 0;
+}
+
+/* Lista */
+.apg__list{
+  flex:1 1 0; min-height:0; overflow-y:auto; padding-right:6px;
+  display:flex; flex-direction:column;
+}
+.apg__list::-webkit-scrollbar{ width:8px; }
+.apg__list::-webkit-scrollbar-track{ background:#f6f6f6; border-radius:8px; }
+.apg__list::-webkit-scrollbar-thumb{ background:#d4d4d8; border-radius:8px; }
+.apg__list::-webkit-scrollbar-thumb:hover{ background:#bdbdc2; }
+
+.apg__empty{ padding:36px; color:var(--muted); text-align:center; }
+
+/* Fila/tarjeta */
+.apg__row{
+  background:#f3f3f3; border:none; border-bottom:1px solid #f1f5f9;
+  padding:16px 18px; border-radius:5px; margin:5px;
+  display:flex; align-items:center; justify-content:space-between;
+  cursor:pointer; transition:background .15s ease; text-align:left;
+}
+.apg__row:hover{ background:#f9fafb; }
+
+.apg__rowLeft{ display:flex; align-items:center; gap:12px; min-width:0; }
+.apg__dot{ width:8px; height:8px; border-radius:999px; background:#3b82f6; display:inline-block; }
+.apg__doc{ font-size:16px; opacity:.8; }
+.apg__rowTitle{
+  font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px;
+}
+.apg__rowRight{ display:flex; align-items:center; gap:8px; }
+
+/* Badges estado */
+.apg__badge{ font-size:13px; font-weight:600; }
+.apg__badge.aprobado{ color:var(--green-500); }
+.apg__badge.pendiente{ color:var(--yellow-500); }
+.apg__badge.rechazado{ color:var(--red-500); }
+.apg__badge.urgente{ color:var(--violet-500); }

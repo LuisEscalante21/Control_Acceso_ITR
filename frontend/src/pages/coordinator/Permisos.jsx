@@ -1,15 +1,23 @@
+// src/pages/coordinators/CoordinatorPermissions.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import useDataPermissions from "../../hooks/Global/useDataPermissions";
-import NewPermissionModal from "../../components/coordinator/PageModals/NewPermissionModal"; // reusa el de empleado
-import ViewPermissionModal from "../../components/coordinator/PageModals/ViewPermissionModal"; // este es el de coord
+import useDataPermissions from "../../hooks/Global/UseDataPermissions";
+import useDataCredentials from "../../hooks/Global/useDataCredentials";
+import NewPermissionModal from "../../components/coordinator/PageModals/NewPermissionModal";
+import ViewPermissionModal from "../../components/coordinator/PageModals/ViewPermissionModal";
+import "../../styles/coordinators/Permissions.css";
 
-const mapStatus = (status) => {
-  const s = (status || "").toLowerCase();
+// Permiso urgente = incapacidad + pendiente
+const isUrgent = (p) =>
+  (p?.permissionType === "incapacity") &&
+  ((p?.status || "").toLowerCase() === "pending");
+
+const mapStatusForCard = (perm) => {
+  if (isUrgent(perm)) return { label: "! URGENTE", cls: "urgente" };
+  const s = (perm?.status || "").toLowerCase();
   switch (s) {
-    case "urgent":   return { label: "Urgente",   cls: "urgente" };
     case "rejected": return { label: "Rechazado", cls: "rechazado" };
     case "pending":  return { label: "Pendiente", cls: "pendiente" };
-    case "approved": return { label: "Aprobado",  cls: "aprobado" };
+    case "approved": return { label: "Aprobado",  cls: "aprobado"  };
     default:         return { label: "Desconocido", cls: "" };
   }
 };
@@ -17,44 +25,70 @@ const mapStatus = (status) => {
 export default function CoordinatorPermissions() {
   const {
     permissions,
-    fetchPermissions,        // mis permisos
-    fetchTeamPermissions,    // permisos del área
-    postPermissionMultipart, // crear (mismo modal de empleados)
-    deletePermission,        // borrar si está pendiente
-    updatePermissionStatus,  // aprobar/rechazar (+ descuento opcional)
+    fetchPermissions,
+    fetchTeamPermissions,
+    postPermissionMultipart,
+    deletePermission,
+    updatePermissionStatus,
     showModal,
     setShowModal,
   } = useDataPermissions();
 
-  // Combobox #1: alcance
-  const [scope, setScope] = useState("mine"); // "mine" | "team"
-  // Filtros de la lista
+  const { user } = useDataCredentials();
+  const currentUserId = user?._id ? String(user._id) : null;
+
+  // 👇 Cambié el valor inicial a "team" para que siempre muestre primero los del área
+  const [scope, setScope] = useState("team"); 
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [searchDate, setSearchDate] = useState("");
-  // Ver/Gestionar
   const [viewOpen, setViewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
 
-  // Cargar cada vez que cambia el alcance
   useEffect(() => {
     if (scope === "mine") fetchPermissions();
     else fetchTeamPermissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope]);
 
-  const filteredPermissions = useMemo(() => {
-    let list = permissions || [];
-    if (searchDate) list = list.filter((p) => (p.applicationDay || "").includes(searchDate));
-    if (filterStatus !== "Todos") {
+const filteredPermissions = useMemo(() => {
+  let list = permissions || [];
+
+  if (searchDate) {
+    const selectedDate = new Date(searchDate);
+
+    list = list.filter((p) => {
+      if (!p.applicationDay) return false;
+      const permDate = new Date(p.applicationDay);
+      return permDate <= selectedDate; // 👈 incluye el día elegido y días anteriores
+    });
+  }
+
+  if (filterStatus !== "Todos") {
+    if (filterStatus === "Urgente") {
+      list = list.filter((p) => isUrgent(p));
+    } else {
       const desired = {
-        Urgente: "urgent",
         Rechazado: "rejected",
         Pendiente: "pending",
         Aprobado: "approved",
       }[filterStatus];
-      list = list.filter((p) => (p.status || "").toLowerCase() === desired);
+      list = list.filter(
+        (p) => (p.status || "").toLowerCase() === desired && !isUrgent(p)
+      );
     }
-    return list;
-  }, [permissions, filterStatus, searchDate]);
+  }
+
+  // 👇 Ordena: urgentes primero
+  list = [...list].sort((a, b) => {
+    if (isUrgent(a) && !isUrgent(b)) return -1;
+    if (!isUrgent(a) && isUrgent(b)) return 1;
+    return 0; 
+  });
+
+  return list;
+}, [permissions, filterStatus, searchDate]);
+
+
 
   const openNew = () => setShowModal(true);
   const closeNew = async () => {
@@ -72,67 +106,86 @@ export default function CoordinatorPermissions() {
   };
 
   return (
-    <div className="permissions-page">
-      <div className="permissions-header">
-        <h2>Permisos — Coordinador</h2>
+    <div className="cpg">
+      <div className="cpg__container">
+        <header className="cpg__header">
+          <h2 className="cpg__title">Permisos — Coordinador</h2>
+        </header>
 
-        <div className="row" style={{ gap: 12 }}>
-          {/* Combobox #1: Mis permisos / Permisos del área */}
-          <select value={scope} onChange={(e) => setScope(e.target.value)}>
-            <option value="mine">Mis permisos</option>
-            <option value="team">Permisos del área</option>
-          </select>
-
-          {/* Filtros */}
-          <input
-            type="date"
-            value={searchDate}
-            onChange={(e) => setSearchDate(e.target.value)}
-            placeholder="Buscar por fecha"
-          />
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="Todos">Todos</option>
-            <option value="Urgente">Urgente</option>
-            <option value="Rechazado">Rechazado</option>
-            <option value="Pendiente">Pendiente</option>
-            <option value="Aprobado">Aprobado</option>
-          </select>
-
-          {/* Crear (reutiliza el mismo modal de empleado) */}
-          <button onClick={openNew} className="btn-new-permission">
-            Nuevo permiso
-          </button>
+        <div className="cpg__newWrap">
+          <button onClick={openNew} className="cpg__new">Nuevo permiso</button>
         </div>
+
+        <section className="cpg__sheet">
+          <div className="cpg__actions">
+            <div className="cpg__filters">
+              <div className="cpg__chip">
+                <select value={scope} onChange={(e) => setScope(e.target.value)} className="cpg__select">
+                  <option value="team">Permisos del área</option>
+                  <option value="mine">Mis permisos</option>
+                </select>
+              </div>
+
+              <div className="cpg__chip">
+                <input
+                  type="date"
+                  value={searchDate}
+                  onChange={(e) => setSearchDate(e.target.value)}
+                  className="cpg__input"
+                  aria-label="Buscar por fecha"
+                />
+              </div>
+
+              <div className="cpg__chip">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="cpg__select"
+                  aria-label="Estado"
+                >
+                  <option value="Todos">Todos</option>
+                  <option value="Urgente">Urgente</option>
+                  <option value="Rechazado">Rechazado</option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="Aprobado">Aprobado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* LISTA */}
+          {filteredPermissions.length === 0 ? (
+            <div className="cpg__empty">No hay permisos para mostrar.</div>
+          ) : (
+            <div className="cpg__list">
+              {filteredPermissions.map((perm) => {
+                const { label, cls } = mapStatusForCard(perm);
+                return (
+                  <button
+                    key={perm._id}
+                    className={`cpg__row`}
+                    onClick={() => openView(perm)}
+                    title="Ver / Gestionar"
+                  >
+                    <div className="cpg__rowLeft">
+                      <span className="cpg__dot" />
+                      <span className="cpg__doc" aria-hidden>📄</span>
+                      <span className="cpg__rowTitle">
+                        {perm.employeeName || "Colaborador"} — {perm.applicationDay}
+                      </span>
+                    </div>
+                    <div className="cpg__rowRight">
+                      <span className={`cpg__badge ${cls}`}>{label}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
-      <div className="permissions-list">
-        {filteredPermissions.length === 0 ? (
-          <p>No hay permisos para mostrar.</p>
-        ) : (
-          filteredPermissions.map((perm) => {
-            const { label, cls } = mapStatus(perm.status);
-            return (
-              <button
-                key={perm._id}
-                className={`permission-card ${cls}`}
-                onClick={() => openView(perm)}
-                title="Ver / Gestionar"
-              >
-                <div className="card-left">
-                  <span className="permission-title">
-                    📄 {perm.employeeName || "Colaborador"} — {perm.applicationDay}
-                  </span>
-                </div>
-                <div className="card-right">
-                  <span className={`status-label ${cls}`}>{label}</span>
-                </div>
-              </button>
-            );
-          })
-        )}
-      </div>
-
-      {/* Modal crear (mismo componente de empleado) */}
+      {/* Modales */}
       <NewPermissionModal
         isOpen={showModal}
         onClose={closeNew}
@@ -140,7 +193,6 @@ export default function CoordinatorPermissions() {
         postPermissionMultipart={postPermissionMultipart}
       />
 
-      {/* Modal ver/gestionar (coordinador) */}
       <ViewPermissionModal
         isOpen={viewOpen}
         onClose={closeView}
@@ -148,6 +200,7 @@ export default function CoordinatorPermissions() {
         onChanged={refresh}
         deletePermission={deletePermission}
         updatePermissionStatus={updatePermissionStatus}
+        currentUserId={currentUserId}
       />
     </div>
   );

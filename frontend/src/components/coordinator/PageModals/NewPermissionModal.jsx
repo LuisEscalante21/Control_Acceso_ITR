@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 
-import "../../employee/PageModalStyles/NewPermissionModal.css";
+
 import useDataCredentials from "../../../hooks/Global/useDataCredentials";
 import useDataTeams from "../../../hooks/Global/useDataTeams";
 
@@ -23,11 +23,14 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
   const [file, setFile] = useState(null);
   const [docPreview, setDocPreview] = useState(null);
 
+  const today = new Date().toISOString().split("T")[0]; // ⬅️ hoy como min
+
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
+    watch,
   } = useForm({
     defaultValues: {
       applicationDay: "",
@@ -69,7 +72,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
   useEffect(() => {
     if (!loading && user) {
       reset({
-        applicationDay: new Date().toISOString().split("T")[0],
+        applicationDay: today,
         employeeNumber: user?.numEmpleado || "",
         idTeam: user?.idTeam || user?.IdTeam || "",
         department: user?.department || "",
@@ -87,7 +90,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
         illnessType: "",
       });
     }
-  }, [loading, user, reset]);
+  }, [loading, user, reset, today]);
 
   const closeAndReset = () => {
     reset();
@@ -118,11 +121,17 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
       if (!form.permissionDate || !form.startTime || !form.endTime) {
         return "Completa fecha de ausencia, entrada y salida.";
       }
+      if (form.startTime >= form.endTime) {
+        return "La hora de entrada no puede ser mayor o igual a la de salida.";
+      }
     }
 
     if (permissionType === "major") {
       if (!form.permissionDateFrom || !form.permissionDateTo) {
         return "Completa fecha de inicio y fin para permiso mayor.";
+      }
+      if (form.permissionDateFrom > form.permissionDateTo) {
+        return "La fecha de inicio no puede ser posterior a la fecha de fin.";
       }
       if (!form.reason && !file) {
         return "Para permiso mayor incluye una razón o adjunta documento.";
@@ -132,6 +141,9 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
     if (permissionType === "incapacity") {
       if (!form.sickLeaveDateFrom || !form.sickLeaveDateTo) {
         return "Completa fecha de inicio y fin para incapacidad.";
+      }
+      if (form.sickLeaveDateFrom > form.sickLeaveDateTo) {
+        return "La fecha de inicio no puede ser posterior a la fecha de fin.";
       }
       if (!form.incapacityType || !form.illnessType) {
         return "Selecciona el tipo de incapacidad y de enfermedad.";
@@ -179,7 +191,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
       fd.append("Discount", form.Discount ?? false);
       fd.append("quantityDiscount", form.quantityDiscount ?? 0);
 
-      // por tipo (NO agregues de otros tipos)
+      // por tipo
       if (permissionType === "minor") {
         fd.append("permissionDate", form.permissionDate);
         fd.append("startTime", form.startTime);
@@ -200,12 +212,10 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
         fd.append("illnessType", form.illnessType);
       }
 
-      if (file) fd.append("supportingDocumentFile", file); // multer.single("supportingDocumentFile")
+      if (file) fd.append("supportingDocumentFile", file);
 
-      // 👇 agregado: idUser explícito desde el hook de credenciales
       if (user?._id) fd.append("idUser", String(user._id));
 
-      // usar la función del hook (sin rutas aquí)
       const res = await postPermissionMultipart(fd);
       if (!res.ok) {
         Swal.close();
@@ -215,7 +225,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
       Swal.close();
       await Swal.fire("¡Éxito!", "Permiso enviado correctamente.", "success");
       onSaved?.();
-      closeAndReset();
+      closeAndReset(); // ⬅️ cerrar al enviar
     } catch (err) {
       console.error(err);
       Swal.close();
@@ -233,10 +243,9 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
   }
 
   return createPortal(
-    <div className="np-overlay" onClick={closeAndReset}>
+    <div className="np-overlay">
       <form
         className="np-content"
-        onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
@@ -260,7 +269,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
           </div>
         </div>
 
-        {/* Hidden (rellenos con reset) */}
+        {/* Hidden */}
         <input type="hidden" {...register("applicationDay")} />
         <input type="hidden" {...register("employeeNumber")} />
         <input type="hidden" {...register("idTeam")} />
@@ -300,7 +309,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
           <div className="np-grid">
             <div className="np-field">
               <label>Fecha de ausencia</label>
-              <input type="date" {...register("permissionDate", { required: "Requerido" })} />
+              <input type="date" min={today} {...register("permissionDate", { required: "Requerido" })} />
               {errors.permissionDate && <small className="np-error">{errors.permissionDate.message}</small>}
             </div>
             <div className="np-field">
@@ -324,12 +333,12 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
           <div className="np-grid">
             <div className="np-field">
               <label>Inicio</label>
-              <input type="date" {...register("permissionDateFrom", { required: "Requerido" })} />
+              <input type="date" min={today} {...register("permissionDateFrom", { required: "Requerido" })} />
               {errors.permissionDateFrom && <small className="np-error">{errors.permissionDateFrom.message}</small>}
             </div>
             <div className="np-field">
               <label>Fin</label>
-              <input type="date" {...register("permissionDateTo", { required: "Requerido" })} />
+              <input type="date" min={today} {...register("permissionDateTo", { required: "Requerido" })} />
               {errors.permissionDateTo && <small className="np-error">{errors.permissionDateTo.message}</small>}
             </div>
             <div className="np-field np-col-2">
@@ -343,12 +352,12 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
           <div className="np-grid">
             <div className="np-field">
               <label>Inicio</label>
-              <input type="date" {...register("sickLeaveDateFrom", { required: "Requerido" })} />
+              <input type="date" min={today} {...register("sickLeaveDateFrom", { required: "Requerido" })} />
               {errors.sickLeaveDateFrom && <small className="np-error">{errors.sickLeaveDateFrom.message}</small>}
             </div>
             <div className="np-field">
               <label>Fin</label>
-              <input type="date" {...register("sickLeaveDateTo", { required: "Requerido" })} />
+              <input type="date" min={today} {...register("sickLeaveDateTo", { required: "Requerido" })} />
               {errors.sickLeaveDateTo && <small className="np-error">{errors.sickLeaveDateTo.message}</small>}
             </div>
             <div className="np-field">
