@@ -12,9 +12,8 @@ const toInputDateFormat = (date) => {
   return localDate.toISOString().split("T")[0];
 };
 
-// 👉 Función para formatear teléfono
 const formatPhone = (value) => {
-  value = value.replace(/\D/g, ""); // quitar todo lo que no sea número
+  value = value.replace(/\D/g, "");
   if (value.length > 4) {
     return value.slice(0, 4) + "-" + value.slice(4, 8);
   }
@@ -22,42 +21,70 @@ const formatPhone = (value) => {
 };
 
 export default function UpdateCoordinators({ coordinator, onSave, onDelete, onClose }) {
+  const { register, handleSubmit, reset, formState: { errors }, setValue } = useForm();
   const [editMode, setEditMode] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState(coordinator?.photo || "");
   const [photoFile, setPhotoFile] = useState(null);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm();
+  const [photoPreview, setPhotoPreview] = useState(coordinator?.photo || "");
 
   useEffect(() => {
-    if (coordinator) {
-      reset({
-        ...coordinator,
-        telephone: formatPhone(coordinator.telephone || ""), // 👈 aplica formato al cargar
-        birthday: toInputDateFormat(coordinator.birthday),
-        status: coordinator.status ? "activo" : "inactivo",
-        password: "",
-      });
-      setPhotoPreview(coordinator.photo || "");
-      setPhotoFile(null);
-      setEditMode(false);
-    }
+    reset({
+      ...coordinator,
+      birthday: toInputDateFormat(coordinator?.birthday),
+      telephone: formatPhone(coordinator?.telephone || ""),
+      status: coordinator?.status ? "activo" : "inactivo",
+      password: "",
+    });
+    setPhotoPreview(coordinator?.photo || "");
+    setPhotoFile(null);
+    setEditMode(false);
   }, [coordinator, reset]);
 
-  const onSubmit = async (data) => {
-    data.status = data.status === "activo";
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-    // 👇 Limpiar el teléfono (sin guiones) antes de guardar
-    data.telephone = data.telephone.replace(/\D/g, "");
+    if (!file.type.startsWith("image/")) {
+      Swal.fire("Error", "Por favor selecciona un archivo de imagen válido.", "error");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      Swal.fire("Error", "La imagen no debe superar los 2MB.", "error");
+      return;
+    }
+
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setPhotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const onSubmit = async (data) => {
+    const allowedFields = [
+      "numEmpleado",
+      "names",
+      "surnames",
+      "email",
+      "password",
+      "telephone",
+      "address",
+      "DUI",
+      "birthday",
+      "status"
+    ];
+
+    data.status = data.status === "activo";
+    data.telephone = formatPhone(data.telephone || "");
 
     const formData = new FormData();
-    for (const key in data) {
-      formData.append(key, data[key]);
-    }
+    allowedFields.forEach((key) => {
+      if (key === "password") {
+        if (data.password && data.password.trim() !== "") {
+          formData.append("password", data.password);
+        }
+      } else if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    });
 
     if (photoFile) {
       formData.append("photo", photoFile);
@@ -86,27 +113,6 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
         onDelete(coordinator._id);
       }
     });
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.match("image.*")) {
-        Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
-        return;
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
-        return;
-      }
-
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   if (!coordinator) return null;

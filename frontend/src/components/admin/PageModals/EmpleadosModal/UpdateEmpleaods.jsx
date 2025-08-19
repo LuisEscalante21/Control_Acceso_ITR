@@ -50,14 +50,35 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
   }, [empleado, reset]);
 
   const onSubmit = async (data) => {
-    data.status = data.status === "activo";
-    // 👉 Guardar sin guion en BD
-    data.telephone = data.telephone.replace(/\D/g, "");
+    // Solo los campos permitidos
+    const allowedFields = [
+      "numEmpleado",
+      "names",
+      "surnames",
+      "email",
+      "password",
+      "telephone",
+      "address",
+      "DUI",
+      "birthday",
+      "status"
+    ];
 
+    // Formatear status y teléfono
+    data.status = data.status === "activo";
+    data.telephone = formatPhone(data.telephone || "");
+
+    // Construir FormData solo con los campos válidos y no vacíos
     const formData = new FormData();
-    for (const key in data) {
-      formData.append(key, data[key]);
-    }
+    allowedFields.forEach((key) => {
+      if (key === "password") {
+        if (data.password && data.password.trim() !== "") {
+          formData.append("password", data.password);
+        }
+      } else if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    });
 
     if (photoFile) {
       formData.append("photo", photoFile);

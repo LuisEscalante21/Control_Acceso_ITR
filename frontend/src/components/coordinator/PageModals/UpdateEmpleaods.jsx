@@ -15,7 +15,7 @@ const toInputDateFormat = (date) => {
 
 // Función para formatear el teléfono con guion después de 4 dígitos
 const formatPhone = (value) => {
-  value = value.replace(/\D/g, ""); // elimina todo lo que no sea número
+  value = value.replace(/\D/g, "");
   if (value.length > 4) {
     return value.slice(0, 4) + "-" + value.slice(4, 8);
   }
@@ -26,23 +26,21 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
   const { register, handleSubmit, reset, formState: { errors }, setValue } = useForm();
   const [editMode, setEditMode] = useState(false);
 
-  // Estado para manejar imagen seleccionada (archivo) y preview (data URL)
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(empleado?.photo || "");
 
-  // Reset formulario y estados cuando cambia empleado
   useEffect(() => {
     reset({
       ...empleado,
       birthday: toInputDateFormat(empleado?.birthday),
-      telephone: formatPhone(empleado?.telephone || ""), // mostrar ya formateado
+      telephone: formatPhone(empleado?.telephone || ""),
+      status: empleado?.status ? "activo" : "inactivo", // <-- inicializa status correctamente
     });
     setPhotoPreview(empleado?.photo || "");
     setPhotoFile(null);
     setEditMode(false);
   }, [empleado, reset]);
 
-  // Validar y cargar preview de imagen al seleccionar archivo
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -64,18 +62,35 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
 
   const onSubmit = async (data) => {
     try {
+      // Solo los campos permitidos
+      const allowedFields = [
+        "numEmpleado",
+        "names",
+        "surnames",
+        "email",
+        "password",
+        "telephone",
+        "address",
+        "DUI",
+        "birthday",
+        "status"
+      ];
+
+      // Formatear status y teléfono
+      data.status = data.status === "activo";
+      data.telephone = formatPhone(data.telephone || "");
+
+      // Construir FormData solo con los campos válidos y no vacíos
       const formData = new FormData();
-
-      // Normalizar teléfono (sin guiones para guardar en BD)
-      const cleanTelephone = data.telephone.replace(/-/g, "");
-      formData.append("telephone", cleanTelephone);
-
-      // Agregar otros campos
-      for (const key in data) {
-        if (key !== "telephone") {
+      allowedFields.forEach((key) => {
+        if (key === "password") {
+          if (data.password && data.password.trim() !== "") {
+            formData.append("password", data.password);
+          }
+        } else if (data[key] !== undefined && data[key] !== null) {
           formData.append(key, data[key]);
         }
-      }
+      });
 
       if (photoFile) {
         formData.append("photo", photoFile);
@@ -243,12 +258,20 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                   {...register("telephone", { required: "Teléfono obligatorio" })}
                   onChange={(e) => {
                     const formatted = formatPhone(e.target.value);
-                    setValue("telephone", formatted); // react-hook-form actualiza el valor
+                    setValue("telephone", formatted);
                   }}
                 />
                 {errors.telephone && (
                   <span className="error-message">{errors.telephone.message}</span>
                 )}
+              </div>
+              <div className="form-field">
+                <label htmlFor="status">Estado:</label>
+                <select id="status" {...register("status", { required: true })}>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+                {errors.status && <span className="error-message">Estado obligatorio</span>}
               </div>
               <div className="form-field">
                 <label htmlFor="address">Dirección de residencia:</label>
@@ -281,8 +304,6 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                   <span className="error-message">{errors.birthday.message}</span>
                 )}
               </div>
-
-              {/* Imagen */}
               <div className="form-field">
                 <label htmlFor="photo">Imagen de perfil:</label>
                 <div className="image-upload-container">
@@ -307,7 +328,6 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                   </div>
                 </div>
               </div>
-
               <button type="submit" className="btn-guardar">
                 ACTUALIZAR
               </button>

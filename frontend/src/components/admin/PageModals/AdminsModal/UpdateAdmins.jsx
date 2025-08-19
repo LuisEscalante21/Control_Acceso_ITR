@@ -12,7 +12,7 @@ const toInputDateFormat = (date) => {
   return localDate.toISOString().split("T")[0];
 };
 
-// 👉 Función para formatear el teléfono con guion cada 4 dígitos
+// Función para formatear el teléfono con guion cada 4 dígitos
 const formatPhone = (value) => {
   value = value.replace(/\D/g, ""); // eliminar caracteres no numéricos
   if (value.length > 4) {
@@ -49,14 +49,35 @@ export default function UpdateAdmins({ admin, onSave, onDelete, onClose }) {
   }, [admin, reset]);
 
   const onSubmit = async (data) => {
+    // Solo los campos permitidos
+    const allowedFields = [
+      "numEmpleado",
+      "names",
+      "surnames",
+      "email",
+      "password",
+      "telephone",
+      "address",
+      "DUI",
+      "birthday",
+      "status"
+    ];
+
+    // Formatear status y teléfono
     data.status = data.status === "activo";
+    data.telephone = formatPhone(data.telephone || "");
 
-    data.telephone = data.telephone.replace(/\D/g, "");
-
+    // Construir FormData solo con los campos válidos y no vacíos
     const formData = new FormData();
-    for (const key in data) {
-      formData.append(key, data[key]);
-    }
+    allowedFields.forEach((key) => {
+      if (key === "password") {
+        if (data.password && data.password.trim() !== "") {
+          formData.append("password", data.password);
+        }
+      } else if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    });
 
     if (photoFile) {
       formData.append("photo", photoFile);
