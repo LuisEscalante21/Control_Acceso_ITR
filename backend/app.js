@@ -26,10 +26,19 @@ import recoveryPasswordRoutes from "./src/routes/recoveryPasswordRoutes.js";
 const app = express();
 
 // Configurar CORS
-app.use(cors({
-  origin: 'http://localhost:5173', // Permitir solicitudes desde el frontend
-  credentials: true // Si necesitas enviar cookies o encabezados de autenticación
-}));
+// Opciones de CORS (permite tanto el frontend local como el de producción)
+const corsOptions = {
+  origin: [
+    'http://localhost:5173', // Desarrollo local (Vite/React)
+    'https://control-acceso-itr.onrender.com', // Render (Producción)
+    'https://control-acceso-itr.vercel.app', // Vercel (Producción)
+  ],
+  credentials: true, // Para cookies/tokens de autenticación
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos permitidos
+  allowedHeaders: ['Content-Type', 'Authorization'], // Cabeceras permitidas
+};
+
+app.use(cors(corsOptions));
 
 // Aumenta el límite a 10mb (puedes ajustar según lo que necesites)
 app.use(bodyParser.json({ limit: '10mb' }));
