@@ -10,9 +10,15 @@ const API_URL = `${BASE_URL}${PORT}/api`;
 const PORT_JUSTIFICATIONS = import.meta.env.VITE_PORT;
 const EMPLOYEE_API_URL = "http://localhost:4000/api/employee";
 const JUSTIFICATIONS_API_URL = `${BASE_URL}${PORT_JUSTIFICATIONS}/api/justifications`;
+
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
 
-const useDataAccess = () => {
+/**
+ * Hook para manejar registros de acceso y justificaciones
+ * @param {string} empleadoId - ID del empleado actual (desde cookie)
+ * @param {string} teamId - ID del área/team del usuario (desde cookie)
+ */
+const useDataAccess = (empleadoId, teamId) => {
   const [accessRecords, setAccessRecords] = useState([]);
   const [justifications, setJustifications] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -44,10 +50,15 @@ const useDataAccess = () => {
     }
   };
 
-  // Obtener registros de acceso
+  // Obtener registros de acceso (filtrados por teamId desde el backend)
   const fetchAccessRecords = async () => {
     try {
-      const res = await axios.get(`${API_URL}/access`, axiosConfig);
+      // 👉 usamos query param ?teamId=xxx
+      const url = teamId
+        ? `${API_URL}/access?teamId=${teamId}`
+        : `${API_URL}/access`;
+
+      const res = await axios.get(url, axiosConfig);
       const registros = res.data;
 
       const registrosConEmpleado = await Promise.all(
@@ -59,6 +70,7 @@ const useDataAccess = () => {
               ? `${empleado.names} ${empleado.surnames}`
               : "Empleado no encontrado",
             employeeAvatar: empleado?.photo || null,
+            teamId: empleado?.teamId || null, // opcional, por si lo necesitas en frontend
           };
         })
       );
@@ -120,7 +132,7 @@ const useDataAccess = () => {
   useEffect(() => {
     fetchAccessRecords();
     fetchJustifications();
-  }, []);
+  }, [teamId]); 
 
   return {
     accessRecords,

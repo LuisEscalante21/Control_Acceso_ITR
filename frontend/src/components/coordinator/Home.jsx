@@ -3,6 +3,8 @@ import CryptoJS from "crypto-js";
 import "../../components/styles/admin/Home.css";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
+import ArrivalBarChart from "../Tools/graphics/ArrivalBarChart.jsx";
+import useDataAccess from "../../hooks/coordinators/useDataAccess.jsx";
 
 export default function AdminHome() {
   const [greeting, setGreeting] = useState("");
@@ -10,8 +12,8 @@ export default function AdminHome() {
 
   const secretKey = import.meta.env.VITE_JWT_SECRET;
 
+  // Leer y descifrar info del usuario desde cookie cifrada con AES
   useEffect(() => {
-    // Leer y parsear la cookie userInfo
     const userInfoCookie = document.cookie
       .split("; ")
       .find((row) => row.startsWith("userInfo="));
@@ -34,6 +36,34 @@ export default function AdminHome() {
     }
   }, [secretKey]);
 
+  // Obtener el id del empleado y el id del área (teamId) desde la cookie
+  const [empleadoId, setEmpleadoId] = useState(null);
+  const [teamId, setTeamId] = useState(null);
+
+  useEffect(() => {
+    const userInfoCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("userInfo="));
+    if (userInfoCookie && secretKey) {
+      try {
+        const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
+        const bytes = CryptoJS.AES.decrypt(encrypted, secretKey);
+        const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+        if (decryptedStr) {
+          const userInfo = JSON.parse(decryptedStr);
+          setEmpleadoId(userInfo._id || null);
+          setTeamId(userInfo.teamId || null);
+        }
+      } catch (err) {
+        setEmpleadoId(null);
+        setTeamId(null);
+      }
+    }
+  }, [secretKey]);
+
+  // Hook para obtener los registros de acceso del área
+  const { accessRecords } = useDataAccess(empleadoId, teamId);
+
   return (
     <div className="dashboard-home-container">
       {/* Mostrar saludo solo si existe */}
@@ -42,7 +72,7 @@ export default function AdminHome() {
       {/* Fila superior con 3 widgets distribuidos horizontalmente */}
       <div className="dashboard-widgets">
         <div className="widget widget-bar-chart">
-          <p>Gráfico de barras (ejemplo)</p>
+          <ArrivalBarChart accessRecords={accessRecords} />
         </div>
 
         <div className="widget widget-day">
@@ -52,11 +82,6 @@ export default function AdminHome() {
         <div className="widget widget-progress">
           <SchoolYearProgress />
         </div>
-      </div>
-
-      {/* Widget inferior que ocupa el ancho completo */}
-      <div className="widget widget-line-chart">
-        <p>Gráfico de líneas (ejemplo)</p>
       </div>
     </div>
   );

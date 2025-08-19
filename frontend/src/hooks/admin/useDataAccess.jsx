@@ -26,7 +26,11 @@ const useDataAccess = (userId = null) => {
   };
 
   const handleNetworkError = (err) => {
-    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
+    if (
+      !err.response ||
+      err.code === "ERR_NETWORK" ||
+      err.response?.status === 503
+    ) {
       navigate("/503");
     } else {
       console.error("Error:", err);
@@ -35,9 +39,12 @@ const useDataAccess = (userId = null) => {
 
   const fetchEmployeeById = async (id_Employee) => {
     try {
-      const res = await axios.get(`${EMPLOYEE_API_URL}/search?id=${id_Employee}`, {
-        timeout: 7000,
-      });
+      const res = await axios.get(
+        `${EMPLOYEE_API_URL}/search?id=${id_Employee}`,
+        {
+          timeout: 7000,
+        }
+      );
       if (Array.isArray(res.data)) return res.data[0] || null;
       return res.data;
     } catch (error) {
@@ -69,7 +76,7 @@ const useDataAccess = (userId = null) => {
     }
   };
 
-  // ⚡ Calcula rango semanal
+  // Calcula rango semanal
   const getWeekRange = () => {
     const today = new Date();
     const day = today.getDay();
@@ -98,31 +105,36 @@ const useDataAccess = (userId = null) => {
     return { start, end };
   };
 
-  // ⚡ Traer accesos (con filtro opcional)
-  const fetchAccessRecords = async ({ teamId = null, onlyMine = false } = {}) => {
+  // Traer accesos (con filtro opcional)
+  const fetchAccessRecords = async ({
+    teamId = null,
+    onlyMine = false,
+    filterWeek = false,
+  } = {}) => {
     try {
-      const res = await axios.get(`${API_URL}/access`, axiosConfig);
+      // Construir la URL con parámetros
+      let url = `${API_URL}/access`;
+      const params = [];
+      if (teamId) params.push(`teamId=${teamId}`);
+      if (onlyMine && userId) params.push(`onlyEmployeeId=${userId}`);
+      if (params.length > 0) url += `?${params.join("&")}`;
+
+      const res = await axios.get(url, axiosConfig);
       let registros = res.data;
 
-      // Filtrar por semana
-      const { start, end } = getWeekRange();
-      registros = registros.filter((reg) => {
-        const fecha = new Date(reg.date);
-        return fecha >= start && fecha <= end;
-      });
-
-      // Filtrar por usuario
-      if (onlyMine && userId) {
-        registros = registros.filter((reg) => reg.id_Employee === userId);
-      }
-
-      // Filtrar por área
-      if (teamId) {
-        registros = registros.filter((reg) => String(reg.id_Team) === String(teamId));
+      // Filtrar por semana solo si se indica
+      if (filterWeek) {
+        const { start, end } = getWeekRange();
+        registros = registros.filter((reg) => {
+          const fecha = new Date(reg.date);
+          return fecha >= start && fecha <= end;
+        });
       }
 
       // Buscar empleados únicos
-      const uniqueEmployeeIds = [...new Set(registros.map((reg) => reg.id_Employee))];
+      const uniqueEmployeeIds = [
+        ...new Set(registros.map((reg) => reg.id_Employee)),
+      ];
       const empleadosMap = {};
       await Promise.all(
         uniqueEmployeeIds.map(async (id) => {
@@ -135,7 +147,9 @@ const useDataAccess = (userId = null) => {
         const empleado = empleadosMap[reg.id_Employee];
         return {
           ...reg,
-          employeeName: empleado ? `${empleado.names} ${empleado.surnames}` : "Empleado no encontrado",
+          employeeName: empleado
+            ? `${empleado.names} ${empleado.surnames}`
+            : "Empleado no encontrado",
           employeeAvatar: empleado?.photo || null,
         };
       });
@@ -150,7 +164,11 @@ const useDataAccess = (userId = null) => {
   const saveAccessRecord = async (data) => {
     try {
       await axios.post(`${API_URL}/access`, data, axiosConfig);
-      Swal.fire("¡Guardado!", "El registro de acceso ha sido guardado.", "success");
+      Swal.fire(
+        "¡Guardado!",
+        "El registro de acceso ha sido guardado.",
+        "success"
+      );
       await fetchAccessRecords();
       handleCloseForm();
     } catch (error) {
@@ -173,7 +191,11 @@ const useDataAccess = (userId = null) => {
 
     try {
       await axios.delete(`${API_URL}/access/${id}`, axiosConfig);
-      Swal.fire("¡Eliminado!", "El registro de acceso ha sido eliminado.", "success");
+      Swal.fire(
+        "¡Eliminado!",
+        "El registro de acceso ha sido eliminado.",
+        "success"
+      );
       await fetchAccessRecords();
     } catch (error) {
       handleNetworkError(error);
