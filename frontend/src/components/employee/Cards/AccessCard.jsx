@@ -1,7 +1,7 @@
 import React from "react";
 import iconSalida from "../../../img/Salida_acceso.png";
 import iconEntrada from "../../../img/Entrada_acceso.png";
-import { UserCircle, CheckCircle } from "lucide-react";
+import { UserCircle, CheckCircle, Clock } from "lucide-react";
 import "../../../components/styles/employee/AccessCard.css";
 import JustifyButton from "../../Tools/Buttons/JustifyButton";
 
@@ -12,17 +12,13 @@ const AccessCard = ({
   time,
   tipoRegistro,
   showJustifyButton,
-  onJustifyClick,
   isJustified,
-  resultLabel, // "Tarde", "Antes", etc.
+  onJustifyClick,
 }) => {
-  // Validar que time sea fecha válida
-  const horaFormateada = time
-    ? new Date(time).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "--:--";
+  const horaFormateada = new Date(time).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   const icono =
     tipoRegistro === "entrada"
@@ -31,48 +27,48 @@ const AccessCard = ({
       ? iconSalida
       : null;
 
-  const isLateOrEarly = resultLabel === "Tarde" || resultLabel === "Antes";
-
   return (
-    <div className={`access-card ${showJustifyButton ? "late-access" : ""}`}>
-      <span className="status-dot" />
+    <div className="access-card">
+      {/* Estado con puntito */}
+      <span
+        className={`status-dot ${isJustified ? "justified" : "pending"}`}
+      />
 
+      {/* Avatar */}
       <div className="access-avatar">
         {avatar ? (
-          <img
-            src={avatar}
-            alt={`${name || "Empleado"} avatar`}
-            className="access-avatar-img"
-          />
+          <img src={avatar} alt="Avatar" className="access-avatar-img" />
         ) : (
           <UserCircle size={48} className="access-avatar-icon" />
         )}
       </div>
 
+      {/* Nombre */}
       <div className="access-name">{name || "Sin nombre"}</div>
 
+      {/* Hora + icono */}
       <div className="access-time">
-        {icono && <img src={icono} alt={`Ícono de ${tipoRegistro}`} />}
+        {icono && <img src={icono} alt="Ícono de acceso" />}
         <span>
-          {isLateOrEarly ? (
-            <span style={{ color: "red", fontWeight: "bold" }}>
-              {resultLabel}:
-            </span>
-          ) : (
-            `${timeLabel}:`
-          )}{" "}
-          {horaFormateada}
+          {timeLabel}: {horaFormateada}
         </span>
       </div>
 
-      {/* Mostrar botón o etiqueta según justificación */}
-      {isJustified ? (
-        <div className="justified-label" title="Registro justificado">
-          <CheckCircle color="green" size={20} style={{ marginRight: 5 }} />
-          Justificada
-        </div>
-      ) : (
-        showJustifyButton && <JustifyButton onClick={onJustifyClick} />
+      {/* Botón de justificar si no está justificado */}
+      {showJustifyButton && !isJustified && (
+        <JustifyButton onClick={onJustifyClick} />
+      )}
+
+      {/* Labels con íconos de estado */}
+      {isJustified && (
+        <span className="justified-label">
+          <CheckCircle size={16} className="icon-justified" /> Justificado
+        </span>
+      )}
+      {!isJustified && showJustifyButton && (
+        <span className="pending-label">
+          <Clock size={16} className="icon-pending" /> Pendiente
+        </span>
       )}
     </div>
   );

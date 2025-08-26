@@ -8,13 +8,13 @@ const PORT = import.meta.env.VITE_PORT_ACCESS;
 const API_URL = `${BASE_URL}${PORT}/api`;
 
 const PORT_JUSTIFICATIONS = import.meta.env.VITE_PORT;
-const EMPLOYEE_API_URL = "http://localhost:4000/api/employee";
 const JUSTIFICATIONS_API_URL = `${BASE_URL}${PORT_JUSTIFICATIONS}/api/justifications`;
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
 
 const useDataAccess = () => {
   const [accessRecords, setAccessRecords] = useState([]);
   const [justifications, setJustifications] = useState([]);
+  const [justificationMap, setJustificationMap] = useState({});
   const [showForm, setShowForm] = useState(false);
   const navigate = useNavigate();
 
@@ -33,54 +33,60 @@ const useDataAccess = () => {
     },
   };
 
-  // Obtener datos de un empleado por ID
-  const fetchEmployeeById = async (id_Employee) => {
+  // Obtener justificaciones
+  const fetchJustifications = async () => {
     try {
-      const res = await axios.get(`${EMPLOYEE_API_URL}/${id_Employee}`);
+      const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfig);
+      setJustifications(res.data);
+      // crear mapa idAccess -> justificación
+      const map = (res.data || []).reduce((acc, j) => {
+        if (j?.idAccess) acc[j.idAccess] = j;
+        return acc;
+      }, {});
+      setJustificationMap(map);
       return res.data;
     } catch (error) {
-      console.warn("No se pudo obtener empleado", id_Employee);
-      return null;
+      handleNetworkError(error);
+      console.error("Error al obtener justificaciones:", error);
+      setJustificationMap({});
+      return [];
     }
   };
 
-  // Obtener registros de acceso
+  // Obtener accesos 
   const fetchAccessRecords = async () => {
     try {
-      const res = await axios.get(`${API_URL}/access`, axiosConfig);
-      const registros = res.data;
+      // Trae accesos y justificaciones en paralelo
+      const [accessRes] = await Promise.all([
+        axios.get(`${API_URL}/access`, axiosConfig),
+        // Nota: fetchJustifications también se llamará abajo para refrescar el mapa.
+      ]);
 
-      const registrosConEmpleado = await Promise.all(
-        registros.map(async (reg) => {
-          const empleado = await fetchEmployeeById(reg.id_Employee);
-          return {
-            ...reg,
-            employeeName: empleado
-              ? `${empleado.names} ${empleado.surnames}`
-              : "Empleado no encontrado",
-            employeeAvatar: empleado?.photo || null,
-          };
-        })
-      );
+      // Asegurar que el mapa de justificaciones esté fresco
+      const justs = await fetchJustifications();
+      const jMap = justs.reduce((acc, j) => {
+        if (j?.idAccess) acc[j.idAccess] = j;
+        return acc;
+      }, {});
 
-      setAccessRecords(registrosConEmpleado);
+      const registros = accessRes.data || [];
+
+      const list = registros.map((reg) => ({
+        ...reg,
+        // Estos campos ya vienen del endpoint /api/access (por el $lookup).
+        employeeName: reg.employeeName || "Empleado no encontrado",
+        employeeAvatar: reg.employeeAvatar || null,
+        justification: jMap[reg._id] || null, // asociar si existe
+      }));
+
+      setAccessRecords(list);
     } catch (error) {
       handleNetworkError(error);
       Swal.fire("Error", "No se pudo obtener la lista de accesos.", "error");
     }
   };
 
-  // Obtener justificaciones
-  const fetchJustifications = async () => {
-    try {
-      const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfig);
-      setJustifications(res.data);
-    } catch (error) {
-      handleNetworkError(error);
-      console.error("Error al obtener justificaciones:", error);
-    }
-  };
-
+  // 🔹 Guardar acceso
   const saveAccessRecord = async (data) => {
     try {
       await axios.post(`${API_URL}/access`, data, axiosConfig);
@@ -93,6 +99,7 @@ const useDataAccess = () => {
     }
   };
 
+  // 🔹 Eliminar acceso
   const deleteAccessRecord = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -115,20 +122,42 @@ const useDataAccess = () => {
     }
   };
 
+  //Ver justificación
+  const handleViewJustification = (justification) => {
+    if (!justification) return;
+    Swal.fire({
+      title: "Justificación",
+      html: `
+        <p><b>Motivo:</b> ${justification.reason || "-"}</p>
+        <p><b>Fecha:</b> ${
+          justification.date ? new Date(justification.date).toLocaleDateString() : "-"
+        }</p>
+        ${
+          justification.evidenceUrl
+            ? `<img src="${justification.evidenceUrl}" width="100%" />`
+            : ""
+        }
+      `,
+      confirmButtonText: "Cerrar",
+    });
+  };
+
   const handleCloseForm = () => setShowForm(false);
 
+  // 🔹 Cargar datos al montar
   useEffect(() => {
     fetchAccessRecords();
-    fetchJustifications();
   }, []);
 
   return {
     accessRecords,
     justifications,
+    justificationMap, 
     fetchAccessRecords,
     fetchJustifications,
     saveAccessRecord,
     deleteAccessRecord,
+    handleViewJustification,
     showForm,
     setShowForm,
     handleCloseForm,

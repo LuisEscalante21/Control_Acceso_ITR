@@ -12,7 +12,8 @@ const JustificationFilterOptions = ["Todos", "Justificados", "Pendientes"];
 
 const Accesos = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [selectedJustificationFilter, setSelectedJustificationFilter] = useState("Todos");
+  const [selectedJustificationFilter, setSelectedJustificationFilter] =
+    useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
   const [searchText, setSearchText] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,12 +40,8 @@ const Accesos = () => {
   const empleadoId = userInfo?._id || null;
 
   // Extraemos datos y funciones del hook
-  const {
-    accessRecords,
-    justificationMap = {},
-    fetchAccessRecords,
-    fetchJustifications,
-  } = useDataAccess(empleadoId);
+  const { accessRecords, fetchAccessRecords, fetchJustifications } =
+    useDataAccess(empleadoId);
 
   // Refrescar registros y justificaciones
   const refreshAccessData = async () => {
@@ -121,9 +118,9 @@ const Accesos = () => {
         );
       }
     })
-    // Filtro nuevo según justificación:
+    // Filtro según justificación:
     .filter((person) => {
-      const isJustified = !!justificationMap?.[person._id];
+      const isJustified = !!person.justification;
       if (selectedJustificationFilter === "Justificados") return isJustified;
       if (selectedJustificationFilter === "Pendientes") return !isJustified;
       return true; // "Todos"
@@ -163,7 +160,9 @@ const Accesos = () => {
                   <button
                     key={option}
                     onClick={() => handleSelectJustificationFilter(option)}
-                    className={selectedJustificationFilter === option ? "selected" : ""}
+                    className={
+                      selectedJustificationFilter === option ? "selected" : ""
+                    }
                   >
                     {option}
                   </button>
@@ -203,7 +202,9 @@ const Accesos = () => {
           ) : (
             filteredAccess.map((person, index) => {
               const time =
-                selectedSalida === "Entrada" ? person.entry_time : person.exit_time;
+                selectedSalida === "Entrada"
+                  ? person.entry_time
+                  : person.exit_time;
 
               if (!time) return null;
 
@@ -227,8 +228,9 @@ const Accesos = () => {
                   time={time}
                   tipoRegistro={person.tipo_registro}
                   docente={person.docente}
-                  showJustifyButton={isLateOrEarly && !justificationMap?.[person._id]}
-                  isJustified={!!justificationMap?.[person._id]}
+                  showJustifyButton={isLateOrEarly && !person.justification}
+                  isJustified={!!person.justification}
+                  justification={person.justification}
                   onJustifyClick={() => handleOpenJustifyModal(person)}
                 />
               );

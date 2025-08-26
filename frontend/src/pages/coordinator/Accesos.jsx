@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { Search, ChevronDown } from "lucide-react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-import "../../styles/employee/Accesos.css";
+import "../../styles/coordinators/Accesos.css";
 import useDataAccess from "../../hooks/coordinators/useDataAccess.jsx";
 import AccessCard from "../../components/coordinator/Cards/AccessCard.jsx";
-import JustifyModal from "../../components/employee/PageModals/justifictions.jsx";
 
 // Opciones de filtros
 const HorarioOptions = ["Entrada", "Salida"];
@@ -20,8 +19,6 @@ const Accesos = () => {
   const [selectedJustificationFilter, setSelectedJustificationFilter] = useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
   const [searchText, setSearchText] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [justificarInfo, setJustificarInfo] = useState(null);
   const [mainFilter, setMainFilter] = useState("todos");
 
   const justificationFilterRef = useRef(null);
@@ -50,7 +47,6 @@ const Accesos = () => {
     justificationMap = {},
     fetchAccessRecords,
     fetchJustifications,
-    teams = [],
   } = useDataAccess(empleadoId);
 
   // Refrescar registros y justificaciones
@@ -104,16 +100,6 @@ const Accesos = () => {
   const handleSelectSalida = (option) => {
     setSelectedSalida(option);
     setOpenDropdown(null);
-  };
-
-  const handleOpenJustifyModal = (person) => {
-    setJustificarInfo(person);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setJustificarInfo(null);
   };
 
   // Filtrar accesos según filtro principal, tipo, estado justificación, y búsqueda
@@ -240,18 +226,6 @@ const Accesos = () => {
 
               if (!time) return null;
 
-              // Determinar si llegó tarde o salió temprano
-              const horaActual = new Date(time);
-              const horaEsperada = new Date(time);
-              horaEsperada.setHours(selectedSalida === "Entrada" ? 7 : 15);
-              horaEsperada.setMinutes(30);
-              horaEsperada.setSeconds(0);
-
-              const isLateOrEarly =
-                selectedSalida === "Entrada"
-                  ? horaActual > horaEsperada
-                  : horaActual < horaEsperada;
-
               return (
                 <AccessCard
                   key={person._id || index}
@@ -261,26 +235,15 @@ const Accesos = () => {
                   time={time}
                   tipoRegistro={person.tipo_registro}
                   docente={person.docente}
-                  showJustifyButton={isLateOrEarly && !justificationMap?.[person._id]}
+                  // Coordinador solo ve el estado, no puede justificar
+                  showJustifyButton={false}
                   isJustified={!!justificationMap?.[person._id]}
-                  onJustifyClick={() => handleOpenJustifyModal(person)}
                 />
               );
             })
           )}
         </div>
       </div>
-
-      {/* Modal de justificación */}
-      {isModalOpen && (
-        <JustifyModal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          record={justificarInfo}
-          currentUser={userInfo}
-          refreshAccessRecords={refreshAccessData}
-        />
-      )}
     </div>
   );
 };

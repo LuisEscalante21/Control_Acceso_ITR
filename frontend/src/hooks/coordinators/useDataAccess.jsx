@@ -13,14 +13,10 @@ const JUSTIFICATIONS_API_URL = `${BASE_URL}${PORT_JUSTIFICATIONS}/api/justificat
 
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
 
-/**
- * Hook para manejar registros de acceso y justificaciones
- * @param {string} empleadoId - ID del empleado actual (desde cookie)
- * @param {string} teamId - ID del área/team del usuario (desde cookie)
- */
 const useDataAccess = (empleadoId, teamId) => {
   const [accessRecords, setAccessRecords] = useState([]);
   const [justifications, setJustifications] = useState([]);
+  const [justificationMap, setJustificationMap] = useState({});
   const [showForm, setShowForm] = useState(false);
   const navigate = useNavigate();
 
@@ -50,14 +46,10 @@ const useDataAccess = (empleadoId, teamId) => {
     }
   };
 
-  // Obtener registros de acceso (filtrados por teamId desde el backend)
+  // Obtener registros de acceso
   const fetchAccessRecords = async () => {
     try {
-      // 👉 usamos query param ?teamId=xxx
-      const url = teamId
-        ? `${API_URL}/access?teamId=${teamId}`
-        : `${API_URL}/access`;
-
+      const url = teamId ? `${API_URL}/access?teamId=${teamId}` : `${API_URL}/access`;
       const res = await axios.get(url, axiosConfig);
       const registros = res.data;
 
@@ -66,11 +58,9 @@ const useDataAccess = (empleadoId, teamId) => {
           const empleado = await fetchEmployeeById(reg.id_Employee);
           return {
             ...reg,
-            employeeName: empleado
-              ? `${empleado.names} ${empleado.surnames}`
-              : "Empleado no encontrado",
+            employeeName: empleado ? `${empleado.names} ${empleado.surnames}` : "Empleado no encontrado",
             employeeAvatar: empleado?.photo || null,
-            teamId: empleado?.teamId || null, // opcional, por si lo necesitas en frontend
+            teamId: empleado?.teamId || null,
           };
         })
       );
@@ -87,9 +77,18 @@ const useDataAccess = (empleadoId, teamId) => {
     try {
       const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfig);
       setJustifications(res.data);
+
+      // Crear mapa idAccess -> justificación para filtrado
+      const map = (res.data || []).reduce((acc, j) => {
+        if (j?.idAccess) acc[j.idAccess] = j;
+        return acc;
+      }, {});
+      setJustificationMap(map);
+
     } catch (error) {
       handleNetworkError(error);
       console.error("Error al obtener justificaciones:", error);
+      setJustificationMap({});
     }
   };
 
@@ -132,11 +131,12 @@ const useDataAccess = (empleadoId, teamId) => {
   useEffect(() => {
     fetchAccessRecords();
     fetchJustifications();
-  }, [teamId]); 
+  }, [teamId]);
 
   return {
     accessRecords,
     justifications,
+    justificationMap,
     fetchAccessRecords,
     fetchJustifications,
     saveAccessRecord,
