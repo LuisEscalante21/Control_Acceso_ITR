@@ -115,10 +115,7 @@ const Accesos = () => {
       const nombre = person.employeeName?.toLowerCase() || "";
       return nombre.includes(searchText.toLowerCase());
     });
-
-  // LOG para depuración
-  console.log("Áreas disponibles:", areaOptions);
-
+    
   return (
     <div className="access-history-container">
       <div className="encabezado-accesos">

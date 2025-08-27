@@ -13,7 +13,7 @@ const useDataTeams = () => {
   // Hook de navegación para redirigir si hay errores graves
   const navigate = useNavigate();
 
-  // ✅ Función para obtener todos los equipos/áreas (GET /api/teams)
+  // Función para obtener todos los equipos/áreas (GET /api/teams)
   const fetchTeams = async () => {
     try {
       const res = await fetch(API_URL);
@@ -30,7 +30,7 @@ const useDataTeams = () => {
     }
   };
 
-  // ✅ Función utilitaria para buscar el nombre del área por su ID
+  // Función utilitaria para buscar el nombre del área por su ID
   const getTeamNameById = (id) => {
     const found = teams.find((team) => team._id === id);
     return found ? found.name : "Área desconocida";
