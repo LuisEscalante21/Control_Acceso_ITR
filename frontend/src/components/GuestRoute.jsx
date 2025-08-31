@@ -4,6 +4,7 @@ const GuestRoute = ({ children }) => {
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
 
+  // Si el usuario está autenticado, redirige según su rol
   if (user) {
     const role = user.role;
     if (role === 'Admin') return <Navigate to="/admin-dashboard" />;

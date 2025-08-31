@@ -17,6 +17,7 @@ import authRoutes from "./src/routes/authRoutes.js";
 import registerCoordinatorsRoutes from "./src/routes/registerCoordinators.js";
 import teamsRoutes from "./src/routes/teamsRoutes.js";
 import ScheduleRoutes from "./src/routes/schedules.js";
+import usersRoutes from "./src/routes/UserRoute.js";
 import swaggerUi from "swagger-ui-express";
 import fs from "fs";
 import path from "path";
@@ -76,6 +77,7 @@ app.use("/api/administrators", administratorsRoutes); // Ruta para administrador
 app.use("/api/teams", teamsRoutes); // Ruta para las areas o departamentos
 app.use("/api/permissions", permissionsRoutes); // Ruta para los permisos
 app.use("/api/justifications", justificationsRoutes); // Ruta para las justificaciones
+app.use("/api/users", usersRoutes); // Ruta para los usuarios
 
 // Exporto la constante para poder usar express en otros archivos
 export default app;

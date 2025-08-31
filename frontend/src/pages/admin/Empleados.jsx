@@ -83,7 +83,7 @@ const Empleados = () => {
                 name={empleado.names}
                 surnames={empleado.surnames}
                 photo={empleado.photo}
-                teamName={empleado.IdTeam ? getTeamName(empleado.IdTeam._id) : "Sin área"} // <-- Aquí se pasa el nombre del área
+                teamName={empleado.IdTeam ? getTeamName(empleado.IdTeam._id) : "Sin área"} 
                 onClick={() => setSelectedEmpleado(empleado)}
               />
             ))

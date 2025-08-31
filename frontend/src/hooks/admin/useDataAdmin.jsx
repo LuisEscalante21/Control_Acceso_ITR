@@ -13,6 +13,7 @@ const useDataAdmin = () => {
   const [adminEdit, setAdminEdit] = useState(null);
   const navigate = useNavigate();
 
+  // Manejo de error de red
   const handleNetworkError = (error) => {
     if (!error.response || error.code === "ERR_NETWORK" || error.response?.status === 503) {
       navigate("/503");
@@ -21,6 +22,7 @@ const useDataAdmin = () => {
     }
   };
 
+  // Obtener todos los administradores
   const fetchAdmins = async () => {
     try {
       const res = await axios.get(`${API_URL}/administrators`);
@@ -31,6 +33,7 @@ const useDataAdmin = () => {
     }
   };
 
+  // Guardar o actualizar administrador
   const saveAdmin = async (adminData, adminId = null) => {
     try {
       if (adminId) {
@@ -75,6 +78,7 @@ const useDataAdmin = () => {
     }
   };
 
+  // Eliminar administrador
   const deleteAdmin = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -97,6 +101,7 @@ const useDataAdmin = () => {
     }
   };
 
+  // Cerrar formulario y limpiar estado
   const handleCloseForm = () => {
     setShowForm(false);
     setAdminEdit(null);

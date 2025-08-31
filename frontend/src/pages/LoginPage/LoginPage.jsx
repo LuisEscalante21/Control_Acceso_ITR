@@ -19,7 +19,7 @@ const LoginPage = () => {
   // Modales
   const [showRecovery, setShowRecovery] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
-  const [pendingRoute, setPendingRoute] = useState(null); // a dónde navegar después de actualizar
+  const [pendingRoute, setPendingRoute] = useState(null);
 
   const navigate = useNavigate();
 
@@ -237,13 +237,13 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* 🪟 Modal Recuperación */}
+      {/*Modal Recuperación */}
       <RecoveryPasswordModal
         open={showRecovery}
         onClose={() => setShowRecovery(false)}
       />
 
-      {/* 🪟 Modal Nueva Contraseña (BLOQUEANTE, solo se cierra en éxito) */}
+      {/*Modal Nueva Contraseña (BLOQUEANTE, solo se cierra en éxito) */}
       <NewPass
         open={showNewPass}
         onSuccess={async () => {

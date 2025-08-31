@@ -13,6 +13,7 @@ const useDataCoordinators = () => {
   const [coordinatorEdit, setCoordinatorEdit] = useState(null);
   const navigate = useNavigate();
  
+  // Manejo de error de red
   const handleNetworkError = (error) => {
     if (
       !error.response ||
@@ -25,6 +26,7 @@ const useDataCoordinators = () => {
     }
   };
  
+  // Obtener todos los coordinadores
   const fetchCoordinators = async () => {
     try {
       const res = await axios.get(`${API_URL}/coordinators`);
@@ -35,6 +37,7 @@ const useDataCoordinators = () => {
     }
   };
  
+  // Guardar o actualizar coordinador
   const saveCoordinator = async (coordinatorData, id = null) => {
     try {
       const coordinatorId = id || coordinatorEdit?._id;
@@ -81,6 +84,7 @@ const useDataCoordinators = () => {
     }
   };
  
+  // Eliminar coordinador
   const deleteCoordinator = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -103,6 +107,7 @@ const useDataCoordinators = () => {
     }
   };
  
+  // Cerrar formulario y limpiar estado
   const handleCloseForm = () => {
     setShowForm(false);
     setCoordinatorEdit(null);

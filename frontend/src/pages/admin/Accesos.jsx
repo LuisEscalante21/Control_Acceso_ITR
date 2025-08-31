@@ -110,7 +110,6 @@ const Accesos = () => {
     setOpenDropdown(null);
   };
 
-  // Botón para eliminar todos los accesos
   // Botón para eliminar todos los accesos y justificaciones
   const handleDeleteAllAccess = async () => {
     const { value: text } = await Swal.fire({
@@ -134,15 +133,18 @@ const Accesos = () => {
 
     if (text && text.toLowerCase() === "remove") {
       try {
-        // 1️⃣ Eliminar todos los accesos
+        // 1️ Eliminar todos los accesos
         const resAccess = await axios.delete(`${API_URL_ACCESS}/access`, {
           headers: {
             Authorization: `Bearer ${API_ACCESS_KEY}`,
           },
         });
 
-        // 2️⃣ Eliminar todas las justificaciones
-        const resJustifications = await axios.delete(`${import.meta.env.VITE_BASE_URL}${import.meta.env.VITE_PORT}/api/justifications`,
+        // 2️ Eliminar todas las justificaciones
+        const resJustifications = await axios.delete(
+          `${import.meta.env.VITE_BASE_URL}${
+            import.meta.env.VITE_PORT
+          }/api/justifications`,
           {
             headers: {
               Authorization: `Bearer ${API_ACCESS_KEY}`,
@@ -169,7 +171,7 @@ const Accesos = () => {
     }
   };
 
-  // Filtrar registros según tipo_registro, búsqueda y justificación
+  // Filtrar registros según tipo deregistro, búsqueda y justificación
   const filteredAccess = accessRecords
     .filter((person) => {
       if (selectedSalida === "Entrada") {
@@ -291,6 +293,7 @@ const Accesos = () => {
                 <AccessCard
                   key={person._id || index}
                   name={person.employeeName}
+                  employeeType={person.employeeType}
                   avatar={person.employeeAvatar}
                   timeLabel={selectedSalida}
                   time={time}

@@ -78,7 +78,7 @@ const filteredPermissions = useMemo(() => {
     }
   }
 
-  // 👇 Ordena: urgentes primero
+  //Ordena: urgentes primero
   list = [...list].sort((a, b) => {
     if (isUrgent(a) && !isUrgent(b)) return -1;
     if (!isUrgent(a) && isUrgent(b)) return 1;
@@ -87,8 +87,6 @@ const filteredPermissions = useMemo(() => {
 
   return list;
 }, [permissions, filterStatus, searchDate]);
-
-
 
   const openNew = () => setShowModal(true);
   const closeNew = async () => {

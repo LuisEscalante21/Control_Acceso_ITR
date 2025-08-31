@@ -18,6 +18,7 @@ const useDataFace = () => {
     },
   };
 
+  // Manejo de error de red
   const handleNetworkError = (error) => {
     if (!error.response || error.code === "ERR_NETWORK" || error.response?.status === 503) {
       navigate("/503");
@@ -26,6 +27,7 @@ const useDataFace = () => {
     }
   };
 
+  // Obtener todos los rostros
   const fetchFaces = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/faces`, axiosConfig);
@@ -36,6 +38,7 @@ const useDataFace = () => {
     }
   };
 
+  // Guardar nuevo rostro
   const saveFace = async (formData) => {
     const name = formData.get("name");
     const employee_code = formData.get("employee_code");
@@ -82,6 +85,7 @@ const useDataFace = () => {
     }
   };
 
+  // Actualizar rostro existente
   const updateFace = async (id, formData) => {
     const name = formData.get("name");
     const code = formData.get("code");
@@ -128,6 +132,7 @@ const useDataFace = () => {
     }
   };
 
+  // Eliminar rostro
   const deleteFace = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -150,11 +155,14 @@ const useDataFace = () => {
     }
   };
 
+  // Cerrar formulario y limpiar estado
   const handleCloseForm = () => setShowForm(false);
 
+  // Obtener todos los rostros
   useEffect(() => {
     fetchFaces();
   }, []);
+
 
   return {
     faces,

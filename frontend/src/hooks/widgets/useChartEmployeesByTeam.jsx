@@ -7,25 +7,22 @@ const useChartEmployeesByTeam = () => {
   const { employees } = useDataEmployee();
 
   const chartData = useMemo(() => {
-    if (!teams.length) return null;
+    if (!teams.length || !employees.length) return [];
 
-    // Contar empleados por equipo
-    const formatted = teams.map((team) => {
-      const total = employees.filter((emp) => {
-        if (!emp.IdTeam) return false;
-        // Compatibilidad si IdTeam es objeto o string
-        if (typeof emp.IdTeam === "string") return emp.IdTeam === team._id;
-        if (typeof emp.IdTeam === "object") return emp.IdTeam._id === team._id;
-        return false;
-      }).length;
+    // Crear un mapa de conteo por IdTeam
+    const teamCountMap = employees.reduce((acc, emp) => {
+      const teamId = typeof emp.IdTeam === "string" ? emp.IdTeam : emp.IdTeam?._id;
+      if (teamId) {
+        acc[teamId] = (acc[teamId] || 0) + 1;
+      }
+      return acc;
+    }, {});
 
-      return {
-        label: team.name,
-        Empleados: total,
-      };
-    });
-
-    return formatted;
+    // Mapear al formato que Recharts necesita
+    return teams.map((team) => ({
+      label: team.name,
+      Empleados: teamCountMap[team._id] || 0,
+    }));
   }, [teams, employees]);
 
   return chartData;

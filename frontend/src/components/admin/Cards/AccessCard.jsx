@@ -1,18 +1,19 @@
 import React from "react";
 import iconSalida from "../../../img/Salida_acceso.png";
 import iconEntrada from "../../../img/Entrada_acceso.png";
-import { UserCircle, CheckCircle2, Clock } from "lucide-react"; // Íconos para estado
+import { UserCircle, CheckCircle2, Clock } from "lucide-react"; 
 import "../../../components/styles/AccessCard.css";
 
 const AccessCard = ({
   name,
   avatar,
+  employeeType, // nuevo prop para tipo de empleado
   timeLabel,
   time,
   tipoRegistro,
   isJustified = false,
-  justification = null, // información de la justificación
-  onViewJustification = null, // callback para abrir modal
+  justification = null, 
+  onViewJustification = null,
 }) => {
   const horaFormateada = new Date(time).toLocaleTimeString([], {
     hour: "2-digit",
@@ -37,8 +38,11 @@ const AccessCard = ({
         )}
       </div>
 
-      {/* Nombre */}
-      <div className="access-name">{name || "Sin nombre"}</div>
+      {/* Nombre y tipo */}
+      <div className="access-name">
+        {name || "Sin nombre"}
+        {employeeType && <div className="access-employee-type">{employeeType}</div>}
+      </div>
 
       {/* Hora + icono */}
       <div className="access-time">

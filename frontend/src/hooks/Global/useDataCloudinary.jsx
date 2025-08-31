@@ -2,11 +2,7 @@
 import { useState, useCallback } from "react";
 import Swal from "sweetalert2";
 
-// ⚠️ Asegúrate de tener estas variables en tu .env del FRONTEND (Vite) y reiniciar el dev server:
-// VITE_CLOUDINARY_CLOUD_NAME=drzqoqumz
-// VITE_CLOUDINARY_UPLOAD_PRESET=ptc_unsigned
-// VITE_CLOUDINARY_FOLDER=permisos
-
+// Configuración Cloudinary
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const FOLDER = import.meta.env.VITE_CLOUDINARY_FOLDER || "permisos";

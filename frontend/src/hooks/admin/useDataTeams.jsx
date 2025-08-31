@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
+// constantes de entorno
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${BASE_URL}${PORT}/api`;
@@ -13,14 +14,20 @@ const useDataTeams = () => {
   const [teamEdit, setTeamEdit] = useState(null);
   const navigate = useNavigate();
 
+  // Manejo de errores de red
   const handleNetworkError = (err) => {
-    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
+    if (
+      !err.response ||
+      err.code === "ERR_NETWORK" ||
+      err.response?.status === 503
+    ) {
       navigate("/503");
     } else {
       console.error("Error:", err);
     }
   };
 
+  // Obtener todos los equipos
   const fetchTeams = async () => {
     try {
       const res = await axios.get(`${API_URL}/teams`);
@@ -31,6 +38,7 @@ const useDataTeams = () => {
     }
   };
 
+  // Guardar o actualizar equipo
   const saveTeam = async (teamData) => {
     try {
       if (teamData._id) {
@@ -48,6 +56,7 @@ const useDataTeams = () => {
     }
   };
 
+  // Eliminar equipo
   const eliminarTeam = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -70,6 +79,7 @@ const useDataTeams = () => {
     }
   };
 
+  // Cerrar modal y limpiar estado
   const handleCloseModal = () => {
     setShowRegister(false);
     setTeamEdit(null);

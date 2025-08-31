@@ -12,11 +12,9 @@ import {
 import useChartEmployeesByTeam from "../../../hooks/widgets/useChartEmployeesByTeam.jsx";
 
 const EmployeesByAreaChart = () => {
-  const chartDataRaw = useChartEmployeesByTeam();
+  const chartData = useChartEmployeesByTeam();
 
-  const chartData = useMemo(() => chartDataRaw || [], [chartDataRaw]);
-
-  if (!chartData || chartData.length === 0) return <p>Cargando datos...</p>;
+  if (!chartData.length) return <p>Cargando datos...</p>;
 
   return (
     <ResponsiveContainer width="100%" height={400}>

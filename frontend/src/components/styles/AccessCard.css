@@ -63,3 +63,9 @@
   height: 18px;
   object-fit: contain;
 }
+
+.access-employee-type {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 2px;
+}

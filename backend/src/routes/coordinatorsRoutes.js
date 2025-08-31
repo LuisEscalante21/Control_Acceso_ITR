@@ -13,6 +13,7 @@ router.route("/").get(coordinatorsController.getCoordinators);
 // Actualizar coordinador con imagen y eliminar coordinador
 router
   .route("/:id")
+  .get(coordinatorsController.getCoordinatorById)
   .put(upload.single("photo"), coordinatorsController.updateCoordinator)
   .delete(coordinatorsController.deleteCoordinator);
 

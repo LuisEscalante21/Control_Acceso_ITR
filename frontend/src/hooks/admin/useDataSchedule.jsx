@@ -22,6 +22,7 @@ const useDataSchedules = () => {
     }
   };
 
+  // Obtener todos los horarios
   const fetchSchedules = async () => {
     try {
       const res = await axios.get(`${API_URL}/schedules`);
@@ -32,6 +33,7 @@ const useDataSchedules = () => {
     }
   };
 
+  // Guardar o actualizar horario
   const saveSchedule = async (scheduleData) => {
     try {
       if (scheduleEdit) {
@@ -49,6 +51,7 @@ const useDataSchedules = () => {
     }
   };
 
+  // Actualizar horario
   const updateSchedule = async (id, updatedData) => {
     try {
       await axios.put(`${API_URL}/schedules/${id}`, updatedData);
@@ -60,6 +63,7 @@ const useDataSchedules = () => {
     }
   };
 
+  // Eliminar horario
   const deleteSchedule = async (id) => {
     try {
       await axios.delete(`${API_URL}/schedules/${id}`);
@@ -72,6 +76,7 @@ const useDataSchedules = () => {
     }
   };
 
+  // Cerrar formulario y limpiar estado
   const handleCloseForm = () => {
     setShowForm(false);
     setScheduleEdit(null);

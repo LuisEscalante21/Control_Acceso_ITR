@@ -2,22 +2,28 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import CryptoJS from "crypto-js";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT_ACCESS;
 const API_URL = `${BASE_URL}${PORT}/api`;
 
 const PORT_JUSTIFICATIONS = import.meta.env.VITE_PORT;
-const EMPLOYEE_API_URL = "http://localhost:4000/api/employee";
+const EMPLOYEE_API_URL = `${BASE_URL}4000/api/employee`;
+const COORDINATOR_API_URL = `${BASE_URL}4000/api/coordinators`;
 const JUSTIFICATIONS_API_URL = `${BASE_URL}${PORT_JUSTIFICATIONS}/api/justifications`;
 
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
+const JWT_SECRET = import.meta.env.VITE_JWT_SECRET;
 
-const useDataAccess = (empleadoId, teamId) => {
+const useDataAccess = () => {
   const [accessRecords, setAccessRecords] = useState([]);
   const [justifications, setJustifications] = useState([]);
   const [justificationMap, setJustificationMap] = useState({});
   const [showForm, setShowForm] = useState(false);
+  const [empleadoId, setEmpleadoId] = useState(null);
+  const [teamId, setTeamId] = useState(null);
+
   const navigate = useNavigate();
 
   const axiosConfig = {
@@ -27,59 +33,87 @@ const useDataAccess = (empleadoId, teamId) => {
     },
   };
 
+  // Función para mostrar errores de red
   const handleNetworkError = (err) => {
-    if (
-      !err.response ||
-      err.code === "ERR_NETWORK" ||
-      err.response?.status === 503
-    ) {
+    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
       navigate("/503");
     } else {
       console.error("Error:", err);
     }
   };
 
-  const fetchEmployeeById = async (id_Employee) => {
+  //Leer y descifrar cookie para obtener empleadoId y teamId
+  useEffect(() => {
+    const userInfoCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("userInfo="));
+
+    if (userInfoCookie && JWT_SECRET) {
+      try {
+        const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
+        const bytes = CryptoJS.AES.decrypt(encrypted, JWT_SECRET);
+        const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!decryptedStr) throw new Error("No se pudo descifrar correctamente.");
+
+        const userInfo = JSON.parse(decryptedStr);
+
+        setEmpleadoId(userInfo._id || null);
+        setTeamId(userInfo.teamId || null);
+
+      } catch (err) {
+        console.error("Error al descifrar userInfo:", err);
+        setEmpleadoId(null);
+        setTeamId(null);
+      }
+    }
+  }, []);
+
+  //Función para obtener usuario (empleado o coordinador)
+  const fetchUserById = async (id) => {
     try {
-      const res = await axios.get(`${EMPLOYEE_API_URL}/${id_Employee}`);
-      return res.data;
-    } catch {
+      const resEmployee = await axios.get(`${EMPLOYEE_API_URL}/${id}`, axiosConfig);
+      return resEmployee.data;
+    } catch (err) {
+      if (err.response?.status === 404) {
+        try {
+          const resCoordinator = await axios.get(`${COORDINATOR_API_URL}/${id}`, axiosConfig);
+          return resCoordinator.data || null;
+        } catch {
+          return null;
+        }
+      }
       return null;
     }
   };
 
+  //Obtener registros de acceso
   const fetchAccessRecords = async () => {
     try {
-      // --- Aquí enviamos el teamId para que solo traiga accesos de mi área ---
-      const url = teamId
-        ? `${API_URL}/access?teamId=${teamId}`
-        : `${API_URL}/access`;
+      const url = teamId ? `${API_URL}/access?teamId=${teamId}` : `${API_URL}/access`;
       const res = await axios.get(url, axiosConfig);
       const registros = res.data;
 
-      // Adjuntar datos de empleado (nombre, foto) a cada registro
-      const registrosConEmpleado = await Promise.all(
+      const registrosConUsuario = await Promise.all(
         registros.map(async (reg) => {
-          const empleado = await fetchEmployeeById(reg.id_Employee);
+          const usuario = await fetchUserById(reg.id_Employee);
           return {
             ...reg,
-            employeeName: empleado
-              ? `${empleado.names} ${empleado.surnames}`
-              : "Empleado no encontrado",
-            employeeAvatar: empleado?.photo || null,
-            teamId: empleado?.teamId || null,
+            employeeName: usuario ? `${usuario.names} ${usuario.surnames}` : "Usuario no encontrado",
+            employeeAvatar: usuario?.photo || null,
+            teamId: usuario?.IdTeam || null,
           };
-          return enriched;
         })
       );
 
-      setAccessRecords(registrosConEmpleado);
+      setAccessRecords(registrosConUsuario);
     } catch (error) {
       handleNetworkError(error);
       Swal.fire("Error", "No se pudo obtener la lista de accesos.", "error");
     }
   };
 
+  //Obtener justificaciones
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfig);
@@ -97,14 +131,11 @@ const useDataAccess = (empleadoId, teamId) => {
     }
   };
 
+  //Guardar acceso
   const saveAccessRecord = async (data) => {
     try {
       await axios.post(`${API_URL}/access`, data, axiosConfig);
-      Swal.fire(
-        "¡Guardado!",
-        "El registro de acceso ha sido guardado.",
-        "success"
-      );
+      Swal.fire("¡Guardado!", "El registro de acceso ha sido guardado.", "success");
       await fetchAccessRecords();
       handleCloseForm();
     } catch (error) {
@@ -113,6 +144,7 @@ const useDataAccess = (empleadoId, teamId) => {
     }
   };
 
+  //Eliminar acceso
   const deleteAccessRecord = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -127,11 +159,7 @@ const useDataAccess = (empleadoId, teamId) => {
 
     try {
       await axios.delete(`${API_URL}/access/${id}`, axiosConfig);
-      Swal.fire(
-        "¡Eliminado!",
-        "El registro de acceso ha sido eliminado.",
-        "success"
-      );
+      Swal.fire("¡Eliminado!", "El registro de acceso ha sido eliminado.", "success");
       await fetchAccessRecords();
     } catch (error) {
       handleNetworkError(error);
@@ -141,6 +169,7 @@ const useDataAccess = (empleadoId, teamId) => {
 
   const handleCloseForm = () => setShowForm(false);
 
+  //Ejecutar fetch al cargar cookie
   useEffect(() => {
     if (teamId) fetchAccessRecords();
     fetchJustifications();
@@ -157,6 +186,8 @@ const useDataAccess = (empleadoId, teamId) => {
     showForm,
     setShowForm,
     handleCloseForm,
+    empleadoId,
+    teamId,
   };
 };
 

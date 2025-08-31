@@ -7,7 +7,7 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT_ACCESS;
 const API_URL = `${BASE_URL}${PORT}/api`;
 const API_URL_JUSTIFICATIONS = `${BASE_URL}4000/api/justifications`;
-const EMPLOYEE_API_URL = `${BASE_URL}4000/api/employee`;
+const USERS_API_URL = `${BASE_URL}4000/api/users`; // Ruta unificada
 const TEAM_API_URL = `${BASE_URL}4000/api/teams`;
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
 
@@ -26,6 +26,7 @@ const useDataAccess = (userId = null) => {
     timeout: 10000,
   };
 
+  // Manejo de error de red
   const handleNetworkError = (err) => {
     if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
       navigate("/503");
@@ -34,16 +35,28 @@ const useDataAccess = (userId = null) => {
     }
   };
 
-  const fetchEmployeeById = async (id_Employee) => {
+  // Obtener datos de usuario por ID (empleado, coordinador o administrador)
+  const fetchUserById = async (id) => {
     try {
-      const res = await axios.get(`${EMPLOYEE_API_URL}/${id_Employee}`, { timeout: 7000 });
-      return res.data;
+      const res = await axios.get(`${USERS_API_URL}/${id}`, { timeout: 7000 });
+      const user = res.data;
+
+      // Determinar tipo de usuario según colección
+      let userType = "Sin definir";
+      if (user?.collectionName) {
+        if (user.collectionName === "employees") userType = "Empleado";
+        if (user.collectionName === "coordinators") userType = "Coordinador";
+        if (user.collectionName === "administrators") userType = "Administrador";
+      }
+
+      return { ...user, userType };
     } catch (error) {
-      console.error("🔴 Error fetchEmployeeById:", error);
+      console.error("🔴 Error fetchUserById:", error);
       return null;
     }
   };
 
+  // Obtener áreas
   const fetchTeams = async () => {
     try {
       const res = await axios.get(`${TEAM_API_URL}`, axiosConfig);
@@ -53,6 +66,7 @@ const useDataAccess = (userId = null) => {
     }
   };
 
+  // Obtener justificaciones
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(API_URL_JUSTIFICATIONS, axiosConfig);
@@ -61,49 +75,54 @@ const useDataAccess = (userId = null) => {
         return acc;
       }, {});
       setJustificationMap(map);
-
     } catch (error) {
       console.error("🔴 Error al obtener justificaciones:", error);
       setJustificationMap({});
     }
   };
 
+  // Obtener accesos
   const fetchAccessRecords = async (options = {}) => {
     try {
       let url = `${API_URL}/access`;
       if (options.onlyMine && userId) url += `?onlyEmployeeId=${userId}`;
       if (options.teamId) url += `?teamId=${options.teamId}`;
 
-
       const res = await axios.get(url, axiosConfig);
-      let registros = res.data;
-      const uniqueEmployeeIds = [...new Set(registros.map((reg) => reg.id_Employee))];
-      const empleadosMap = {};
+      const registros = res.data;
 
-      await Promise.all(uniqueEmployeeIds.map(async (id) => {
-        if (id) {
-          const empleado = await fetchEmployeeById(id);
-          if (empleado) empleadosMap[id] = empleado;
-        }
-      }));
+      // Traer datos de todos los usuarios involucrados
+      const uniqueUserIds = [...new Set(registros.map((reg) => reg.id_Employee))];
+      const usersMap = {};
 
-      const registrosConEmpleado = registros.map((reg) => {
-        const empleado = empleadosMap[reg.id_Employee];
-        const enriched = {
+      await Promise.all(
+        uniqueUserIds.map(async (id) => {
+          if (id) {
+            const user = await fetchUserById(id);
+            if (user) usersMap[id] = user;
+          }
+        })
+      );
+
+      // Combinar registros con info de usuario
+      const registrosConUsuario = registros.map((reg) => {
+        const user = usersMap[reg.id_Employee];
+        return {
           ...reg,
-          employeeName: empleado ? `${empleado.names} ${empleado.surnames}` : "Empleado no encontrado",
-          employeeAvatar: empleado?.photo || null,
+          employeeName: user ? `${user.names} ${user.surnames}` : "Usuario no encontrado",
+          employeeAvatar: user?.photo || null,
+          employeeType: user?.userType || "Sin definir",
         };
-        return enriched;
       });
 
-      setAccessRecords(registrosConEmpleado);
+      setAccessRecords(registrosConUsuario);
     } catch (error) {
       handleNetworkError(error);
       Swal.fire("Error", "No se pudo obtener la lista de accesos.", "error");
     }
   };
 
+  // Guardar acceso
   const saveAccessRecord = async (data) => {
     try {
       await axios.post(`${API_URL}/access`, data, axiosConfig);
@@ -116,6 +135,7 @@ const useDataAccess = (userId = null) => {
     }
   };
 
+  // Eliminar acceso
   const deleteAccessRecord = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",

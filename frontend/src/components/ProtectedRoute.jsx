@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
       try {
         const response = await fetch("http://localhost:4000/api/checkAuth", {
           method: "GET",
-          credentials: "include", // importante para enviar cookies
+          credentials: "include", // importante para enviar cookies siempre
         });
 
         if (response.ok) {
@@ -41,17 +41,17 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  // No autenticado → redirige a login
+  // No autenticado, redirige a login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Autenticado pero sin rol permitido → muestra error 403
+  // Autenticado pero sin rol permitido, muestra error 403
   if (!allowedRoles.includes(userRole)) {
     return <Error403 />;
   }
 
-  // Todo bien → muestra el contenido protegido
+  // Si el usuario tiene el rol permitido, muestra el contenido protegido
   return children;
 };
 

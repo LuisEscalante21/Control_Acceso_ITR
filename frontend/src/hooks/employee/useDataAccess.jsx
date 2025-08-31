@@ -86,7 +86,7 @@ const useDataAccess = () => {
     }
   };
 
-  // 🔹 Guardar acceso
+  //Guardar acceso
   const saveAccessRecord = async (data) => {
     try {
       await axios.post(`${API_URL}/access`, data, axiosConfig);
@@ -99,7 +99,7 @@ const useDataAccess = () => {
     }
   };
 
-  // 🔹 Eliminar acceso
+  //Eliminar acceso
   const deleteAccessRecord = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -144,7 +144,7 @@ const useDataAccess = () => {
 
   const handleCloseForm = () => setShowForm(false);
 
-  // 🔹 Cargar datos al montar
+  //Cargar datos al montar
   useEffect(() => {
     fetchAccessRecords();
   }, []);

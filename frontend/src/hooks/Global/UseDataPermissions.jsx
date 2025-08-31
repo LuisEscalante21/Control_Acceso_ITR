@@ -28,7 +28,7 @@ const useDataPermissions = () => {
     }
   };
 
-  // ===================== EMPLEADO: Mis permisos =====================
+  // EMPLEADO: Mis permisos
   // GET /api/permissions/mine
   const fetchPermissions = async () => {
     try {
@@ -68,7 +68,7 @@ const useDataPermissions = () => {
     });
   };
 
-  // ===================== COORDINADOR: Permisos del área =====================
+  //COORDINADOR: Permisos del área
   // GET /api/permissions/team
   const fetchTeamPermissions = async () => {
     try {
@@ -92,7 +92,7 @@ const useDataPermissions = () => {
     }
   };
 
-  // PATCH /api/permissions/:id/status
+  //ACTUALIZAR ESTADO
   const updatePermissionStatus = async (id, { status, supervisorComments, Discount, quantityDiscount }) => {
     return fetch(`${API_URL}/${id}/status`, {
       method: "PATCH",
@@ -108,8 +108,7 @@ const useDataPermissions = () => {
     });
   };
 
-  // ===================== ADMIN: TODOS LOS PERMISOS (NUEVO) =====================
-  // GET /api/permissions
+  // ADMIN: TODOS LOS PERMISOS (NUEVO)
 const fetchAllPermissions = async () => {
   try {
     setLoading(true);
@@ -133,7 +132,7 @@ const fetchAllPermissions = async () => {
 };
 
 
-  // DELETE /api/permissions/clear/all?confirm=REMOVE (NUEVO)
+  // ELIMINAR TODOS LOS PERMISOS (NUEVO)
   const clearAllPermissions = async () => {
     return fetch(`${API_URL}/clear/all?confirm=REMOVE`, {
       method: "DELETE",
@@ -141,7 +140,8 @@ const fetchAllPermissions = async () => {
     });
   };
 
-  // SweetAlert + clearAll (NUEVO)
+
+  // Confirmación y borrado masivo (NUEVO)
   const confirmAndClearAllPermissions = async () => {
     const { value } = await Swal.fire({
       title: "¿Borrar TODOS los permisos?",
@@ -174,7 +174,7 @@ const fetchAllPermissions = async () => {
     return { ok: true };
   };
 
-  // ===================== EFECTO INICIAL =====================
+  // EFECTO INICIAL
   useEffect(() => { fetchPermissions(); }, []);
 
   return {

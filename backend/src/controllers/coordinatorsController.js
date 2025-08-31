@@ -22,6 +22,19 @@ coordinatorsController.getCoordinators = async (req, res) => {
   }
 };
 
+// Obtener un coordinador por ID
+coordinatorsController.getCoordinatorById = async (req, res) => {
+  try {
+    const coordinator = await coordinatorsModel.findById(req.params.id);
+    if (!coordinator) {
+      return res.status(404).json({ message: "Coordinador no encontrado" });
+    }
+    res.json(coordinator);
+  } catch (error) {
+    res.status(500).json({ message: "Error al buscar coordinador", error });
+  }
+};
+
 // D E L E T E - Eliminar coordinador por ID
 coordinatorsController.deleteCoordinator = async (req, res) => {
   try {
@@ -55,13 +68,17 @@ coordinatorsController.updateCoordinator = async (req, res) => {
     // Validar teléfono (formato 1234-5678)
     const phoneRegex = /^\d{4}-\d{4}$/;
     if (telephone && !phoneRegex.test(telephone)) {
-      return res.status(400).json({ message: "Formato de teléfono inválido. Use ####-####." });
+      return res
+        .status(400)
+        .json({ message: "Formato de teléfono inválido. Use ####-####." });
     }
 
     // Validar DUI (formato 12345678-9)
     const duiRegex = /^\d{8}-\d$/;
     if (DUI && !duiRegex.test(DUI)) {
-      return res.status(400).json({ message: "Formato de DUI inválido. Use ########-#." });
+      return res
+        .status(400)
+        .json({ message: "Formato de DUI inválido. Use ########-#." });
     }
 
     // Preparar datos a actualizar
@@ -116,7 +133,12 @@ coordinatorsController.updateCoordinator = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error al actualizar coordinador", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al actualizar coordinador",
+        error: error.message,
+      });
   }
 };
 
