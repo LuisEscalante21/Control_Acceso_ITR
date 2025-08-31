@@ -26,7 +26,11 @@ employeesController.getEmployees = async (req, res) => {
 employeesController.getEmployeeById = async (req, res) => {
   try {
     const employee = await employeesModel.findById(req.params.id).populate("IdTeam");
-    if (!employee) return res.status(404).json({ message: "Empleado no encontrado" });
+
+    if (!employee) {
+      return res.json({ message: "Empleado no existe", employee: null });
+    }
+
     res.json(employee);
   } catch (error) {
     res.status(500).json({ message: "Error obteniendo empleado", error });

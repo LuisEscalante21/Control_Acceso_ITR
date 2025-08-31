@@ -2,13 +2,20 @@ import React, { useEffect, useState, Suspense } from "react";
 import CryptoJS from "crypto-js";
 import "../../components/styles/admin/Home.css";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
-import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
-import LateArrivalsChart from "../../components/Tools/graphics/LateArrivalsChart.jsx";
 
-const EmployeesByAreaChart = React.lazy(() => import("../../components/Tools/graphics/EmployeesByAreaChart.jsx"));
+// Carga diferida de gráficas pesadas
+const LateArrivalsChart = React.lazy(() =>
+  import("../../components/Tools/graphics/LateArrivalsChart.jsx")
+);
+const SchoolYearProgress = React.lazy(() =>
+  import("../../components/Tools/graphics/SchoolYearProgress.jsx")
+);
+const EmployeesByAreaChart = React.lazy(() =>
+  import("../../components/Tools/graphics/EmployeesByAreaChart.jsx")
+);
 
 export default function AdminHome() {
-  const [greeting, setGreeting] = useState(""); 
+  const [greeting, setGreeting] = useState("");
   const [userName, setUserName] = useState("");
   const secretKey = import.meta.env.VITE_JWT_SECRET;
 
@@ -41,7 +48,9 @@ export default function AdminHome() {
 
       {/* Gráfica de llegadas */}
       <div className="widget-late-chart">
-        <LateArrivalsChart empleadoId={"123"} />
+        <Suspense fallback={<p>Cargando llegadas...</p>}>
+          <LateArrivalsChart empleadoId={"123"} />
+        </Suspense>
       </div>
 
       {/* Widgets Día y Progreso del año */}
@@ -50,11 +59,13 @@ export default function AdminHome() {
           <GreetingCard onGreetingReady={setGreeting} />
         </div>
         <div className="widget-progress">
-          <SchoolYearProgress />
+          <Suspense fallback={<p>Cargando progreso...</p>}>
+            <SchoolYearProgress />
+          </Suspense>
         </div>
       </div>
 
-      {/* Gráfica de líneas lazy */}
+      {/* Gráfica de líneas */}
       <div className="widget-line-chart">
         <Suspense fallback={<p>Cargando gráfico de empleados...</p>}>
           <EmployeesByAreaChart />

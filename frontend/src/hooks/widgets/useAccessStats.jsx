@@ -5,8 +5,8 @@ const useAccessStats = (apiUrl, apiKey) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // useCallback evita recrear la función en cada render
   const fetchData = useCallback(async () => {
+
     setLoading(true);
     try {
       const res = await fetch(apiUrl, {
@@ -17,6 +17,7 @@ const useAccessStats = (apiUrl, apiKey) => {
 
       const registros = await res.json();
 
+      // Reducimos los registros en estadísticas por fecha
       const stats = registros.reduce((acc, r) => {
         let existing = acc.find(e => e.date === r.date);
         if (!existing) {
@@ -24,12 +25,17 @@ const useAccessStats = (apiUrl, apiKey) => {
           acc.push(existing);
         }
 
-        if (r.entry_result === "Tarde") existing.tardanzas += 1;
-        if (r.exit_result === "Salió antes") existing.salidasTempranas += 1;
+        if (r.entry_result && r.entry_result !== "A tiempo") {
+          existing.tardanzas += 1;
+        }
+        if (r.exit_result && r.exit_result !== "A tiempo") {
+          existing.salidasTempranas += 1;
+        }
 
         return acc;
       }, []);
 
+      // Ordenar cronológicamente
       stats.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       setData(stats);
@@ -40,12 +46,10 @@ const useAccessStats = (apiUrl, apiKey) => {
     }
   }, [apiUrl, apiKey]);
 
-  // Ejecutar automáticamente al montar el componente
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Retornamos la función para poder refrescar manualmente
   return { data, loading, error, refetch: fetchData };
 };
 

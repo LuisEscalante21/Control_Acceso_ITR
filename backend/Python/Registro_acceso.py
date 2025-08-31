@@ -20,8 +20,8 @@ MONGO_URI = os.getenv("DB_URI")
 DB_NAME = os.getenv("DB_NAME")
 ACCESS_COLLECTION_NAME = "registrationAccess"
 EMPLOYEE_COLLECTION_NAME = "employees"  # Colección de empleados
-ADMIN_COLLECTION_NAME = "administrators" # Colección de administradores
-COORDINATOR_COLLECTION_NAME = "coordinators" # Colección de coordinadores
+ADMIN_COLLECTION_NAME = "administrators"  # Colección de administradores
+COORDINATOR_COLLECTION_NAME = "coordinators"  # Colección de coordinadores
 
 API_ACCESS_KEY = os.getenv("API_ACCESS_KEY")
 
@@ -33,9 +33,11 @@ db = client[DB_NAME]
 access_collection = db[ACCESS_COLLECTION_NAME]
 employee_collection = db[EMPLOYEE_COLLECTION_NAME]
 
+
 # Decorador para validar API Key en header Authorization
 def require_api_key(f):
     from functools import wraps
+
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.headers.get("Authorization", None)
@@ -45,6 +47,7 @@ def require_api_key(f):
         if token != API_ACCESS_KEY:
             return jsonify({"error": "API Key inválida"}), 403
         return f(*args, **kwargs)
+
     return decorated
 
 
@@ -103,19 +106,22 @@ def crear_o_actualizar_acceso():
 
     # Búsqueda en las 3 colecciones
     user_collections = [
-        ("Employee", db.EMPLOYEE_COLLECTION_NAME),
+        ("Employee", db[EMPLOYEE_COLLECTION_NAME]),
         ("Coordinator", db[COORDINATOR_COLLECTION_NAME]),
-        ("Administrator", db[ADMIN_COLLECTION_NAME])
+        ("Administrator", db[ADMIN_COLLECTION_NAME]),
     ]
-    
+
     user_type = None
     user_data = None
 
     for tipo, collection in user_collections:
-        try:
+        user = None
+        # Si parece un ObjectId válido
+        if ObjectId.is_valid(user_id):
             user = collection.find_one({"_id": ObjectId(user_id)})
-        except Exception:
-            continue
+        # Si no es un ObjectId, intenta buscar por numEmpleado
+        if not user:
+            user = collection.find_one({"numEmpleado": user_id})
         if user:
             user_type = tipo
             user_data = user
@@ -131,7 +137,9 @@ def crear_o_actualizar_acceso():
         try:
             entry_time = datetime.fromisoformat(data["entry_time"])
             update_data["entry_time"] = entry_time
-            update_data["entry_result"] = validar_horario(horario, entry_time, "entrada")
+            update_data["entry_result"] = validar_horario(
+                horario, entry_time, "entrada"
+            )
             tiene_entrada = True
         except Exception:
             return jsonify({"error": "Formato inválido para entry_time"}), 400
@@ -168,12 +176,16 @@ def crear_o_actualizar_acceso():
     else:
         update_data["tipo_registro"] = "desconocido"
 
-    result = access_collection.update_one(filter_query, {"$set": update_data}, upsert=True)
+    result = access_collection.update_one(
+        filter_query, {"$set": update_data}, upsert=True
+    )
 
-    return jsonify({
-        "message": "Registro de acceso creado o actualizado exitosamente",
-        "user_type": user_type
-    }), 201 if result.upserted_id or result.modified_count > 0 else 200
+    return jsonify(
+        {
+            "message": "Registro de acceso creado o actualizado exitosamente",
+            "user_type": user_type,
+        }
+    ), (201 if result.upserted_id or result.modified_count > 0 else 200)
 
 
 # Endpoint para obtener todos los registros de acceso (esto para rol de administrador)
@@ -199,17 +211,24 @@ def obtener_todos_registros():
             pipeline.append({"$match": pre_match})
 
         # 🔹 AddFields seguro para evitar error con "Admin"
-        pipeline.append({
-            "$addFields": {
-                "idEmpObj": {
-                    "$cond": {
-                        "if": {"$regexMatch": {"input": "$id_Employee", "regex": "^[a-fA-F0-9]{24}$"}},
-                        "then": {"$toObjectId": "$id_Employee"},
-                        "else": None
+        pipeline.append(
+            {
+                "$addFields": {
+                    "idEmpObj": {
+                        "$cond": {
+                            "if": {
+                                "$regexMatch": {
+                                    "input": "$id_Employee",
+                                    "regex": "^[a-fA-F0-9]{24}$",
+                                }
+                            },
+                            "then": {"$toObjectId": "$id_Employee"},
+                            "else": None,
+                        }
                     }
                 }
             }
-        })
+        )
 
         # --- Filtro por área: employees con IdTeam._id === teamId ---
         if team_id:
@@ -219,8 +238,7 @@ def obtener_todos_registros():
                 return jsonify({"error": "teamId inválido"}), 400
 
             empleados_cursor = employee_collection.find(
-                {"IdTeam._id": team_object_id},
-                {"_id": 1}
+                {"IdTeam._id": team_object_id}, {"_id": 1}
             )
             emp_ids = [e["_id"] for e in empleados_cursor]
             if not emp_ids:
@@ -235,7 +253,7 @@ def obtener_todos_registros():
                     "from": "employees",
                     "localField": "idEmpObj",
                     "foreignField": "_id",
-                    "as": "employee"
+                    "as": "employee",
                 }
             },
             {"$unwind": {"path": "$employee", "preserveNullAndEmptyArrays": True}},
@@ -257,14 +275,14 @@ def obtener_todos_registros():
                                 "$concat": [
                                     {"$ifNull": ["$employee.names", ""]},
                                     " ",
-                                    {"$ifNull": ["$employee.surnames", ""]}
+                                    {"$ifNull": ["$employee.surnames", ""]},
                                 ]
                             }
                         }
                     },
-                    "employeeAvatar": "$employee.photo"
+                    "employeeAvatar": "$employee.photo",
                 }
-            }
+            },
         ]
 
         cursor = access_collection.aggregate(pipeline)
@@ -320,7 +338,9 @@ def editar_registro(id):
         return jsonify({"error": "No hay campos para actualizar"}), 400
 
     try:
-        result = access_collection.update_one({"_id": ObjectId(id)}, {"$set": update_data})
+        result = access_collection.update_one(
+            {"_id": ObjectId(id)}, {"$set": update_data}
+        )
         if result.modified_count == 0:
             return jsonify({"message": "No se modificó ningún registro"}), 200
         return jsonify({"message": "Registro actualizado correctamente"})
@@ -347,16 +367,20 @@ def eliminar_registro(id):
 def eliminar_todos_registros():
     try:
         result = access_collection.delete_many({})
-        return jsonify({
-            "message": "Todos los registros de acceso han sido eliminados",
-            "deleted_count": result.deleted_count
-        })
+        return jsonify(
+            {
+                "message": "Todos los registros de acceso han sido eliminados",
+                "deleted_count": result.deleted_count,
+            }
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 def iniciar_api_acceso():
     print("La API de registro de acceso ha iniciado.")
-    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=PORT_ACCESO)
+    app.run(debug=True, use_reloader=False, host="0.0.0.0", port=PORT_ACCESO)
+
 
 if __name__ == "__main__":
     iniciar_api_acceso()

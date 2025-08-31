@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import CryptoJS from "crypto-js";
@@ -21,8 +21,8 @@ const useDataAccess = () => {
   const [justifications, setJustifications] = useState([]);
   const [justificationMap, setJustificationMap] = useState({});
   const [showForm, setShowForm] = useState(false);
-  const [empleadoId, setEmpleadoId] = useState(null);
-  const [teamId, setTeamId] = useState(null);
+  const [userId, setUserId] = useState(null); // empleado o coordinador
+  const [userTeamId, setUserTeamId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -33,7 +33,10 @@ const useDataAccess = () => {
     },
   };
 
-  // Función para mostrar errores de red
+  // Cache para usuarios (persistente entre renders)
+  const userCache = useRef({});
+
+  // Manejar errores de red
   const handleNetworkError = (err) => {
     if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
       navigate("/503");
@@ -42,7 +45,7 @@ const useDataAccess = () => {
     }
   };
 
-  //Leer y descifrar cookie para obtener empleadoId y teamId
+  // Leer y descifrar cookie para obtener userId y teamId
   useEffect(() => {
     const userInfoCookie = document.cookie
       .split("; ")
@@ -57,40 +60,47 @@ const useDataAccess = () => {
         if (!decryptedStr) throw new Error("No se pudo descifrar correctamente.");
 
         const userInfo = JSON.parse(decryptedStr);
-
-        setEmpleadoId(userInfo._id || null);
-        setTeamId(userInfo.teamId || null);
-
+        setUserId(userInfo._id || null);
+        setUserTeamId(userInfo.teamId || null);
       } catch (err) {
         console.error("Error al descifrar userInfo:", err);
-        setEmpleadoId(null);
-        setTeamId(null);
+        setUserId(null);
+        setUserTeamId(null);
       }
     }
   }, []);
 
-  //Función para obtener usuario (empleado o coordinador)
+  // Obtener usuario (empleado o coordinador) con cache
   const fetchUserById = async (id) => {
+    if (!id) return null;
+    if (userCache.current[id]) return userCache.current[id];
+
     try {
-      const resEmployee = await axios.get(`${EMPLOYEE_API_URL}/${id}`, axiosConfig);
-      return resEmployee.data;
-    } catch (err) {
-      if (err.response?.status === 404) {
-        try {
-          const resCoordinator = await axios.get(`${COORDINATOR_API_URL}/${id}`, axiosConfig);
-          return resCoordinator.data || null;
-        } catch {
-          return null;
-        }
+      // Intentar empleado, 404 no lanza error
+      const resEmployee = await axios.get(`${EMPLOYEE_API_URL}/${id}`, {
+        ...axiosConfig,
+        validateStatus: (status) => status < 500,
+      });
+      if (resEmployee.status === 200) {
+        userCache.current[id] = resEmployee.data;
+        return resEmployee.data;
       }
+
+      // Si no existe, buscar coordinador
+      const resCoordinator = await axios.get(`${COORDINATOR_API_URL}/${id}`, axiosConfig);
+      userCache.current[id] = resCoordinator.data || null;
+      return userCache.current[id];
+
+    } catch {
+      userCache.current[id] = null;
       return null;
     }
   };
 
-  //Obtener registros de acceso
+  // Obtener registros de acceso
   const fetchAccessRecords = async () => {
     try {
-      const url = teamId ? `${API_URL}/access?teamId=${teamId}` : `${API_URL}/access`;
+      const url = userTeamId ? `${API_URL}/access?teamId=${userTeamId}` : `${API_URL}/access`;
       const res = await axios.get(url, axiosConfig);
       const registros = res.data;
 
@@ -113,7 +123,7 @@ const useDataAccess = () => {
     }
   };
 
-  //Obtener justificaciones
+  // Obtener justificaciones
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfig);
@@ -131,7 +141,7 @@ const useDataAccess = () => {
     }
   };
 
-  //Guardar acceso
+  // Guardar registro de acceso
   const saveAccessRecord = async (data) => {
     try {
       await axios.post(`${API_URL}/access`, data, axiosConfig);
@@ -144,7 +154,7 @@ const useDataAccess = () => {
     }
   };
 
-  //Eliminar acceso
+  // Eliminar registro de acceso
   const deleteAccessRecord = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -169,11 +179,11 @@ const useDataAccess = () => {
 
   const handleCloseForm = () => setShowForm(false);
 
-  //Ejecutar fetch al cargar cookie
+  // Ejecutar fetch al tener userId
   useEffect(() => {
-    if (teamId) fetchAccessRecords();
+    if (userId) fetchAccessRecords();
     fetchJustifications();
-  }, [teamId]);
+  }, [userId, userTeamId]);
 
   return {
     accessRecords,
@@ -186,8 +196,8 @@ const useDataAccess = () => {
     showForm,
     setShowForm,
     handleCloseForm,
-    empleadoId,
-    teamId,
+    userId,
+    userTeamId,
   };
 };
 
