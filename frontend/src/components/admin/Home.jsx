@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import CryptoJS from "crypto-js";
 import "../../components/styles/admin/Home.css";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
 import LateArrivalsChart from "../../components/Tools/graphics/LateArrivalsChart.jsx";
-import EmployeesByAreaChart from "../../components/Tools/graphics/EmployeesByAreaChart.jsx";
+
+const EmployeesByAreaChart = React.lazy(() => import("../../components/Tools/graphics/EmployeesByAreaChart.jsx"));
 
 export default function AdminHome() {
-  const [greeting, setGreeting] = useState(""); // Saludo personalizado
+  const [greeting, setGreeting] = useState(""); 
   const [userName, setUserName] = useState("");
-
   const secretKey = import.meta.env.VITE_JWT_SECRET;
 
   useEffect(() => {
@@ -33,19 +33,18 @@ export default function AdminHome() {
 
   return (
     <div className="dashboard-home-container">
-      {/* Saludo principal */}
       <h2>
         {greeting
           ? `${greeting}, ${userName}`
           : `Hola, ${userName || "Usuario"}`}
       </h2>
 
-      {/* Fila superior: Gráfica de llegadas dentro de su contenedor */}
+      {/* Gráfica de llegadas */}
       <div className="widget-late-chart">
         <LateArrivalsChart empleadoId={"123"} />
       </div>
 
-      {/* Fila inferior: Día/fecha + Progreso del año */}
+      {/* Widgets Día y Progreso del año */}
       <div className="dashboard-widgets">
         <div className="widget-day">
           <GreetingCard onGreetingReady={setGreeting} />
@@ -55,9 +54,11 @@ export default function AdminHome() {
         </div>
       </div>
 
-      {/* Widget inferior de gráfico de líneas */}
+      {/* Gráfica de líneas lazy */}
       <div className="widget-line-chart">
-        <EmployeesByAreaChart />
+        <Suspense fallback={<p>Cargando gráfico de empleados...</p>}>
+          <EmployeesByAreaChart />
+        </Suspense>
       </div>
     </div>
   );

@@ -3,11 +3,7 @@ import Swal from "sweetalert2";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoRedondo from "../../img/logo_redondo.png";
-
-// ✅ Modal "¿Olvidaste tu contraseña?"
 import RecoveryPasswordModal from "../../components/Tools/PageModals/RecoveryPassword";
-
-// ✅ Modal de NUEVA contraseña (forzado tras login con temporal)
 import NewPass from "../../components/Tools/PageModals/newPass";
 
 const BASE = import.meta.env.VITE_BASE_URL;
@@ -29,6 +25,9 @@ const LoginPage = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+
       setLoading(true);
       try {
         const response = await fetch(`${API_URL}/checkAuth`, {
@@ -48,8 +47,8 @@ const LoginPage = () => {
             navigate("/employee-dashboard");
           }
         }
-      } catch {
-        // silencioso
+      } catch (err) {
+        console.error("Auth check failed:", err);
       } finally {
         setLoading(false);
       }
@@ -127,13 +126,17 @@ const LoginPage = () => {
         navigate(nextRoute);
       }
     } catch (error) {
-      if (error.message === "Failed to fetch" || error.message.includes("503")) {
+      if (
+        error.message === "Failed to fetch" ||
+        error.message.includes("503")
+      ) {
         navigate("/503");
       } else {
         Swal.fire({
           icon: "error",
           title: "Error al iniciar sesión",
-          text: error.message || "Ocurrió un error. Inténtalo de nuevo más tarde.",
+          text:
+            error.message || "Ocurrió un error. Inténtalo de nuevo más tarde.",
         });
       }
     } finally {

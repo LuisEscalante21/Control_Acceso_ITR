@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import CryptoJS from "crypto-js";
-import "../../components/styles/admin/Home.css";
+import "../../components/styles/coordinator/Home.css";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
 import ArrivalBarChart from "../Tools/graphics/ArrivalBarChart.jsx";
-import useDataAccess from "../../hooks/coordinators/useDataAccess.jsx";
+import useDataAccess from "../../hooks/coordinators/useDataAccess";
 
 export default function AdminHome() {
   const [greeting, setGreeting] = useState("");
@@ -69,12 +69,15 @@ export default function AdminHome() {
       {/* Mostrar saludo solo si existe */}
       <h2>{greeting && `${greeting}, ${userName}`}</h2>
 
-      {/* Fila superior con 3 widgets distribuidos horizontalmente */}
-      <div className="dashboard-widgets">
-        <div className="widget widget-bar-chart">
+      {/* Primera fila: gráfica de llegadas ocupa todo el ancho */}
+      <div className="dashboard-row full-width">
+        <div className="widget-late-chart">
           <ArrivalBarChart accessRecords={accessRecords} />
         </div>
+      </div>
 
+      {/* Segunda fila: GreetingCard + SchoolYearProgress */}
+      <div className="dashboard-row widgets-bottom">
         <div className="widget widget-day">
           <GreetingCard onGreetingReady={setGreeting} />
         </div>

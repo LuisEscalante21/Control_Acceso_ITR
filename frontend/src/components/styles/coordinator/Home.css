@@ -1,0 +1,145 @@
+/* Contenedor principal del dashboard */
+.dashboard-home-container {
+  padding: 2rem;
+  background-color: #f8f9fb;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  color: #333;
+}
+
+/* Título principal */
+.dashboard-home-container h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+}
+
+/* Filas del dashboard */
+.dashboard-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  width: 100%;
+  margin-bottom: -1.0rem;
+}
+
+/* Fila de gráfica ocupa todo el ancho */
+.dashboard-row.full-width {
+  width: 100%;
+}
+
+.dashboard-row.full-width .widget-late-chart {
+  width: 100%;        /* ocupa todo el ancho disponible */
+  height: 400px;      /* ajusta la altura a tu gusto */
+  flex: none;
+}
+
+/* Segunda fila: GreetingCard + SchoolYearProgress */
+.dashboard-row.widgets-bottom .widget-day,
+.dashboard-row.widgets-bottom .widget-progress {
+  flex: 1; /* mismo ancho para ambos */
+}
+
+/* Ajustes para pantallas pequeñas */
+@media (max-width: 768px) {
+  .dashboard-row.widgets-bottom {
+    flex-direction: column;
+  }
+}
+
+/* Widget de saludo (GreetingCard) */
+.widget-day {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.widget-day h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #000;
+}
+
+.widget-day .day-number {
+  font-size: 2.8rem;
+  font-weight: bold;
+  color: #7b8494;
+  margin-top: 0.5rem;
+}
+
+/* Contenedor de la gráfica de llegadas */
+.widget-late-chart {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Widget de progreso */
+.widget-progress {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Gráfico circular dinámico dentro del widget de progreso */
+.widget-progress .progress-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #0052cc calc(var(--progress) * 1%),
+    #ccc 0
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 1rem;
+  transition: background 0.5s ease;
+  box-shadow: 0 0 8px rgba(0, 82, 204, 0.5);
+}
+
+/* Texto dentro del círculo */
+.widget-progress .progress-fill {
+  position: absolute;
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #000;
+  user-select: none;
+}
+
+/* Texto debajo del gráfico */
+.widget-progress p {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  color: #000;
+}
+
+/* Widget inferior de gráfico de líneas — ocupa 100% del ancho */
+.widget-line-chart {
+  width: 100%;
+  min-height: 250px;
+  text-align: center;
+  padding: 1rem;
+  background-color: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  margin-top: 2rem;
+}

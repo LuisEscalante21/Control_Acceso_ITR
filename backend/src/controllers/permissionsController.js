@@ -20,7 +20,7 @@ const isValidFileType = (mimetype) => {
   return allowedTypes.includes(mimetype);
 };
 
-// ===================== Crear un nuevo permiso =====================
+// Crear un nuevo permiso
 permissionsController.InsertPermission = async (req, res) => {
   try {
     const user = req.user;
@@ -170,7 +170,7 @@ permissionsController.InsertPermission = async (req, res) => {
   }
 };
 
-// ===================== Ver documento asociado =====================
+//Ver documento asociado
 permissionsController.getDocument = async (req, res) => {
   try {
     const { id } = req.params;
@@ -196,7 +196,7 @@ permissionsController.getDocument = async (req, res) => {
   }
 };
 
-// ===================== Mis permisos (filtra por idUser) =====================
+//Mis permisos (filtra por id de usuario)
 permissionsController.getMyPermissions = async (req, res) => {
   try {
     const userId = String(req.user._id);
@@ -212,7 +212,7 @@ permissionsController.getMyPermissions = async (req, res) => {
   }
 };
 
-// ===================== Permisos del equipo (coord) =====================
+//Permisos del equipo ( vista de rol coordinador)
 permissionsController.getTeamPermissions = async (req, res) => {
   try {
     const user = req.user;
@@ -234,7 +234,7 @@ permissionsController.getTeamPermissions = async (req, res) => {
   }
 };
 
-// ===================== Todos los permisos (Admin) =====================
+//Todos los permisos (vista de rol Admin)
 permissionsController.getAllPermissions = async (req, res) => {
   try {
     const user = req.user;
@@ -254,7 +254,7 @@ permissionsController.getAllPermissions = async (req, res) => {
   }
 };
 
-// ===================== Obtener UNO (detalle) =====================
+//Obtener UNO (ver detalle)
 permissionsController.getOne = async (req, res) => {
   try {
     const { id } = req.params;
@@ -268,7 +268,7 @@ permissionsController.getOne = async (req, res) => {
   }
 };
 
-// ===================== Actualizar estado (coord/admin) =====================
+//Actualizar estado (ya sea del rol Admin o Coordinador)
 permissionsController.updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -345,7 +345,7 @@ permissionsController.updateStatus = async (req, res) => {
   }
 };
 
-// ===================== Borrar UNO =====================
+//Borrar UNO
 permissionsController.deleteOne = async (req, res) => {
   try {
     const { id } = req.params;
@@ -407,7 +407,7 @@ permissionsController.deleteOne = async (req, res) => {
   }
 };
 
-// ===================== Borrar TODOS (Admin) + limpia Cloudinary =====================
+//Borrar TODOS (esto solo para Admin) + limpia Cloudinary
 permissionsController.clearAllPermissions = async (req, res) => {
   try {
     const user = req.user;

@@ -11,13 +11,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+# 🔹 Configuración CORS (para evitar preflight errors)
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # Configuración MongoDB y API Key
 MONGO_URI = os.getenv("DB_URI")
 DB_NAME = os.getenv("DB_NAME")
 ACCESS_COLLECTION_NAME = "registrationAccess"
 EMPLOYEE_COLLECTION_NAME = "employees"  # Colección de empleados
+ADMIN_COLLECTION_NAME = "administrators" # Colección de administradores
+COORDINATOR_COLLECTION_NAME = "coordinators" # Colección de coordinadores
 
 API_ACCESS_KEY = os.getenv("API_ACCESS_KEY")
 
@@ -43,6 +47,7 @@ def require_api_key(f):
         return f(*args, **kwargs)
     return decorated
 
+
 # Función para validar horario
 def validar_horario(schedule, ahora, tipo):
     dias = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
@@ -58,6 +63,7 @@ def validar_horario(schedule, ahora, tipo):
         return "Salió antes"
     return "A tiempo"
 
+
 # Función recursiva para convertir ObjectId a string en cualquier nivel
 def convert_objectid(obj):
     if isinstance(obj, dict):
@@ -69,6 +75,7 @@ def convert_objectid(obj):
     else:
         return obj
 
+
 # Utilidad para limpiar documentos de MongoDB para JSON
 def limpiar_registro(reg):
     reg = convert_objectid(reg)  # convierte ObjectId a string
@@ -78,27 +85,48 @@ def limpiar_registro(reg):
         reg["exit_time"] = reg["exit_time"].isoformat()
     return reg
 
+
 # Crear o actualizar registro de acceso
 @app.route("/api/access", methods=["POST"])
 @require_api_key
 def crear_o_actualizar_acceso():
     data = request.get_json()
-    employee_code = data.get("id_Employee")
+    user_id = data.get("id_Employee")  # o id_User
     date_str = data.get("date")
-    if not employee_code or not date_str:
+    if not user_id or not date_str:
         return jsonify({"error": "Faltan datos: id_Employee o date"}), 400
 
-    filter_query = {"id_Employee": employee_code, "date": date_str}
+    filter_query = {"id_Employee": user_id, "date": date_str}
     update_data = {}
     tiene_entrada = False
     tiene_salida = False
 
-    empleado = employee_collection.find_one({"_id": ObjectId(employee_code)})
-    if not empleado:
-        return jsonify({"error": "Empleado no encontrado"}), 404
+    # Búsqueda en las 3 colecciones
+    user_collections = [
+        ("Employee", db.EMPLOYEE_COLLECTION_NAME),
+        ("Coordinator", db[COORDINATOR_COLLECTION_NAME]),
+        ("Administrator", db[ADMIN_COLLECTION_NAME])
+    ]
+    
+    user_type = None
+    user_data = None
 
-    horario = empleado.get("schedule", {})
+    for tipo, collection in user_collections:
+        try:
+            user = collection.find_one({"_id": ObjectId(user_id)})
+        except Exception:
+            continue
+        if user:
+            user_type = tipo
+            user_data = user
+            break
 
+    if not user_type:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    horario = user_data.get("schedule", {}) if user_type != "Administrator" else {}
+
+    # Procesar entrada
     if "entry_time" in data:
         try:
             entry_time = datetime.fromisoformat(data["entry_time"])
@@ -107,11 +135,11 @@ def crear_o_actualizar_acceso():
             tiene_entrada = True
         except Exception:
             return jsonify({"error": "Formato inválido para entry_time"}), 400
-
     if "entry_photo" in data:
         update_data["entry_photo"] = data["entry_photo"]
         tiene_entrada = True
 
+    # Procesar salida
     if "exit_time" in data:
         try:
             exit_time = datetime.fromisoformat(data["exit_time"])
@@ -120,7 +148,6 @@ def crear_o_actualizar_acceso():
             tiene_salida = True
         except Exception:
             return jsonify({"error": "Formato inválido para exit_time"}), 400
-
     if "exit_photo" in data:
         update_data["exit_photo"] = data["exit_photo"]
         tiene_salida = True
@@ -129,7 +156,9 @@ def crear_o_actualizar_acceso():
         return jsonify({"error": "No se proporcionaron campos para actualizar"}), 400
 
     update_data["date"] = date_str
+    update_data["user_type"] = user_type  # Guardamos el tipo de usuario
 
+    # Determinar tipo de registro
     if tiene_entrada and tiene_salida:
         update_data["tipo_registro"] = "entrada y salida"
     elif tiene_entrada:
@@ -141,12 +170,13 @@ def crear_o_actualizar_acceso():
 
     result = access_collection.update_one(filter_query, {"$set": update_data}, upsert=True)
 
-    if result.upserted_id or result.modified_count > 0:
-        return jsonify({"message": "Registro de acceso creado o actualizado exitosamente"}), 201
-    else:
-        return jsonify({"message": "No se modificó ningún registro"}), 200
+    return jsonify({
+        "message": "Registro de acceso creado o actualizado exitosamente",
+        "user_type": user_type
+    }), 201 if result.upserted_id or result.modified_count > 0 else 200
 
-# Obtener todos los registros (con nombre/foto y filtros)
+
+# Endpoint para obtener todos los registros de acceso (esto para rol de administrador)
 @app.route("/api/access", methods=["GET"])
 @require_api_key
 def obtener_todos_registros():
@@ -160,16 +190,26 @@ def obtener_todos_registros():
         # --- Filtros iniciales sobre el campo string id_Employee ---
         pre_match = {}
         if only_employee_id:
-            pre_match["id_Employee"] = only_employee_id
+            # Si es Admin → no filtramos, devuelve todo
+            if only_employee_id != "Admin":
+                pre_match["id_Employee"] = only_employee_id
         if exclude_employee_id:
-            # si ya hay un $match previo, se puede combinar según tu caso;
-            # aquí hacemos un $ne simple
-            pre_match["id_Employee"] = {"$ne": exclude_employee_id} if "id_Employee" not in pre_match else pre_match["id_Employee"]
+            pre_match["id_Employee"] = {"$ne": exclude_employee_id}
         if pre_match:
             pipeline.append({"$match": pre_match})
 
-        # Convertir id_Employee (string) -> ObjectId para poder hacer lookup
-        pipeline.append({"$addFields": {"idEmpObj": {"$toObjectId": "$id_Employee"}}})
+        # 🔹 AddFields seguro para evitar error con "Admin"
+        pipeline.append({
+            "$addFields": {
+                "idEmpObj": {
+                    "$cond": {
+                        "if": {"$regexMatch": {"input": "$id_Employee", "regex": "^[a-fA-F0-9]{24}$"}},
+                        "then": {"$toObjectId": "$id_Employee"},
+                        "else": None
+                    }
+                }
+            }
+        })
 
         # --- Filtro por área: employees con IdTeam._id === teamId ---
         if team_id:
@@ -201,7 +241,6 @@ def obtener_todos_registros():
             {"$unwind": {"path": "$employee", "preserveNullAndEmptyArrays": True}},
             {
                 "$project": {
-                    # Campos del acceso
                     "_id": 1,
                     "date": 1,
                     "entry_photo": 1,
@@ -210,10 +249,8 @@ def obtener_todos_registros():
                     "exit_photo": 1,
                     "exit_result": 1,
                     "exit_time": 1,
-                    "id_Employee": 1, 
+                    "id_Employee": 1,
                     "tipo_registro": 1,
-
-                    # Derivados del empleado
                     "employeeName": {
                         "$trim": {
                             "input": {
@@ -231,17 +268,14 @@ def obtener_todos_registros():
         ]
 
         cursor = access_collection.aggregate(pipeline)
-        registros = []
-        for reg in cursor:
-            reg = limpiar_registro(reg) 
-            registros.append(reg)
+        registros = [limpiar_registro(reg) for reg in cursor]
 
         return jsonify(registros)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-# Obtener registro por ID
+# Endpoint para obtener todos los registros de acceso (esto para rol de empleado)
 @app.route("/api/access/<id>", methods=["GET"])
 @require_api_key
 def obtener_registro_por_id(id):
@@ -253,7 +287,8 @@ def obtener_registro_por_id(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# Editar registro por ID 
+
+# Endpoint para editar un registro de acceso específico
 @app.route("/api/access/<id>", methods=["PATCH"])
 @require_api_key
 def editar_registro(id):
@@ -292,17 +327,32 @@ def editar_registro(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# Eliminar registro por ID
+
+# Endpoint para eliminar un registro de acceso específico
 @app.route("/api/access/<id>", methods=["DELETE"])
 @require_api_key
 def eliminar_registro(id):
     try:
         result = access_collection.delete_one({"_id": ObjectId(id)})
-        if result.deleted_count == 0:   
+        if result.deleted_count == 0:
             return jsonify({"error": "Registro no encontrado"}), 404
         return jsonify({"message": "Registro eliminado correctamente"})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+
+# Endpoint para eliminar todos los registros de acceso
+@app.route("/api/access", methods=["DELETE"])
+@require_api_key
+def eliminar_todos_registros():
+    try:
+        result = access_collection.delete_many({})
+        return jsonify({
+            "message": "Todos los registros de acceso han sido eliminados",
+            "deleted_count": result.deleted_count
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def iniciar_api_acceso():
     print("La API de registro de acceso ha iniciado.")

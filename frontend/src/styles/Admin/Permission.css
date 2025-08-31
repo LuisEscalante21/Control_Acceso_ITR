@@ -41,7 +41,7 @@
   font-size:14px; font-weight:600; cursor:pointer;
   transition:filter .2s ease, background .2s ease;
 }
-.apg__danger:hover{ filter:brightness(0.97); background:#fff5f5; }
+.apg__danger:hover{ filter:brightness(0.97); background:#e60000; color: #fff; }
 
 /* Contenedor blanco con scroll interno para la lista */
 .apg__sheet{

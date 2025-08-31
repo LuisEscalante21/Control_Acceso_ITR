@@ -2,10 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { Search, ChevronDown } from "lucide-react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
+import Swal from "sweetalert2";
+import axios from "axios";
 import "../../styles/Admin/Accesos.css";
 import useDataAccess from "../../hooks/admin/useDataAccess";
 import useDataTeams from "../../hooks/admin/useDataTeams";
 import AccessCard from "../../components/admin/Cards/AccessCard.jsx";
+import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
 const HorarioOptions = ["Entrada", "Salida"];
 
@@ -14,6 +17,8 @@ const Accesos = () => {
   const [selectedDocente, setSelectedDocente] = useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
   const [searchText, setSearchText] = useState("");
+  const [viewJustify, setViewJustify] = useState(null);
+
   const docentesRef = useRef(null);
   const salidasRef = useRef(null);
 
@@ -33,17 +38,28 @@ const Accesos = () => {
   }
   const empleadoId = userInfo?._id || null;
 
-  // Hook para accesos
-  const { accessRecords, fetchAccessRecords } = useDataAccess(empleadoId);
-
-  // Hook para áreas/equipos
+  // Hooks
+  const {
+    accessRecords,
+    justificationMap,
+    fetchAccessRecords,
+    fetchJustifications,
+  } = useDataAccess(empleadoId);
   const { teams: areaOptions, fetchTeams } = useDataTeams();
 
+  const API_URL_ACCESS = `${import.meta.env.VITE_BASE_URL}${
+    import.meta.env.VITE_PORT_ACCESS
+  }/api`;
+  const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
+
+  // Inicializar datos
   useEffect(() => {
     fetchAccessRecords();
+    fetchJustifications();
     fetchTeams();
   }, []);
 
+  // Cerrar dropdowns al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event) {
       if (
@@ -82,7 +98,6 @@ const Accesos = () => {
     } else if (option === "Mis registros") {
       await fetchAccessRecords({ onlyMine: true });
     } else {
-      // cuando selecciona un área
       const team = areaOptions.find((t) => t.name === option);
       if (team) {
         await fetchAccessRecords({ teamId: team._id });
@@ -95,7 +110,66 @@ const Accesos = () => {
     setOpenDropdown(null);
   };
 
-  // Filtrar registros según tipo_registro y búsqueda
+  // Botón para eliminar todos los accesos
+  // Botón para eliminar todos los accesos y justificaciones
+  const handleDeleteAllAccess = async () => {
+    const { value: text } = await Swal.fire({
+      title: "Eliminar todos los accesos y justificaciones",
+      html: `Para confirmar, escribe <b>REMOVE</b> en el campo`,
+      input: "text",
+      inputPlaceholder: "Escribe REMOVE",
+      showCancelButton: true,
+      confirmButtonText: "Eliminar",
+      cancelButtonText: "Cancelar",
+      customClass: {
+        confirmButton: "swal-confirm-danger",
+        cancelButton: "swal-cancel",
+      },
+      inputValidator: (value) => {
+        if (value.toLowerCase() !== "remove") {
+          return "Debes escribir 'remove' para confirmar";
+        }
+      },
+    });
+
+    if (text && text.toLowerCase() === "remove") {
+      try {
+        // 1️⃣ Eliminar todos los accesos
+        const resAccess = await axios.delete(`${API_URL_ACCESS}/access`, {
+          headers: {
+            Authorization: `Bearer ${API_ACCESS_KEY}`,
+          },
+        });
+
+        // 2️⃣ Eliminar todas las justificaciones
+        const resJustifications = await axios.delete(`${import.meta.env.VITE_BASE_URL}${import.meta.env.VITE_PORT}/api/justifications`,
+          {
+            headers: {
+              Authorization: `Bearer ${API_ACCESS_KEY}`,
+            },
+          }
+        );
+
+        Swal.fire(
+          "Eliminado",
+          `Se eliminaron ${resAccess.data.deleted_count} registros de acceso y ${resJustifications.data.deleted_count} justificaciones`,
+          "success"
+        );
+
+        fetchAccessRecords(); // refrescar lista
+        fetchJustifications(); // refrescar justificaciones
+      } catch (error) {
+        console.error(error);
+        Swal.fire(
+          "Error",
+          "No se pudieron eliminar los registros de acceso y justificaciones.",
+          "error"
+        );
+      }
+    }
+  };
+
+  // Filtrar registros según tipo_registro, búsqueda y justificación
   const filteredAccess = accessRecords
     .filter((person) => {
       if (selectedSalida === "Entrada") {
@@ -115,7 +189,7 @@ const Accesos = () => {
       const nombre = person.employeeName?.toLowerCase() || "";
       return nombre.includes(searchText.toLowerCase());
     });
-    
+
   return (
     <div className="access-history-container">
       <div className="encabezado-accesos">
@@ -191,6 +265,11 @@ const Accesos = () => {
               </div>
             )}
           </div>
+
+          {/* Botón eliminar todos los accesos */}
+          <button className="delete-all-access" onClick={handleDeleteAllAccess}>
+            Eliminar todos los accesos
+          </button>
         </div>
       </div>
 
@@ -206,19 +285,36 @@ const Accesos = () => {
                   ? person.entry_time
                   : person.exit_time;
 
+              if (!time) return null;
+
               return (
                 <AccessCard
+                  key={person._id || index}
                   name={person.employeeName}
                   avatar={person.employeeAvatar}
                   timeLabel={selectedSalida}
                   time={time}
                   tipoRegistro={person.tipo_registro}
+                  isJustified={!!justificationMap?.[person._id]}
+                  justification={justificationMap?.[person._id]}
+                  onViewJustification={() =>
+                    setViewJustify(justificationMap?.[person._id])
+                  }
                 />
               );
             })
           )}
         </div>
       </div>
+
+      {/* Modal de justificación */}
+      {viewJustify && (
+        <ViewJustifyModal
+          isOpen={!!viewJustify}
+          onClose={() => setViewJustify(null)}
+          justification={viewJustify}
+        />
+      )}
     </div>
   );
 };

@@ -162,4 +162,19 @@ justificationsController.deleteJustification = async (req, res) => {
   }
 };
 
+// 🔹 DELETE ALL JUSTIFICATIONS
+justificationsController.deleteAllJustifications = async (req, res) => {
+  try {
+    const result = await JustificationLateArrival.deleteMany({});
+    res.status(200).json({
+      message: "Todas las justificaciones han sido eliminadas",
+      deleted_count: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("Error deleting all justifications:", error);
+    res.status(500).json({ message: "Error eliminando justificaciones", error });
+  }
+};
+
+
 export default justificationsController;

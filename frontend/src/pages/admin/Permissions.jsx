@@ -1,15 +1,14 @@
-// src/pages/admin/AdminPermissions.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import useDataPermissions from "../../hooks/Global/UseDataPermissions";
 import AdminViewPermissionModal from "../../components/admin/PageModals/PermisionsModal/ViewPermissionModal";
 import "../../styles/admin/Permission.css";
 
-// 🚨 Qué es urgente
+//Qué es urgente
 const isUrgent = (p) =>
   p?.permissionType === "incapacity" &&
   (p?.status || "").toLowerCase() === "pending";
 
-// 🚥 Mapeo de estado con clase
+// Mapeo de estado con clase
 const mapStatusForCard = (perm) => {
   if (isUrgent(perm)) return { label: "🚨 Urgente", cls: "urgente" };
   const s = (perm?.status || "").toLowerCase();
@@ -37,7 +36,8 @@ export default function AdminPermissions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 📌 Filtrado + orden urgentes primero
+
+  //Filtrado + orden urgentes primero
   const filtered = useMemo(() => {
     let list = permissions || [];
 
@@ -60,7 +60,7 @@ export default function AdminPermissions() {
       }
     }
 
-    // ⚡ Urgentes al inicio
+    //Urgentes al inicio (como prioridad)
     list = [...list].sort((a, b) => {
       if (isUrgent(a) && !isUrgent(b)) return -1;
       if (!isUrgent(a) && isUrgent(b)) return 1;

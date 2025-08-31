@@ -5,6 +5,8 @@ import CryptoJS from "crypto-js";
 import "../../styles/coordinators/Accesos.css";
 import useDataAccess from "../../hooks/coordinators/useDataAccess.jsx";
 import AccessCard from "../../components/coordinator/Cards/AccessCard.jsx";
+import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
+
 
 // Opciones de filtros
 const HorarioOptions = ["Entrada", "Salida"];
@@ -16,10 +18,12 @@ const MainFilterOptions = [
 
 const Accesos = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [selectedJustificationFilter, setSelectedJustificationFilter] = useState("Todos");
+  const [selectedJustificationFilter, setSelectedJustificationFilter] =
+    useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
   const [searchText, setSearchText] = useState("");
   const [mainFilter, setMainFilter] = useState("todos");
+  const [viewJustify, setViewJustify] = useState(null);
 
   const justificationFilterRef = useRef(null);
   const salidasRef = useRef(null);
@@ -40,7 +44,6 @@ const Accesos = () => {
   }
 
   const empleadoId = userInfo?._id || null;
-
   // Extraemos datos y funciones del hook personalizado
   const {
     accessRecords,
@@ -180,7 +183,9 @@ const Accesos = () => {
                   <button
                     key={option}
                     onClick={() => handleSelectJustificationFilter(option)}
-                    className={selectedJustificationFilter === option ? "selected" : ""}
+                    className={
+                      selectedJustificationFilter === option ? "selected" : ""
+                    }
                   >
                     {option}
                   </button>
@@ -222,7 +227,9 @@ const Accesos = () => {
           ) : (
             filteredAccess.map((person, index) => {
               const time =
-                selectedSalida === "Entrada" ? person.entry_time : person.exit_time;
+                selectedSalida === "Entrada"
+                  ? person.entry_time
+                  : person.exit_time;
 
               if (!time) return null;
 
@@ -235,15 +242,24 @@ const Accesos = () => {
                   time={time}
                   tipoRegistro={person.tipo_registro}
                   docente={person.docente}
-                  // Coordinador solo ve el estado, no puede justificar
-                  showJustifyButton={false}
                   isJustified={!!justificationMap?.[person._id]}
+                  justification={justificationMap?.[person._id]} // pasar la justificación
+                  onViewJustification={() =>
+                    setViewJustify(justificationMap?.[person._id])
+                  } // abrir modal
                 />
               );
             })
           )}
         </div>
       </div>
+      {viewJustify && (
+        <ViewJustifyModal
+          isOpen={!!viewJustify}
+          onClose={() => setViewJustify(null)}
+          justification={viewJustify}
+        />
+      )}
     </div>
   );
 };

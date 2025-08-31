@@ -30,9 +30,7 @@ const AccessCard = ({
   return (
     <div className="access-card">
       {/* Estado con puntito */}
-      <span
-        className={`status-dot ${isJustified ? "justified" : "pending"}`}
-      />
+      <span className={`status-dot ${isJustified ? "justified" : "pending"}`} />
 
       {/* Avatar */}
       <div className="access-avatar">
@@ -61,7 +59,10 @@ const AccessCard = ({
 
       {/* Labels con íconos de estado */}
       {isJustified && (
-        <span className="justified-label">
+        <span
+          className="justified-label clickable"
+          onClick={() => onJustifyClick && onJustifyClick()} 
+        >
           <CheckCircle size={16} className="icon-justified" /> Justificado
         </span>
       )}

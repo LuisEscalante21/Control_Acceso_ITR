@@ -4,7 +4,16 @@ import iconEntrada from "../../../img/Entrada_acceso.png";
 import { UserCircle, CheckCircle2, Clock } from "lucide-react"; // Íconos para estado
 import "../../../components/styles/AccessCard.css";
 
-const AccessCard = ({ name, avatar, timeLabel, time, tipoRegistro, isJustified = false }) => {
+const AccessCard = ({
+  name,
+  avatar,
+  timeLabel,
+  time,
+  tipoRegistro,
+  isJustified = false,
+  justification = null, // información de la justificación
+  onViewJustification = null, // callback para abrir modal
+}) => {
   const horaFormateada = new Date(time).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -42,7 +51,10 @@ const AccessCard = ({ name, avatar, timeLabel, time, tipoRegistro, isJustified =
       {/* Estado de justificación */}
       <div className="access-status">
         {isJustified ? (
-          <span className="justified-label">
+          <span
+            className="justified-label clickable"
+            onClick={() => onViewJustification && onViewJustification()}
+          >
             <CheckCircle2 size={16} /> Justificado
           </span>
         ) : (

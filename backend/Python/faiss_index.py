@@ -34,9 +34,9 @@ class FaissFaceIndex:
 
         if encodings:
             self.index.add(np.array(encodings))
-            print(f"[FAISS] Cargados {len(encodings)} encodings en el índice.")
+            print(f"[FAISS] Cargados {len(encodings)} encodings en el indice.")
         else:
-            print("[FAISS] No se encontraron encodings válidos.")
+            print("[FAISS] No se encontraron encodings validos.")
 
     def search_face(self, encoding_query, threshold=0.35, min_diff=0.05):
         if self.index.ntotal == 0:
@@ -67,7 +67,7 @@ class FaissFaceIndex:
         idx = next((i for i, meta in enumerate(self.metadata_list)
                     if meta["employee_code"] == employee_code), None)
         if idx is None:
-            print(f"[FAISS] No se encontró el código {employee_code} en el índice.")
+            print(f"[FAISS] No se encontro el codigo {employee_code} en el indice.")
             return False
 
         self.metadata_list.pop(idx)
@@ -80,5 +80,5 @@ class FaissFaceIndex:
         if len(new_encodings) > 0:
             self.index.add(new_encodings)
 
-        print(f"[FAISS] Rostro con código {employee_code} eliminado del índice.")
+        print(f"[FAISS] Rostro con codigo {employee_code} eliminado del indice.")
         return True

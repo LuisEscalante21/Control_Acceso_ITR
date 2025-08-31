@@ -6,6 +6,7 @@ import "../../styles/employee/Accesos.css";
 import useDataAccess from "../../hooks/employee/useDataAccess.jsx";
 import AccessCard from "../../components/employee/Cards/AccessCard.jsx";
 import JustifyModal from "../../components/employee/PageModals/justifictions.jsx";
+import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
 const HorarioOptions = ["Entrada", "Salida"];
 const JustificationFilterOptions = ["Todos", "Justificados", "Pendientes"];
@@ -18,6 +19,7 @@ const Accesos = () => {
   const [searchText, setSearchText] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [justificarInfo, setJustificarInfo] = useState(null);
+  const [viewJustify, setViewJustify] = useState(null);
 
   const justificationFilterRef = useRef(null);
   const salidasRef = useRef(null);
@@ -140,7 +142,7 @@ const Accesos = () => {
           <Search className="search-icon" />
           <input
             type="text"
-            placeholder="Buscar por nombre o apellido"
+            placeholder="Buscar"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
@@ -231,7 +233,13 @@ const Accesos = () => {
                   showJustifyButton={isLateOrEarly && !person.justification}
                   isJustified={!!person.justification}
                   justification={person.justification}
-                  onJustifyClick={() => handleOpenJustifyModal(person)}
+                  onJustifyClick={() => {
+                    if (person.justification) {
+                      setViewJustify(person); // abre modal de ver justificación
+                    } else {
+                      handleOpenJustifyModal(person); // abre modal para justificar
+                    }
+                  }}
                 />
               );
             })
@@ -246,6 +254,14 @@ const Accesos = () => {
           record={justificarInfo}
           currentUser={userInfo}
           refreshAccessRecords={refreshAccessData}
+        />
+      )}
+
+      {viewJustify && (
+        <ViewJustifyModal
+          isOpen={!!viewJustify}
+          onClose={() => setViewJustify(null)}
+          justification={viewJustify} 
         />
       )}
     </div>

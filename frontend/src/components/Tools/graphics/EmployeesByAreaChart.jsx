@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -12,20 +12,15 @@ import {
 import useChartEmployeesByTeam from "../../../hooks/widgets/useChartEmployeesByTeam.jsx";
 
 const EmployeesByAreaChart = () => {
-  const chartData = useChartEmployeesByTeam();
+  const chartDataRaw = useChartEmployeesByTeam();
 
-  if (!chartData) return <p>Cargando datos...</p>;
-  
-  const formattedData = Array.isArray(chartData)
-    ? chartData
-    : chartData.labels.map((label, i) => ({
-        label,
-        value: chartData.datasets[0].data[i] || 0
-      }));
+  const chartData = useMemo(() => chartDataRaw || [], [chartDataRaw]);
+
+  if (!chartData || chartData.length === 0) return <p>Cargando datos...</p>;
 
   return (
     <ResponsiveContainer width="100%" height={400}>
-      <LineChart data={formattedData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+      <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="label" />
         <YAxis />
@@ -33,13 +28,14 @@ const EmployeesByAreaChart = () => {
         <Legend />
         <Line
           type="monotone"
-          dataKey="value"
+          dataKey="Empleados"
           stroke="#0a00beff"
-          activeDot={{ r: 8 }}
+          activeDot={{ r: 4 }}
+          isAnimationActive={false}
         />
       </LineChart>
     </ResponsiveContainer>
   );
 };
 
-export default EmployeesByAreaChart;
+export default React.memo(EmployeesByAreaChart);

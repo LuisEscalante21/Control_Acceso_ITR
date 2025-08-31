@@ -71,3 +71,10 @@
   font-weight: bold;
   margin-top: 8px;
 }
+
+.clickable {
+  cursor: pointer;
+}
+.clickable:hover {
+  text-decoration: underline;
+}

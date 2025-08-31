@@ -27,7 +27,10 @@ router.put(
   justificationsController.updateJustification
 );
 
-// 🔹 Eliminar justificación
+// 🔹 Eliminar justificación individual
 router.delete("/:id", justificationsController.deleteJustification);
+
+// 🔹 Eliminar todas las justificaciones
+router.delete("/", justificationsController.deleteAllJustifications);
 
 export default router;

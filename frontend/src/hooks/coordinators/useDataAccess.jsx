@@ -20,14 +20,6 @@ const useDataAccess = (empleadoId, teamId) => {
   const [showForm, setShowForm] = useState(false);
   const navigate = useNavigate();
 
-  const handleNetworkError = (err) => {
-    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
-      navigate("/503");
-    } else {
-      console.error("Error:", err);
-    }
-  };
-
   const axiosConfig = {
     headers: {
       Authorization: `Bearer ${API_ACCESS_KEY}`,
@@ -35,33 +27,49 @@ const useDataAccess = (empleadoId, teamId) => {
     },
   };
 
-  // Obtener datos de un empleado por ID
+  const handleNetworkError = (err) => {
+    if (
+      !err.response ||
+      err.code === "ERR_NETWORK" ||
+      err.response?.status === 503
+    ) {
+      navigate("/503");
+    } else {
+      console.error("Error:", err);
+    }
+  };
+
   const fetchEmployeeById = async (id_Employee) => {
     try {
       const res = await axios.get(`${EMPLOYEE_API_URL}/${id_Employee}`);
       return res.data;
-    } catch (error) {
-      console.warn("No se pudo obtener empleado", id_Employee);
+    } catch {
       return null;
     }
   };
 
-  // Obtener registros de acceso
   const fetchAccessRecords = async () => {
     try {
-      const url = teamId ? `${API_URL}/access?teamId=${teamId}` : `${API_URL}/access`;
+      // --- Aquí enviamos el teamId para que solo traiga accesos de mi área ---
+      const url = teamId
+        ? `${API_URL}/access?teamId=${teamId}`
+        : `${API_URL}/access`;
       const res = await axios.get(url, axiosConfig);
       const registros = res.data;
 
+      // Adjuntar datos de empleado (nombre, foto) a cada registro
       const registrosConEmpleado = await Promise.all(
         registros.map(async (reg) => {
           const empleado = await fetchEmployeeById(reg.id_Employee);
           return {
             ...reg,
-            employeeName: empleado ? `${empleado.names} ${empleado.surnames}` : "Empleado no encontrado",
+            employeeName: empleado
+              ? `${empleado.names} ${empleado.surnames}`
+              : "Empleado no encontrado",
             employeeAvatar: empleado?.photo || null,
             teamId: empleado?.teamId || null,
           };
+          return enriched;
         })
       );
 
@@ -72,19 +80,16 @@ const useDataAccess = (empleadoId, teamId) => {
     }
   };
 
-  // Obtener justificaciones
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfig);
       setJustifications(res.data);
 
-      // Crear mapa idAccess -> justificación para filtrado
       const map = (res.data || []).reduce((acc, j) => {
         if (j?.idAccess) acc[j.idAccess] = j;
         return acc;
       }, {});
       setJustificationMap(map);
-
     } catch (error) {
       handleNetworkError(error);
       console.error("Error al obtener justificaciones:", error);
@@ -95,7 +100,11 @@ const useDataAccess = (empleadoId, teamId) => {
   const saveAccessRecord = async (data) => {
     try {
       await axios.post(`${API_URL}/access`, data, axiosConfig);
-      Swal.fire("¡Guardado!", "El registro de acceso ha sido guardado.", "success");
+      Swal.fire(
+        "¡Guardado!",
+        "El registro de acceso ha sido guardado.",
+        "success"
+      );
       await fetchAccessRecords();
       handleCloseForm();
     } catch (error) {
@@ -118,7 +127,11 @@ const useDataAccess = (empleadoId, teamId) => {
 
     try {
       await axios.delete(`${API_URL}/access/${id}`, axiosConfig);
-      Swal.fire("¡Eliminado!", "El registro de acceso ha sido eliminado.", "success");
+      Swal.fire(
+        "¡Eliminado!",
+        "El registro de acceso ha sido eliminado.",
+        "success"
+      );
       await fetchAccessRecords();
     } catch (error) {
       handleNetworkError(error);
@@ -129,7 +142,7 @@ const useDataAccess = (empleadoId, teamId) => {
   const handleCloseForm = () => setShowForm(false);
 
   useEffect(() => {
-    fetchAccessRecords();
+    if (teamId) fetchAccessRecords();
     fetchJustifications();
   }, [teamId]);
 
