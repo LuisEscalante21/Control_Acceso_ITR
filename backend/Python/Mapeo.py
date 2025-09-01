@@ -81,6 +81,7 @@ def download_image_from_url(url):
         print("Error al descargar imagen:", e)
         return None
 
+#Decorador para verificar la API Key
 def require_api_key(expected_key):
     def decorator(f):
         from functools import wraps
@@ -96,6 +97,7 @@ def require_api_key(expected_key):
         return wrapper
     return decorator
 
+# Manejo global de errores
 @app.errorhandler(Exception)
 def handle_exception(e):
     import traceback
@@ -176,7 +178,7 @@ def mapeo():
     }), 200
 
 
-# Endpoint para actualizar un rostro# Endpoint para actualizar un rostro
+# Endpoint para actualizar un rostro
 @app.route('/faces/<id>', methods=['PUT'])
 @require_api_key(MAPEO_API_KEY)
 def actualizar_face(id):

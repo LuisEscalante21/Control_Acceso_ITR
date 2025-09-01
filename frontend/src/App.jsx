@@ -1,5 +1,10 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
 
 // Pages
 import LoginPage from "./pages/LoginPage/LoginPage";
@@ -30,12 +35,15 @@ import CoordinatorPermisos from "./pages/coordinator/Permisos.jsx";
 // Employee
 import EmployeeDashboard from "./pages/employee/Dashboard.jsx";
 import HomeEmployee from "./pages/employee/Home.jsx";
-import EmployeeAccesos from "./pages/employee/Accesos.jsx"; 
+import EmployeeAccesos from "./pages/employee/Accesos.jsx";
 import EmployeePermisos from "./pages/employee/Permissions.jsx";
+
+//Face recognition
+import FaceReco from "./pages//videoCapture/VideoDashboard.jsx";
 
 // Error Pages
 import Error404 from "./pages/error/Error404.jsx";
-import Error503 from "./pages/error/Error503.jsx"; 
+import Error503 from "./pages/error/Error503.jsx";
 
 import "./App.css";
 
@@ -56,6 +64,9 @@ function App() {
           }
         />
 
+        {/* Face recognition - no requiere login */}
+        <Route path="/face-reco" element={<FaceReco />} />
+
         {/* Rutas del administrador */}
         <Route
           path="/admin-dashboard/*"
@@ -71,7 +82,7 @@ function App() {
           <Route path="horarios" element={<Horarios />} />
           <Route path="coordinadores" element={<Coordinators />} />
           <Route path="usuarios" element={<Admins />} />
-          <Route path="permisos" element={<PermisosAdmin/>} />
+          <Route path="permisos" element={<PermisosAdmin />} />
           <Route path="historial" element={<Accesos />} />
           <Route path="registros" element={<Rostros />} />
           <Route path="areas" element={<Areas />} />
@@ -90,7 +101,7 @@ function App() {
           <Route path="" element={<Navigate to="dashboard" />} />
           <Route path="dashboard" element={<HomeCoordinator />} />
           <Route path="empleado" element={<EmpleadosC />} />
-          <Route path="permisosC" element={<CoordinatorPermisos/>}/>
+          <Route path="permisosC" element={<CoordinatorPermisos />} />
           <Route path="historial" element={<CoordinatorAccesos />} />
 
           <Route path="*" element={<Error404 />} />
@@ -107,8 +118,8 @@ function App() {
         >
           <Route path="" element={<Navigate to="dashboard" />} />
           <Route path="dashboard" element={<HomeEmployee />} />
-          <Route path="permisos" element={<EmployeePermisos/>} />
-          <Route path="historial" element={<EmployeeAccesos/>} />
+          <Route path="permisos" element={<EmployeePermisos />} />
+          <Route path="historial" element={<EmployeeAccesos />} />
           <Route path="*" element={<Error404 />} />
         </Route>
 

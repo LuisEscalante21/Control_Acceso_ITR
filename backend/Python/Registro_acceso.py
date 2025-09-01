@@ -12,16 +12,16 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# 🔹 Configuración CORS (para evitar preflight errors)
+# 🔹 Configuración CORS
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # Configuración MongoDB y API Key
 MONGO_URI = os.getenv("DB_URI")
 DB_NAME = os.getenv("DB_NAME")
 ACCESS_COLLECTION_NAME = "registrationAccess"
-EMPLOYEE_COLLECTION_NAME = "employees"  # Colección de empleados
-ADMIN_COLLECTION_NAME = "administrators"  # Colección de administradores
-COORDINATOR_COLLECTION_NAME = "coordinators"  # Colección de coordinadores
+EMPLOYEE_COLLECTION_NAME = "employees"
+ADMIN_COLLECTION_NAME = "administrators"
+COORDINATOR_COLLECTION_NAME = "coordinators"
 
 API_ACCESS_KEY = os.getenv("API_ACCESS_KEY")
 
@@ -29,12 +29,11 @@ API_ACCESS_KEY = os.getenv("API_ACCESS_KEY")
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 
-# Definir colecciones después de crear la conexión
 access_collection = db[ACCESS_COLLECTION_NAME]
 employee_collection = db[EMPLOYEE_COLLECTION_NAME]
 
 
-# Decorador para validar API Key en header Authorization
+# Decorador para validar API Key
 def require_api_key(f):
     from functools import wraps
 
@@ -51,6 +50,20 @@ def require_api_key(f):
     return decorated
 
 
+# Función para parsear horas en 24h o 12h AM/PM
+def parse_hora(hora_str):
+    if not hora_str:
+        return None
+    hora_str = hora_str.strip().upper()
+    formatos = ["%H:%M", "%I:%M%p"]  # 24h y 12h AM/PM
+    for fmt in formatos:
+        try:
+            return datetime.strptime(hora_str, fmt).time()
+        except ValueError:
+            continue
+    raise ValueError(f"Formato de hora inválido: {hora_str}")
+
+
 # Función para validar horario
 def validar_horario(schedule, ahora, tipo):
     dias = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
@@ -59,15 +72,22 @@ def validar_horario(schedule, ahora, tipo):
     bloque = schedule.get(dia, {}).get(seccion)
     if not bloque:
         return "Sin horario asignado"
-    hora_actual = ahora.strftime("%H:%M")
-    if tipo == "entrada" and hora_actual > bloque["start"]:
+
+    try:
+        hora_inicio = parse_hora(bloque.get("start"))
+        hora_fin = parse_hora(bloque.get("end"))
+    except ValueError as e:
+        return str(e)
+
+    hora_actual = ahora.time()
+    if tipo == "entrada" and hora_actual > hora_inicio:
         return "Tarde"
-    if tipo == "salida" and hora_actual < bloque["end"]:
+    if tipo == "salida" and hora_actual < hora_fin:
         return "Salió antes"
     return "A tiempo"
 
 
-# Función recursiva para convertir ObjectId a string en cualquier nivel
+# Función recursiva para convertir ObjectId a string
 def convert_objectid(obj):
     if isinstance(obj, dict):
         return {k: convert_objectid(v) for k, v in obj.items()}
@@ -79,9 +99,9 @@ def convert_objectid(obj):
         return obj
 
 
-# Utilidad para limpiar documentos de MongoDB para JSON
+# Limpiar documento para JSON
 def limpiar_registro(reg):
-    reg = convert_objectid(reg)  # convierte ObjectId a string
+    reg = convert_objectid(reg)
     if "entry_time" in reg and reg["entry_time"]:
         reg["entry_time"] = reg["entry_time"].isoformat()
     if "exit_time" in reg and reg["exit_time"]:
@@ -89,12 +109,14 @@ def limpiar_registro(reg):
     return reg
 
 
+# ==========================================================
 # Crear o actualizar registro de acceso
+# ==========================================================
 @app.route("/api/access", methods=["POST"])
 @require_api_key
 def crear_o_actualizar_acceso():
     data = request.get_json()
-    user_id = data.get("id_Employee")  # o id_User
+    user_id = data.get("id_Employee")
     date_str = data.get("date")
     if not user_id or not date_str:
         return jsonify({"error": "Faltan datos: id_Employee o date"}), 400
@@ -104,7 +126,6 @@ def crear_o_actualizar_acceso():
     tiene_entrada = False
     tiene_salida = False
 
-    # Búsqueda en las 3 colecciones
     user_collections = [
         ("Employee", db[EMPLOYEE_COLLECTION_NAME]),
         ("Coordinator", db[COORDINATOR_COLLECTION_NAME]),
@@ -116,10 +137,8 @@ def crear_o_actualizar_acceso():
 
     for tipo, collection in user_collections:
         user = None
-        # Si parece un ObjectId válido
         if ObjectId.is_valid(user_id):
             user = collection.find_one({"_id": ObjectId(user_id)})
-        # Si no es un ObjectId, intenta buscar por numEmpleado
         if not user:
             user = collection.find_one({"numEmpleado": user_id})
         if user:
@@ -164,9 +183,8 @@ def crear_o_actualizar_acceso():
         return jsonify({"error": "No se proporcionaron campos para actualizar"}), 400
 
     update_data["date"] = date_str
-    update_data["user_type"] = user_type  # Guardamos el tipo de usuario
+    update_data["user_type"] = user_type
 
-    # Determinar tipo de registro
     if tiene_entrada and tiene_salida:
         update_data["tipo_registro"] = "entrada y salida"
     elif tiene_entrada:

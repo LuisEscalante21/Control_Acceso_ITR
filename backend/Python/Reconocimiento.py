@@ -29,7 +29,7 @@ port = int(os.getenv("PORT_RECONOCIMIENTO"))
 db_name = os.getenv("DB_NAME", "PTC_2025")
 collection_name = os.getenv("DB_COLLECTION")
 SCHEDULES_URL = "http://localhost:4000/api/schedules"
-ACCESS_API_URL = "http://localhost:4700/api/access" 
+ACCESS_API_URL = "http://localhost:4800/api/access" 
 ACCESS_API_KEY = os.getenv("API_ACCESS_KEY")
 
 # Conexión Mongo
@@ -155,6 +155,24 @@ def log():
 
 threading.Thread(target=log, daemon=True).start()
 
+# Endpoint para obtener el último rostro reconocido
+@app.route("/api/last_recognized", methods=["GET"])
+@require_api_key(RECONOCIMIENTO_API_KEY)
+def last_recognized():
+    print("DEBUG ultimo_estado:", ultimo_estado)
+    estado = ultimo_estado.copy()
+
+    if estado.get('rostros_detectados') and estado.get('id_employee'):
+        return jsonify({
+            "reconocido": True,
+            "id": estado.get('id_employee'),
+            "name": estado.get('name'),     
+            "gender": estado.get('gender')  
+        })
+    else:
+        return jsonify({"reconocido": False})
+
+
 @app.route('/videoCapture')
 def realtime_face_recognition():
     return Response(generar_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
@@ -192,6 +210,7 @@ def generar_frames():
 
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+            # Procesamos solo cada N frames para optimizar
             if frame_index % process_every_n_frames == 0:
                 face_locations = face_recognition.face_locations(rgb_frame)
                 face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
@@ -204,14 +223,30 @@ def generar_frames():
                     if face_doc:
                         schedule_id = face_doc.get("schedule_id")
                         area = face_doc.get("area_id", "Sin área")
+
+                        # Obtener horarios desde la API de schedules
                         res = requests.get(SCHEDULES_URL)
+                        schedule = None
                         if res.status_code == 200:
                             schedules = res.json()
                             schedule = next((s for s in schedules if s["_id"] == schedule_id), None)
-                            if schedule:
-                                tipo = determinar_tipo_acceso(schedule, datetime.now())
-                                if tipo:
-                                    registrar_acceso_via_api(matched_id, tipo, area)
+
+                        # Actualizamos estado global siempre, aunque no haya tipo válido
+                        ultimo_estado.update({
+                            "rostros_detectados": True,
+                            "hora": datetime.now().isoformat(),
+                            "ultima_imagen": datetime.now(),
+                            "id_employee": matched_id,
+                            "name": face_doc.get("name"),
+                            "gender": face_doc.get("gender", "M")
+                        })
+                        print("DEBUG ultimo_estado:", ultimo_estado)
+                        
+                        # Solo registramos acceso si hay tipo válido
+                        tipo = determinar_tipo_acceso(schedule, datetime.now()) if schedule else None
+                        if tipo:
+                            exito = registrar_acceso_via_api(matched_id, tipo, area)
+                            print(f"Registro acceso ({tipo}) para {matched_id}: {'Éxito' if exito else 'Falló'}")
 
                     color = (0, 255, 0)
                     label = f"{matched_id}"
@@ -219,6 +254,7 @@ def generar_frames():
                     color = (0, 0, 255)
                     label = "Desconocido"
 
+                # Dibujar rectángulo y etiqueta sobre el rostro
                 cv2.rectangle(frame, (left, top), (right, bottom), color, 1)
                 cv2.putText(frame, label, (left, top - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
@@ -241,6 +277,7 @@ def generar_frames():
     finally:
         cap.release()
         webcam_en_uso = False
+
 
 def iniciar_api_reconocimiento():
     faiss_index.load_encodings(collection)
