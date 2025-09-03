@@ -2,6 +2,7 @@ import React, { useEffect, useState, Suspense } from "react";
 import CryptoJS from "crypto-js";
 import "../../components/styles/admin/Home.css";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
+import UserFaceCardSimple from "../Perfil/UserFaceCardSimple";
 
 // Carga diferida de gráficas pesadas
 const LateArrivalsChart = React.lazy(() =>
@@ -17,6 +18,7 @@ const EmployeesByAreaChart = React.lazy(() =>
 export default function AdminHome() {
   const [greeting, setGreeting] = useState("");
   const [userName, setUserName] = useState("");
+  const [userPhoto, setUserPhoto] = useState(null);
   const secretKey = import.meta.env.VITE_JWT_SECRET;
 
   useEffect(() => {
@@ -32,6 +34,7 @@ export default function AdminHome() {
         if (!decryptedStr) throw new Error("No se pudo descifrar correctamente.");
         const userInfo = JSON.parse(decryptedStr);
         setUserName(userInfo.fullName || "Usuario");
+        setUserPhoto(userInfo.photoUrl || null); // Ajusta la propiedad según tu backend
       } catch (err) {
         console.error("Error al descifrar userInfo:", err);
       }
@@ -40,10 +43,19 @@ export default function AdminHome() {
 
   return (
     <div className="dashboard-home-container">
+      {/* Perfil pequeño arriba a la derecha */}
+      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
+        <UserFaceCardSimple
+          name={userName}
+          photo={userPhoto}
+          description={"Bienvenido"}
+          onClick={() => { /* acción al hacer click, por ejemplo navegar al perfil */ }}
+        />
+      </div>
       <h2>
         {greeting
-          ? `${greeting}, ${userName}`
-          : `Hola, ${userName || "Usuario"}`}
+          ? `${greeting} ${userName}`
+          : `Hola ${userName || "Usuario"}`}
       </h2>
 
       {/* Gráfica de llegadas */}
