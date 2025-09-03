@@ -1,84 +1,171 @@
-/* Contenedor principal */
-.video-dashboard-container {
+/* Fondo */
+.vd-shell {
+  min-height: 100vh;
+  background: #1f1f1f;
+  display: grid;
+  place-items: center;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #0f172a;
+  padding: 24px;
+}
+
+/* Contenedor blanco ocupa toda la pantalla */
+.vd-board {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #f8fafc;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+/* Alerta horizontal */
+.vd-alert {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  background: #16a34a;
+  color: #fff;
+  font-weight: 600;
+  transform: translateY(-100%);
+  opacity: 0;
+  transition: transform .35s ease, opacity .35s ease;
+  z-index: 5;
+}
+
+.vd-alert--show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.vd-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #fff;
+  display: inline-block;
+}
+
+/* Contenido */
+.vd-content {
+  padding: 28px;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
-  padding: 2rem;
-  font-family: 'Segoe UI', sans-serif;
-  color: #333;
 }
 
-/* Contenedor de cámara */
-.video-container {
-  width: 640px;
-  height: 480px;
-  border-radius: 20px;
+/* Header */
+.vd-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.vd-badge {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #ffe8a3;
+  border: 2px solid #f59e0b;
+  font-size: 16px;
+}
+
+.vd-header h1 {
+  font-size: 20px;
+  letter-spacing: .4px;
+  color: #0f172a;
+  margin: 0;
+}
+
+/* Main layout */
+.vd-main {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+  flex: 1;
+}
+
+/* Video */
+.vd-video-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
   overflow: hidden;
   border: 3px solid #cbd5e1;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-  background-color: #000;
+  background: #000;
 }
 
-/* Imagen del streaming */
-.video-container img {
+.vd-video-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-/* Widget del reloj */
-.clock-widget {
-  margin-top: 2rem;
-  background-color: #ffffff;
-  padding: 1.5rem 2rem;
-  border-radius: 20px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  text-align: center;
-  width: 300px;
+.vd-fps {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 12px;
+  color: #ffe000;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
 }
 
-/* Título del reloj */
-.clock-widget h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 0.5rem;
+/* Widgets */
+.vd-widgets {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 15%;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Fecha */
+.vd-date-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px 22px;
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.vd-date-day {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vd-date-num {
+  font-size: 32px;
+  font-weight: 800;
+  color: #475569;
 }
 
 /* Hora */
-.clock-widget p {
-  font-size: 2.5rem;
-  font-family: 'Courier New', monospace;
-  color: #0ea5e9; /* azul brillante */
-  font-weight: bold;
+.vd-time-card {
+  width: 200px;
+  height: 200px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: grid;
+  place-items: center;
 }
 
-/* Animación de aparición */
-.video-dashboard-container, .video-container, .clock-widget {
-  animation: fadeIn 0.8s ease-in-out;
-}
-
-@keyframes fadeIn {
-  0% { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-/* Mensaje de rostro reconocido */
-.recognized-message {
-  margin-top: 1.5rem;
-  padding: 0.8rem 1.2rem;
-  background-color: #16a34a;
-  color: #fff;
+.vd-time-text {
+  font-size: 28px;
   font-weight: 600;
-  border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-  animation: popUp 0.5s ease-out;
-}
-
-@keyframes popUp {
-  0% { transform: scale(0.8); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  color: #475569;
 }

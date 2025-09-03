@@ -33,6 +33,38 @@ access_collection = db[ACCESS_COLLECTION_NAME]
 employee_collection = db[EMPLOYEE_COLLECTION_NAME]
 
 
+# ------------------------------
+# Utilidades
+# ------------------------------
+def _norm(s: str) -> str:
+    """Normaliza tildes y a minúsculas para comparar llaves ('Miércoles' -> 'miercoles')."""
+    if not s:
+        return ""
+    s = s.lower()
+    s = (s.replace("á", "a")
+           .replace("é", "e")
+           .replace("í", "i")
+           .replace("ó", "o")
+           .replace("ú", "u"))
+    return s
+
+def _normalize_schedule_keys(schedule: dict) -> dict:
+    """
+    Devuelve una copia del schedule con todas las llaves de nivel 1 (días)
+    y nivel 2 (Matutino/Vespertino) normalizadas (sin tildes y minúsculas).
+    """
+    if not isinstance(schedule, dict):
+        return {}
+    out = {}
+    for dia, bloques in schedule.items():
+        dia_k = _norm(dia)
+        out[dia_k] = {}
+        if isinstance(bloques, dict):
+            for sec, data in bloques.items():
+                out[dia_k][_norm(sec)] = data
+    return out
+
+
 # Decorador para validar API Key
 def require_api_key(f):
     from functools import wraps
@@ -54,7 +86,7 @@ def require_api_key(f):
 def parse_hora(hora_str):
     if not hora_str:
         return None
-    hora_str = hora_str.strip().upper()
+    hora_str = str(hora_str).strip().upper()
     formatos = ["%H:%M", "%I:%M%p"]  # 24h y 12h AM/PM
     for fmt in formatos:
         try:
@@ -64,12 +96,20 @@ def parse_hora(hora_str):
     raise ValueError(f"Formato de hora inválido: {hora_str}")
 
 
-# Función para validar horario
-def validar_horario(schedule, ahora, tipo):
-    dias = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
+# Función para validar horario (A tiempo / Tarde / Salió antes / Sin horario asignado)
+def validar_horario(schedule, ahora: datetime, tipo: str):
+    """
+    schedule: dict con llaves por día y secciones.
+              Se normaliza internamente ('miercoles'/'vespertino').
+    tipo: 'entrada' o 'salida'
+    """
+    # weekday(): 0=Lunes ... 6=Domingo —> usamos el mismo orden
+    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     dia = dias[ahora.weekday()]
     seccion = "Matutino" if ahora.hour < 12 else "Vespertino"
-    bloque = schedule.get(dia, {}).get(seccion)
+
+    schedule_n = _normalize_schedule_keys(schedule)
+    bloque = schedule_n.get(_norm(dia), {}).get(_norm(seccion))
     if not bloque:
         return "Sin horario asignado"
 
@@ -78,6 +118,9 @@ def validar_horario(schedule, ahora, tipo):
         hora_fin = parse_hora(bloque.get("end"))
     except ValueError as e:
         return str(e)
+
+    if not hora_inicio or not hora_fin:
+        return "Horario incompleto"
 
     hora_actual = ahora.time()
     if tipo == "entrada" and hora_actual > hora_inicio:
@@ -103,9 +146,12 @@ def convert_objectid(obj):
 def limpiar_registro(reg):
     reg = convert_objectid(reg)
     if "entry_time" in reg and reg["entry_time"]:
-        reg["entry_time"] = reg["entry_time"].isoformat()
+        # Puede venir ya como string si se serializó antes
+        if isinstance(reg["entry_time"], datetime):
+            reg["entry_time"] = reg["entry_time"].isoformat()
     if "exit_time" in reg and reg["exit_time"]:
-        reg["exit_time"] = reg["exit_time"].isoformat()
+        if isinstance(reg["exit_time"], datetime):
+            reg["exit_time"] = reg["exit_time"].isoformat()
     return reg
 
 
@@ -115,7 +161,7 @@ def limpiar_registro(reg):
 @app.route("/api/access", methods=["POST"])
 @require_api_key
 def crear_o_actualizar_acceso():
-    data = request.get_json()
+    data = request.get_json() or {}
     user_id = data.get("id_Employee")
     date_str = data.get("date")
     if not user_id or not date_str:
@@ -156,9 +202,7 @@ def crear_o_actualizar_acceso():
         try:
             entry_time = datetime.fromisoformat(data["entry_time"])
             update_data["entry_time"] = entry_time
-            update_data["entry_result"] = validar_horario(
-                horario, entry_time, "entrada"
-            )
+            update_data["entry_result"] = validar_horario(horario, entry_time, "entrada")
             tiene_entrada = True
         except Exception:
             return jsonify({"error": "Formato inválido para entry_time"}), 400
@@ -194,9 +238,7 @@ def crear_o_actualizar_acceso():
     else:
         update_data["tipo_registro"] = "desconocido"
 
-    result = access_collection.update_one(
-        filter_query, {"$set": update_data}, upsert=True
-    )
+    result = access_collection.update_one(filter_query, {"$set": update_data}, upsert=True)
 
     return jsonify(
         {
@@ -206,7 +248,7 @@ def crear_o_actualizar_acceso():
     ), (201 if result.upserted_id or result.modified_count > 0 else 200)
 
 
-# Endpoint para obtener todos los registros de acceso (esto para rol de administrador)
+# Endpoint para obtener todos los registros de acceso (rol administrador)
 @app.route("/api/access", methods=["GET"])
 @require_api_key
 def obtener_todos_registros():
@@ -311,7 +353,7 @@ def obtener_todos_registros():
         return jsonify({"error": str(e)}), 500
 
 
-# Endpoint para obtener todos los registros de acceso (esto para rol de empleado)
+# Endpoint para obtener un registro por id (rol empleado)
 @app.route("/api/access/<id>", methods=["GET"])
 @require_api_key
 def obtener_registro_por_id(id):
@@ -328,7 +370,7 @@ def obtener_registro_por_id(id):
 @app.route("/api/access/<id>", methods=["PATCH"])
 @require_api_key
 def editar_registro(id):
-    data = request.get_json()
+    data = request.get_json() or {}
     update_data = {}
 
     if "entry_time" in data:
@@ -356,9 +398,7 @@ def editar_registro(id):
         return jsonify({"error": "No hay campos para actualizar"}), 400
 
     try:
-        result = access_collection.update_one(
-            {"_id": ObjectId(id)}, {"$set": update_data}
-        )
+        result = access_collection.update_one({"_id": ObjectId(id)}, {"$set": update_data})
         if result.modified_count == 0:
             return jsonify({"message": "No se modificó ningún registro"}), 200
         return jsonify({"message": "Registro actualizado correctamente"})

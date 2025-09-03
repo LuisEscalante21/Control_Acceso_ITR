@@ -29,7 +29,7 @@ port = int(os.getenv("PORT_RECONOCIMIENTO"))
 db_name = os.getenv("DB_NAME", "PTC_2025")
 collection_name = os.getenv("DB_COLLECTION")
 SCHEDULES_URL = "http://localhost:4000/api/schedules"
-ACCESS_API_URL = "http://localhost:4800/api/access" 
+ACCESS_API_URL = "http://localhost:4800/api/access"
 ACCESS_API_KEY = os.getenv("API_ACCESS_KEY")
 
 # Conexión Mongo
@@ -59,6 +59,17 @@ ultimo_estado = {'rostros_detectados': False, 'hora': None, 'ultima_imagen': Non
 
 # Inicializar FAISS
 faiss_index = FaissFaceIndex()
+
+# ----------------- Utilidades -----------------
+def _norm(s: str) -> str:
+    if not s:
+        return ""
+    s = s.lower()
+    return (s.replace("á","a")
+             .replace("é","e")
+             .replace("í","i")
+             .replace("ó","o")
+             .replace("ú","u"))
 
 def require_api_key(expected_key):
     def decorator(f):
@@ -93,18 +104,34 @@ def malla_facial(image, faces, padding=10):
     return image
 
 def determinar_tipo_acceso(schedule, ahora):
-    dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+    # weekday(): 0=Lunes ... 6=Domingo
+    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     dia = dias[ahora.weekday()]
     seccion = "Matutino" if ahora.hour < 12 else "Vespertino"
 
-    bloque = schedule.get(dia, {}).get(seccion)
+    # Normalizamos llaves por si el schedule viene sin tildes/minúsculas
+    dia_key = _norm(dia)
+    seccion_key = _norm(seccion)
+
+    # schedule puede venir con llaves normalizadas o con tildes
+    bloque_por_dia = (schedule or {}).get(dia_key) or (schedule or {}).get(dia) or {}
+    bloque = {}
+    if isinstance(bloque_por_dia, dict):
+        bloque = bloque_por_dia.get(seccion_key) or bloque_por_dia.get(seccion)
+
     if not bloque:
         return None
 
+    # Se espera start/end como "HH:MM"
+    start = str(bloque.get("start", "")).strip()
+    end = str(bloque.get("end", "")).strip()
+    if not (start and end):
+        return None
+
     hora_actual = ahora.strftime("%H:%M")
-    if bloque["start"] <= hora_actual <= bloque["end"]:
+    if start <= hora_actual <= end:
         return "entrada"
-    if hora_actual > bloque["end"]:
+    if hora_actual > end:
         return "salida"
     return None
 
@@ -117,7 +144,7 @@ def registrar_acceso_via_api(id_employee, tipo, area="Sin área"):
     data = {
         "id_Employee": id_employee,
         "date": ahora.strftime("%Y-%m-%d"),
-        "employeeArea": area    
+        "employeeArea": area
     }
     if tipo == "entrada":
         data["entry_time"] = ahora.isoformat()
@@ -162,15 +189,19 @@ def last_recognized():
     print("DEBUG ultimo_estado:", ultimo_estado)
     estado = ultimo_estado.copy()
 
-    if estado.get('rostros_detectados') and estado.get('id_employee'):
+    if estado.get("rostros_detectados") and estado.get("id_employee"):
         return jsonify({
             "reconocido": True,
-            "id": estado.get('id_employee'),
-            "name": estado.get('name'),     
-            "gender": estado.get('gender')  
+            "id": estado.get("id_employee"),
+            "nombre": estado.get("name") or "Empleado",
+            "gender": estado.get("gender"),
+            "tipo": estado.get("tipo")  # entrada, salida, None, etc.
         })
     else:
-        return jsonify({"reconocido": False})
+        return jsonify({
+            "reconocido": False,
+            "mensaje": "No se detectó ningún rostro válido en este momento."
+        })
 
 
 @app.route('/videoCapture')
@@ -185,7 +216,7 @@ def generar_frames():
             return
         webcam_en_uso = True
 
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
@@ -216,40 +247,53 @@ def generar_frames():
                 face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
             for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-                matched_id, distance = faiss_index.search_face(face_encoding, threshold=0.35)
+                # Umbral más laxo para reducir falsos negativos
+                matched_id, distance = faiss_index.search_face(face_encoding, threshold=0.65, min_diff=0.03)
 
                 if matched_id:
-                    face_doc = collection.find_one({"employee_code": matched_id})
+                    # Buscar en Mongo por el código, no por el dict completo
+                    face_doc = collection.find_one({"employee_code": matched_id["employee_code"]})
                     if face_doc:
                         schedule_id = face_doc.get("schedule_id")
                         area = face_doc.get("area_id", "Sin área")
 
                         # Obtener horarios desde la API de schedules
-                        res = requests.get(SCHEDULES_URL)
                         schedule = None
-                        if res.status_code == 200:
-                            schedules = res.json()
-                            schedule = next((s for s in schedules if s["_id"] == schedule_id), None)
+                        try:
+                            res = requests.get(SCHEDULES_URL, timeout=5)
+                            if res.status_code == 200:
+                                schedules = res.json()
+                                # Busca el schedule por _id (exacto)
+                                schedule_raw = next((s for s in schedules if s.get("_id") == schedule_id), None)
+                                # Puedes almacenar llaves ya normalizadas en tu API para evitar mapear cada vez
+                                schedule = schedule_raw
+                            else:
+                                print("Error schedules:", res.status_code, res.text)
+                        except Exception as e:
+                            print("Error obteniendo schedules:", e)
 
-                        # Actualizamos estado global siempre, aunque no haya tipo válido
+                        # Actualizamos estado global SIEMPRE que haya match
+                        now = datetime.now()
                         ultimo_estado.update({
                             "rostros_detectados": True,
-                            "hora": datetime.now().isoformat(),
-                            "ultima_imagen": datetime.now(),
-                            "id_employee": matched_id,
+                            "hora": now,                       # datetime (para .strftime en log)
+                            "ultima_imagen": now,              # datetime
+                            "id_employee": matched_id["employee_code"],
                             "name": face_doc.get("name"),
                             "gender": face_doc.get("gender", "M")
                         })
                         print("DEBUG ultimo_estado:", ultimo_estado)
-                        
+
                         # Solo registramos acceso si hay tipo válido
-                        tipo = determinar_tipo_acceso(schedule, datetime.now()) if schedule else None
+                        tipo = determinar_tipo_acceso(schedule, now) if schedule else None
                         if tipo:
-                            exito = registrar_acceso_via_api(matched_id, tipo, area)
-                            print(f"Registro acceso ({tipo}) para {matched_id}: {'Éxito' if exito else 'Falló'}")
+                            exito = registrar_acceso_via_api(matched_id["employee_code"], tipo, area)
+                            print(f"Registro acceso ({tipo}) para {matched_id['employee_code']}: {'Éxito' if exito else 'Falló'}")
+                        else:
+                            print("DEBUG tipo None: no se encontró bloque válido para el horario actual.")
 
                     color = (0, 255, 0)
-                    label = f"{matched_id}"
+                    label = matched_id["employee_code"]
                 else:
                     color = (0, 0, 255)
                     label = "Desconocido"
