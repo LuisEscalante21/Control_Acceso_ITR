@@ -28,84 +28,6 @@ export default function Sidebar() {
     
   ];
 
-  const handleLogout = async () => {
-    const result = await Swal.fire({
-      title: "¿Cerrar sesión?",
-      text: "¿Estás seguro de que deseas cerrar la sesión?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Sí, cerrar sesión",
-      cancelButtonText: "Cancelar",
-      reverseButtons: true,
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      Swal.fire({
-        title: "Cerrando sesión...",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
-      await fetch(`${API_URL}/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("userRole");
-      localStorage.removeItem("userData");
-      sessionStorage.clear();
-
-      document.cookie = "userInfo=; Max-Age=0; path=/";
-      document.cookie = "authToken=; Max-Age=0; path=/";
-
-      Swal.close();
-
-      await Swal.fire({
-        title: "¡Sesión cerrada!",
-        text: "Has cerrado sesión correctamente",
-        icon: "success",
-        timer: 1000,
-        showConfirmButton: false,
-      });
-
-      navigate("/login", { replace: true });
-
-      // Prevenir retroceso con el botón atrás
-      window.history.pushState(null, "", window.location.href);
-      window.addEventListener("popstate", () => {
-        window.history.pushState(null, "", window.location.href);
-      });
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-      Swal.close();
-
-      await Swal.fire({
-        title: "Error de conexión",
-        text: "Hubo un problema al cerrar sesión en el servidor, pero se cerrará la sesión local",
-        icon: "warning",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("userRole");
-      localStorage.removeItem("userData");
-      sessionStorage.clear();
-
-      //También eliminar la cookie en caso de error
-      document.cookie = "userInfo=; Max-Age=0; path=/";
-
-      navigate("/login", { replace: true });
-    }
-  };
-
   return (
     <>
       {/* Menú hamburguesa para móviles */}
@@ -161,15 +83,6 @@ export default function Sidebar() {
               </Link>
             );
           })}
-
-          {/* Botón de cerrar sesión */}
-          <button
-            onClick={handleLogout}
-            className="admin-nav-item admin-logout-btn"
-          >
-            <LogOut className="admin-nav-icon" />
-            <span className="admin-nav-text">Cerrar sesión</span>
-          </button>
         </nav>
       </div>
     </>
