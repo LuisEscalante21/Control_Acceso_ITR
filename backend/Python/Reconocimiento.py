@@ -321,6 +321,26 @@ def generar_frames():
     finally:
         cap.release()
         webcam_en_uso = False
+        
+        
+#PARA RECARGAR FAISS
+@app.route('/reload-faiss', methods=['POST'])
+@require_api_key(RECONOCIMIENTO_API_KEY)
+def reload_faiss():
+    try:
+        faiss_index.load_encodings(collection)
+        print("[FAISS] Índice recargado desde Mongo")
+        return jsonify({'status': 'success', 'message': 'FAISS recargado correctamente'}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+# ENDPOINT PARA CONSULTAR EL ESTADO DEL ÍNDICE FAISS
+@app.route('/faiss-status', methods=['GET'])
+@require_api_key(RECONOCIMIENTO_API_KEY)
+def faiss_status():
+    cantidad = faiss_index.index.ntotal if hasattr(faiss_index, "index") else 0
+    return jsonify({'status': 'ok', 'total_faces_indexed': cantidad})
 
 
 def iniciar_api_reconocimiento():

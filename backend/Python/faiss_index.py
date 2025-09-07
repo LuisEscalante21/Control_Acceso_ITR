@@ -1,6 +1,5 @@
 import faiss
 import numpy as np
-from bson import ObjectId
 
 class FaissFaceIndex:
     def __init__(self, dim=128):
@@ -33,10 +32,10 @@ class FaissFaceIndex:
                 print(f"[ERROR] Documento inválido en Mongo: {e}")
 
         if encodings:
-            self.index.add(np.array(encodings))
-            print(f"[FAISS] Cargados {len(encodings)} encodings en el indice.")
+            self.index.add(np.array(encodings, dtype='float32'))
+            print(f"[FAISS] Cargados {len(encodings)} encodings en el índice.")
         else:
-            print("[FAISS] No se encontraron encodings validos.")
+            print("[FAISS] No se encontraron encodings válidos.")
 
     def search_face(self, encoding_query, threshold=0.35, min_diff=0.05):
         if self.index.ntotal == 0:
@@ -50,7 +49,7 @@ class FaissFaceIndex:
 
         if d0 < threshold and (distances[0][1] - d0 > min_diff):
             metadata = self.metadata_list[i0]
-            return metadata, d0
+            return metadata["employee_code"], d0
         else:
             return None, None
 
@@ -67,18 +66,27 @@ class FaissFaceIndex:
         idx = next((i for i, meta in enumerate(self.metadata_list)
                     if meta["employee_code"] == employee_code), None)
         if idx is None:
-            print(f"[FAISS] No se encontro el codigo {employee_code} en el indice.")
+            print(f"[FAISS] No se encontró el código {employee_code} en el índice.")
             return False
 
+        # Guardar número total antes de eliminar metadata
+        total = self.index.ntotal
+        if total == 0:
+            print("[FAISS] Índice vacío, nada que eliminar.")
+            return False
+
+        # Remover metadata
         self.metadata_list.pop(idx)
 
-        encodings = self.index.reconstruct_n(0, self.index.ntotal)
-        encodings = np.reshape(encodings, (self.index.ntotal, self.dim))
+        # Reconstruir todos los encodings y eliminar el que corresponde
+        encodings_flat = self.index.reconstruct_n(0, total)
+        encodings = np.array(encodings_flat).reshape(total, self.dim)
         new_encodings = np.delete(encodings, idx, axis=0)
 
+        # Reiniciar índice y recargar con encodings restantes
         self.index.reset()
         if len(new_encodings) > 0:
             self.index.add(new_encodings)
 
-        print(f"[FAISS] Rostro con codigo {employee_code} eliminado del indice.")
+        print(f"[FAISS] Rostro con código {employee_code} eliminado del índice.")
         return True
