@@ -1,9 +1,7 @@
 import os
 import cv2
-import base64
 import time
 import threading
-import numpy as np
 import dlib
 import face_recognition
 import requests
@@ -12,67 +10,91 @@ from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from functools import wraps
 from Health import health_bp
 from faiss_index import FaissFaceIndex
 
+# ---------------- APP FLASK ----------------
 app = Flask(__name__)
 CORS(app)
 
-# Cargar .env
+# ---------------- ENV ----------------
 dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
 load_dotenv(dotenv_path)
 
-# Variables de entorno
 RECONOCIMIENTO_API_KEY = os.getenv("RECONOCIMIENTO_API_KEY")
 mongo_uri = os.getenv("DB_URI")
-port = int(os.getenv("PORT_RECONOCIMIENTO"))
+port = int(os.getenv("PORT_RECONOCIMIENTO", 5000))
 db_name = os.getenv("DB_NAME", "PTC_2025")
 collection_name = os.getenv("DB_COLLECTION")
-SCHEDULES_URL = "http://localhost:4000/api/schedules"
-ACCESS_API_URL = "http://localhost:4800/api/access"
+SCHEDULES_URL = os.getenv("SCHEDULES_URL", "http://localhost:4000/api/schedules")
+ACCESS_API_URL = os.getenv("ACCESS_API_URL", "http://localhost:4800/api/access")
 ACCESS_API_KEY = os.getenv("API_ACCESS_KEY")
 
-# Conexión Mongo
+# ---------------- DB ----------------
 mongo_client = MongoClient(mongo_uri)
 db = mongo_client[db_name]
 collection = db[collection_name]
 
-# Blueprint health
+# ---------------- BLUEPRINT HEALTH ----------------
 app.register_blueprint(health_bp)
 
-# Cargar clasificadores
+# ---------------- CLASIFICADORES ----------------
 haarcascade_dir = os.path.join(os.path.dirname(__file__), 'Clasificadores')
 face_cascade_path = os.path.join(haarcascade_dir, 'haarcascade_frontalface_default.xml')
 landmark_predictor_path = os.path.join(haarcascade_dir, 'shape_predictor_68_face_landmarks.dat')
 
 if not os.path.exists(face_cascade_path) or not os.path.exists(landmark_predictor_path):
-    raise FileNotFoundError("Faltan los clasificadores necesarios.")
+    raise FileNotFoundError("Faltan los clasificadores necesarios en /Clasificadores.")
 
 face_cascade = cv2.CascadeClassifier(face_cascade_path)
 landmark_predictor = dlib.shape_predictor(landmark_predictor_path)
 face_detector = dlib.get_frontal_face_detector()
 
-# Estado webcam
+# ---------------- ESTADO GLOBAL ----------------
 webcam_en_uso = False
 webcam_lock = threading.Lock()
-ultimo_estado = {'rostros_detectados': False, 'hora': None, 'ultima_imagen': None}
+ultimo_estado = {
+    'rostros_detectados': False,
+    'hora': None,
+    'ultima_imagen': None,
+    'id_employee': None,
+    'name': None,
+    'gender': None,
+    'tipo': None
+}
 
-# Inicializar FAISS
-faiss_index = FaissFaceIndex()
+# ---------------- FAISS ----------------
+faiss_index = FaissFaceIndex(collection)
+faiss_reload_lock = threading.Lock()  # Protección de concurrencia
 
-# ----------------- Utilidades -----------------
+# Recarga automática del índice FAISS cada 10 segundos
+def recargar_faiss_periodicamente(intervalo=10):
+    while True:
+        time.sleep(intervalo)
+        try:
+            with faiss_reload_lock:
+                faiss_index.load_encodings()
+            print("[FAISS] Índice recargado automáticamente.")
+        except Exception as e:
+            print("[FAISS] Error al recargar automáticamente:", e)
+
+threading.Thread(target=recargar_faiss_periodicamente, daemon=True).start()
+
+# ---------------- UTILS ----------------
 def _norm(s: str) -> str:
     if not s:
         return ""
-    s = s.lower()
-    return (s.replace("á","a")
-             .replace("é","e")
-             .replace("í","i")
-             .replace("ó","o")
-             .replace("ú","u"))
+    return (s.lower()
+             .replace("á", "a")
+             .replace("é", "e")
+             .replace("í", "i")
+             .replace("ó", "o")
+             .replace("ú", "u"))
 
 def require_api_key(expected_key):
     def decorator(f):
+        @wraps(f)
         def wrapper(*args, **kwargs):
             auth = request.headers.get('Authorization')
             if not auth or not auth.startswith("Bearer "):
@@ -81,39 +103,17 @@ def require_api_key(expected_key):
             if token != expected_key:
                 return jsonify({"error": "API Key inválida"}), 403
             return f(*args, **kwargs)
-        wrapper.__name__ = f.__name__
         return wrapper
     return decorator
 
-def deteccion_rostros(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    return face_detector(gray)
-
-def malla_facial(image, faces, padding=10):
-    for face in faces:
-        left = face.left() - padding
-        top = face.top() - padding
-        right = face.right() + padding
-        bottom = face.bottom() + padding
-        cv2.rectangle(image, (left, top), (right, bottom), (0, 255, 0), 2)
-
-        landmarks = landmark_predictor(image, face)
-        for n in range(68):
-            x, y = landmarks.part(n).x, landmarks.part(n).y
-            cv2.circle(image, (x, y), 1, (255, 0, 39), -1)
-    return image
-
 def determinar_tipo_acceso(schedule, ahora):
-    # weekday(): 0=Lunes ... 6=Domingo
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     dia = dias[ahora.weekday()]
     seccion = "Matutino" if ahora.hour < 12 else "Vespertino"
 
-    # Normalizamos llaves por si el schedule viene sin tildes/minúsculas
     dia_key = _norm(dia)
     seccion_key = _norm(seccion)
 
-    # schedule puede venir con llaves normalizadas o con tildes
     bloque_por_dia = (schedule or {}).get(dia_key) or (schedule or {}).get(dia) or {}
     bloque = {}
     if isinstance(bloque_por_dia, dict):
@@ -122,7 +122,6 @@ def determinar_tipo_acceso(schedule, ahora):
     if not bloque:
         return None
 
-    # Se espera start/end como "HH:MM"
     start = str(bloque.get("start", "")).strip()
     end = str(bloque.get("end", "")).strip()
     if not (start and end):
@@ -167,42 +166,48 @@ def registrar_acceso_via_api(id_employee, tipo, area="Sin área"):
         print(f"Excepción al registrar acceso: {e}")
         return False
 
-
 def log():
     while True:
         time.sleep(2)
         ahora = datetime.now()
-        if ultimo_estado['ultima_imagen'] is None or (ahora - ultimo_estado['ultima_imagen']).total_seconds() > 5:
-            if ultimo_estado['rostros_detectados']:
+        ultima_imagen = ultimo_estado.get('ultima_imagen')
+        rostros_detectados = ultimo_estado.get('rostros_detectados', False)
+        if ultima_imagen is None or (isinstance(ultima_imagen, datetime) and (ahora - ultima_imagen).total_seconds() > 5):
+            if rostros_detectados:
                 print(f"[{ahora.strftime('%Y-%m-%d %H:%M:%S')}] No se detectaron rostros (timeout).")
-            ultimo_estado.update({'rostros_detectados': False, 'hora': None, 'ultima_imagen': None})
+            ultimo_estado.update({
+                'rostros_detectados': False,
+                'hora': None,
+                'ultima_imagen': None,
+                'id_employee': None,
+                'name': None,
+                'gender': None,
+                'tipo': None
+            })
         else:
             hora_str = ultimo_estado['hora'].strftime("%Y-%m-%d %H:%M:%S") if ultimo_estado['hora'] else "Nunca"
-            print(f"[{hora_str}] {'Rostros detectados' if ultimo_estado['rostros_detectados'] else 'No se detectaron rostros'}.")
-
+            estado_str = 'Rostros detectados' if rostros_detectados else 'No se detectaron rostros'
+            print(f"[{hora_str}] {estado_str}.")
 threading.Thread(target=log, daemon=True).start()
 
-# Endpoint para obtener el último rostro reconocido
+# ---------------- ENDPOINTS ----------------
 @app.route("/api/last_recognized", methods=["GET"])
 @require_api_key(RECONOCIMIENTO_API_KEY)
 def last_recognized():
-    print("DEBUG ultimo_estado:", ultimo_estado)
     estado = ultimo_estado.copy()
-
     if estado.get("rostros_detectados") and estado.get("id_employee"):
         return jsonify({
             "reconocido": True,
             "id": estado.get("id_employee"),
             "nombre": estado.get("name") or "Empleado",
             "gender": estado.get("gender"),
-            "tipo": estado.get("tipo")  # entrada, salida, None, etc.
+            "tipo": estado.get("tipo")
         })
     else:
         return jsonify({
             "reconocido": False,
             "mensaje": "No se detectó ningún rostro válido en este momento."
         })
-
 
 @app.route('/videoCapture')
 def realtime_face_recognition():
@@ -213,16 +218,17 @@ def generar_frames():
     with webcam_lock:
         if webcam_en_uso:
             print("Camara ya en uso. Abortando streaming.")
-            return
+            return empty_gen()
         webcam_en_uso = True
 
-    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
     if not cap.isOpened():
+        print("Error: no se pudo abrir la cámara")
         webcam_en_uso = False
-        return
+        return empty_gen()
 
     try:
         fps = 0
@@ -237,71 +243,58 @@ def generar_frames():
         while True:
             ret, frame = cap.read()
             if not ret:
+                print("Error: no se pudo leer frame de la cámara")
                 break
 
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-            # Procesamos solo cada N frames para optimizar
             if frame_index % process_every_n_frames == 0:
                 face_locations = face_recognition.face_locations(rgb_frame)
                 face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
             for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-                # Umbral más laxo para reducir falsos negativos
-                matched_id, distance = faiss_index.search_face(face_encoding, threshold=0.65, min_diff=0.03)
+                matched_id, distance = faiss_index.search_face(face_encoding)
 
                 if matched_id:
-                    # Buscar en Mongo por el código, no por el dict completo
-                    face_doc = collection.find_one({"employee_code": matched_id["employee_code"]})
+                    face_doc = collection.find_one({"employee_code": matched_id})
                     if face_doc:
                         schedule_id = face_doc.get("schedule_id")
                         area = face_doc.get("area_id", "Sin área")
 
-                        # Obtener horarios desde la API de schedules
                         schedule = None
                         try:
                             res = requests.get(SCHEDULES_URL, timeout=5)
                             if res.status_code == 200:
                                 schedules = res.json()
-                                # Busca el schedule por _id (exacto)
-                                schedule_raw = next((s for s in schedules if s.get("_id") == schedule_id), None)
-                                # Puedes almacenar llaves ya normalizadas en tu API para evitar mapear cada vez
-                                schedule = schedule_raw
-                            else:
-                                print("Error schedules:", res.status_code, res.text)
+                                schedule = next((s for s in schedules if s.get("_id") == schedule_id), None)
                         except Exception as e:
-                            print("Error obteniendo schedules:", e)
+                            print(f"Error obteniendo schedules: {e}")
 
-                        # Actualizamos estado global SIEMPRE que haya match
                         now = datetime.now()
                         ultimo_estado.update({
                             "rostros_detectados": True,
-                            "hora": now,                       # datetime (para .strftime en log)
-                            "ultima_imagen": now,              # datetime
-                            "id_employee": matched_id["employee_code"],
+                            "hora": now,
+                            "ultima_imagen": now,
+                            "id_employee": matched_id,
                             "name": face_doc.get("name"),
                             "gender": face_doc.get("gender", "M")
                         })
-                        print("DEBUG ultimo_estado:", ultimo_estado)
 
-                        # Solo registramos acceso si hay tipo válido
                         tipo = determinar_tipo_acceso(schedule, now) if schedule else None
+                        ultimo_estado["tipo"] = tipo
+
                         if tipo:
-                            exito = registrar_acceso_via_api(matched_id["employee_code"], tipo, area)
-                            print(f"Registro acceso ({tipo}) para {matched_id['employee_code']}: {'Éxito' if exito else 'Falló'}")
-                        else:
-                            print("DEBUG tipo None: no se encontró bloque válido para el horario actual.")
+                            exito = registrar_acceso_via_api(matched_id, tipo, area)
+                            print(f"Registro acceso ({tipo}) para {matched_id}: {'Éxito' if exito else 'Falló'}")
 
                     color = (0, 255, 0)
-                    label = matched_id["employee_code"]
+                    label = matched_id
                 else:
                     color = (0, 0, 255)
                     label = "Desconocido"
 
-                # Dibujar rectángulo y etiqueta sobre el rostro
                 cv2.rectangle(frame, (left, top), (right, bottom), color, 1)
-                cv2.putText(frame, label, (left, top - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+                cv2.putText(frame, label, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
 
             frame_index += 1
             frame_count += 1
@@ -315,36 +308,38 @@ def generar_frames():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 2)
 
             _, buffer = cv2.imencode('.jpg', frame)
-            frame_bytes = buffer.tobytes()
             yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
     finally:
         cap.release()
         webcam_en_uso = False
-        
-        
-#PARA RECARGAR FAISS
+
+def empty_gen():
+    while True:
+        time.sleep(1)
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + b'' + b'\r\n')
+
+# ---------------- FAISS ENDPOINTS ----------------
 @app.route('/reload-faiss', methods=['POST'])
 @require_api_key(RECONOCIMIENTO_API_KEY)
 def reload_faiss():
     try:
-        faiss_index.load_encodings(collection)
-        print("[FAISS] Índice recargado desde Mongo")
+        with faiss_reload_lock:
+            faiss_index.load_encodings()
         return jsonify({'status': 'success', 'message': 'FAISS recargado correctamente'}), 200
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-
-# ENDPOINT PARA CONSULTAR EL ESTADO DEL ÍNDICE FAISS
 @app.route('/faiss-status', methods=['GET'])
 @require_api_key(RECONOCIMIENTO_API_KEY)
 def faiss_status():
     cantidad = faiss_index.index.ntotal if hasattr(faiss_index, "index") else 0
     return jsonify({'status': 'ok', 'total_faces_indexed': cantidad})
 
-
+# ---------------- MAIN ----------------
 def iniciar_api_reconocimiento():
-    faiss_index.load_encodings(collection)
+    with faiss_reload_lock:
+        faiss_index.load_encodings()
     print("La API de reconocimiento facial con FAISS está activa.")
     app.run(debug=True, use_reloader=False, host='0.0.0.0', port=port)
 

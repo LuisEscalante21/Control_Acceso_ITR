@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../../components/styles/ModalRostro.css";
 import rostroImg1 from "../../img/Rostros-1.png";
 import rostroImg2 from "../../img/Rostros-2.png";
@@ -14,11 +14,14 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   const [areaId, setAreaId] = useState("");
   const [areas, setAreas] = useState([]);
   const [loadingAreas, setLoadingAreas] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
 
-  // Obtener horarios desde tu custom hook
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
   const { schedules } = useDataSchedules();
 
-  // Cargar áreas desde tu API
   useEffect(() => {
     const fetchAreas = async () => {
       try {
@@ -35,7 +38,6 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     fetchAreas();
   }, []);
 
-  // Setear datos si estamos en modo edición
   useEffect(() => {
     if (mode === "edit" && face) {
       setName(face.name || "");
@@ -61,6 +63,8 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     setGender("");
     setAreaId("");
     setNewFile(null);
+    setIsSaving(false);
+    setShowCamera(false);
     onClose();
   };
 
@@ -83,7 +87,46 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     });
   };
 
+  // Abrir cámara
+  const handleOpenCamera = async () => {
+    setShowCamera(true);
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoRef.current.srcObject = stream;
+      } catch (err) {
+        Swal.fire("Error", "No se pudo acceder a la cámara.", "error");
+        setShowCamera(false);
+      }
+    }
+  };
+
+  // Tomar foto
+  const handleTakePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      const file = new File([blob], "captura.jpg", { type: "image/jpeg" });
+      setNewFile(file);
+      Swal.fire({
+        icon: "success",
+        title: "Foto tomada",
+        text: "La foto se ha capturado correctamente.",
+        timer: 1000,
+        showConfirmButton: false,
+      });
+      // Detener cámara
+      video.srcObject.getTracks().forEach((track) => track.stop());
+      setShowCamera(false);
+    }, "image/jpeg");
+  };
+
   const handleSave = async () => {
+    if (isSaving) return;
+
     if (
       !name.trim() ||
       !employeeCode.trim() ||
@@ -94,6 +137,8 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     ) {
       return Swal.fire("Campos incompletos", "Completa todos los campos requeridos.", "warning");
     }
+
+    setIsSaving(true);
 
     const data = new FormData();
     data.append("name", name.trim());
@@ -109,6 +154,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
       await onSubmit(data);
       handleClose();
     } catch (err) {
+      setIsSaving(false);
       Swal.fire("Error", "Ocurrió un error al guardar.", "error");
     }
   };
@@ -188,12 +234,27 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           </div>
           <div className="option">
             <img src={rostroImg2} alt="Abrir cámara" />
-            <p>Abrir cámara</p>
+            <p onClick={handleOpenCamera} style={{ cursor: "pointer" }}>Abrir cámara</p>
           </div>
         </div>
 
-        <button type="button" className="save-btn" onClick={handleSave}>
-          {mode === "edit" ? "Actualizar" : "Agregar"}
+        {showCamera && (
+          <div className="camera-modal">
+            <video ref={videoRef} autoPlay style={{ width: "100%" }} />
+            <button onClick={handleTakePhoto}>Tomar foto</button>
+            <canvas ref={canvasRef} style={{ display: "none" }} />
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="save-btn"
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving
+            ? (mode === "edit" ? "Actualizando..." : "Agregando...")
+            : (mode === "edit" ? "Actualizar" : "Agregar")}
         </button>
       </div>
     </div>

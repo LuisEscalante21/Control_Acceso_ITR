@@ -34,6 +34,7 @@ const useEmployeeProfile = () => {
 
         // Modifica la URL para que incluya la información del equipo
         const { data } = await axios.get(`http://localhost:4000/api/employee/${userInfo._id}?populate=team`);
+        console.log(data);
         setEmployee(data);
       } catch (error) {
         console.error("Error al obtener el perfil del empleado:", error);

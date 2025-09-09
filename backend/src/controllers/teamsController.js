@@ -1,4 +1,3 @@
-import { model } from "mongoose";
 import TeamsModel from "../models/Teams.js";
 
 const teamsController = {};
@@ -10,6 +9,19 @@ teamsController.getTeam = async (req, res) => {
     res.status(200).json(teams);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener los equipos", error });
+  }
+};
+
+// Obtener un equipo por ID
+teamsController.getTeamById = async (req, res) => {
+  try {
+    const team = await TeamsModel.findById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ message: "Equipo no encontrado" });
+    }
+    res.status(200).json(team);
+  } catch (error) {
+    res.status(500).json({ message: "Error al obtener el equipo", error });
   }
 };
 
@@ -40,11 +52,13 @@ teamsController.insertTeam = async (req, res) => {
   }
 };
 
-
 // Eliminar equipo por ID
 teamsController.deleteTeam = async (req, res) => {
   try {
-    await TeamsModel.findByIdAndDelete(req.params.id);
+    const deletedTeam = await TeamsModel.findByIdAndDelete(req.params.id);
+    if (!deletedTeam) {
+      return res.status(404).json({ message: "Equipo no encontrado" });
+    }
     res.status(200).json({ message: "Equipo eliminado correctamente" });
   } catch (error) {
     res.status(500).json({ message: "Error al eliminar el equipo", error });
