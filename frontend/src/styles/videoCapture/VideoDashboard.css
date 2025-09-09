@@ -23,28 +23,32 @@
   flex-direction: column;
 }
 
-/* Alerta horizontal */
+/* Alerta horizontal solo 5% del ancho */
 .vd-alert {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
+  top: 16px; /* separada del borde superior */
+  left: 50%; /* centrada horizontalmente */
+  transform: translate(-50%, -100%); /* se mueve hacia arriba al ocultar */
+  width: 5vw; /* 5% del ancho de la ventana */
+  min-width: 120px; /* tamaño mínimo */
+  max-width: 200px; /* tamaño máximo */
   height: 56px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 0 18px;
+  padding: 0 12px;
   background: #16a34a;
   color: #fff;
   font-weight: 600;
-  transform: translateY(-100%);
   opacity: 0;
   transition: transform 0.35s ease, opacity 0.35s ease;
   z-index: 5;
+  border-radius: 8px; /* bordes redondeados */
 }
 
 .vd-alert--show {
-  transform: translateY(0);
+  transform: translate(-50%, 0); /* desliza hacia abajo al mostrar */
   opacity: 1;
 }
 
@@ -189,5 +193,9 @@
   .vd-time-card {
     width: 150px;
     height: 150px;
+  }
+  .vd-alert {
+    width: 10vw; /* ligeramente más ancho en móvil */
+    min-width: 100px;
   }
 }

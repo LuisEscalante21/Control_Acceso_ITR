@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-const PORT = import.meta.env.VITE_PORT_ACCESS;
+const PORT = import.meta.env.VITE_PORT_ACCESS; // Flask
 const API_URL = `${BASE_URL}${PORT}/api`;
 
-const PORT_JUSTIFICATIONS = import.meta.env.VITE_PORT;
+const PORT_JUSTIFICATIONS = import.meta.env.VITE_PORT; // Node
 const JUSTIFICATIONS_API_URL = `${BASE_URL}${PORT_JUSTIFICATIONS}/api/justifications`;
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
 
@@ -18,32 +18,50 @@ const useDataAccess = () => {
   const [showForm, setShowForm] = useState(false);
   const navigate = useNavigate();
 
-  const handleNetworkError = (err) => {
-    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
-      navigate("/503");
-    } else {
-      console.error("Error:", err);
-    }
-  };
-
-  const axiosConfig = {
+  // ------------------------------
+  // Config Axios
+  // ------------------------------
+  const axiosConfigFlask = {
     headers: {
       Authorization: `Bearer ${API_ACCESS_KEY}`,
       "Content-Type": "application/json",
     },
   };
 
-  // Obtener justificaciones
+  const axiosConfigNode = {
+    withCredentials: true, // ✅ enviar cookies de sesión
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  // ------------------------------
+  // Manejo de errores
+  // ------------------------------
+  const handleNetworkError = (err) => {
+    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
+      navigate("/503");
+    } else if (err.response?.status === 401 || err.response?.status === 403) {
+      Swal.fire("Error", "No autorizado. Inicia sesión nuevamente.", "error");
+    } else {
+      console.error("Error:", err);
+    }
+  };
+
+  // ------------------------------
+  // Obtener justificaciones (Node)
+  // ------------------------------
   const fetchJustifications = async () => {
     try {
-      const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfig);
+      const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfigNode);
       setJustifications(res.data);
-      // crear mapa idAccess -> justificación
+
       const map = (res.data || []).reduce((acc, j) => {
         if (j?.idAccess) acc[j.idAccess] = j;
         return acc;
       }, {});
       setJustificationMap(map);
+
       return res.data;
     } catch (error) {
       handleNetworkError(error);
@@ -53,16 +71,14 @@ const useDataAccess = () => {
     }
   };
 
-  // Obtener accesos 
+  // ------------------------------
+  // Obtener accesos (Flask)
+  // ------------------------------
   const fetchAccessRecords = async () => {
     try {
-      // Trae accesos y justificaciones en paralelo
-      const [accessRes] = await Promise.all([
-        axios.get(`${API_URL}/access`, axiosConfig),
-        // Nota: fetchJustifications también se llamará abajo para refrescar el mapa.
-      ]);
+      const accessRes = await axios.get(`${API_URL}/access`, axiosConfigFlask);
 
-      // Asegurar que el mapa de justificaciones esté fresco
+      // Traer justificaciones frescas
       const justs = await fetchJustifications();
       const jMap = justs.reduce((acc, j) => {
         if (j?.idAccess) acc[j.idAccess] = j;
@@ -73,10 +89,9 @@ const useDataAccess = () => {
 
       const list = registros.map((reg) => ({
         ...reg,
-        // Estos campos ya vienen del endpoint /api/access (por el $lookup).
         employeeName: reg.employeeName || "Empleado no encontrado",
         employeeAvatar: reg.employeeAvatar || null,
-        justification: jMap[reg._id] || null, // asociar si existe
+        justification: jMap[reg._id] || null,
       }));
 
       setAccessRecords(list);
@@ -86,10 +101,12 @@ const useDataAccess = () => {
     }
   };
 
-  //Guardar acceso
+  // ------------------------------
+  // Guardar acceso (Flask)
+  // ------------------------------
   const saveAccessRecord = async (data) => {
     try {
-      await axios.post(`${API_URL}/access`, data, axiosConfig);
+      await axios.post(`${API_URL}/access`, data, axiosConfigFlask);
       Swal.fire("¡Guardado!", "El registro de acceso ha sido guardado.", "success");
       await fetchAccessRecords();
       handleCloseForm();
@@ -99,7 +116,9 @@ const useDataAccess = () => {
     }
   };
 
-  //Eliminar acceso
+  // ------------------------------
+  // Eliminar acceso (Flask)
+  // ------------------------------
   const deleteAccessRecord = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -113,7 +132,7 @@ const useDataAccess = () => {
     if (!result.isConfirmed) return;
 
     try {
-      await axios.delete(`${API_URL}/access/${id}`, axiosConfig);
+      await axios.delete(`${API_URL}/access/${id}`, axiosConfigFlask);
       Swal.fire("¡Eliminado!", "El registro de acceso ha sido eliminado.", "success");
       await fetchAccessRecords();
     } catch (error) {
@@ -122,7 +141,9 @@ const useDataAccess = () => {
     }
   };
 
-  //Ver justificación
+  // ------------------------------
+  // Ver justificación
+  // ------------------------------
   const handleViewJustification = (justification) => {
     if (!justification) return;
     Swal.fire({
@@ -144,7 +165,6 @@ const useDataAccess = () => {
 
   const handleCloseForm = () => setShowForm(false);
 
-  //Cargar datos al montar
   useEffect(() => {
     fetchAccessRecords();
   }, []);
@@ -152,7 +172,7 @@ const useDataAccess = () => {
   return {
     accessRecords,
     justifications,
-    justificationMap, 
+    justificationMap,
     fetchAccessRecords,
     fetchJustifications,
     saveAccessRecord,

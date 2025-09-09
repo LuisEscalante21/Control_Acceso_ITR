@@ -1,62 +1,69 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const API_URL = `${BASE_URL}${PORT}/api`;
 
 const useDataEmployee = () => {
   const [employees, setEmployees] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [employeeEdit, setEmployeeEdit] = useState(null);
+  const navigate = useNavigate();
 
-  // Obtener todos los empleados
+  // Manejo de errores
+  const handleNetworkError = (error) => {
+    if (!error.response || error.code === "ERR_NETWORK" || error.response?.status === 503) {
+      navigate("/503");
+    } else if (error.response?.status === 401) {
+      Swal.fire("Error", "No autorizado. Por favor inicia sesión.", "error");
+      navigate("/login");
+    } else {
+      console.error("Error:", error);
+    }
+  };
+
+  // Obtener empleados
   const fetchEmployees = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/employee");
+      const res = await axios.get(`${API_URL}/employee`, { withCredentials: true });
       setEmployees(res.data);
     } catch (error) {
-      console.error("Error al obtener empleados:", error);
+      handleNetworkError(error);
       Swal.fire("Error", "No se pudo obtener la lista de empleados.", "error");
     }
   };
 
-  // Crear o actualizar empleado
+  // Guardar o actualizar empleado
   const saveEmployee = async (employeeData, idToUpdate = null) => {
     try {
-      if (idToUpdate) {
-        // Si es actualización, eliminar IdTeam para que no se actualice
-        if (employeeData instanceof FormData) {
-          employeeData.delete("IdTeam");
-        }
+      const config = { withCredentials: true };
+      if (employeeData instanceof FormData) config.headers = { "Content-Type": "multipart/form-data" };
 
-        await axios.put(
-          `http://localhost:4000/api/employee/${idToUpdate}`,
-          employeeData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-        Swal.fire(
-          "¡Actualizado!",
-          "El empleado ha sido actualizado.",
-          "success"
-        );
+      const employeeId = idToUpdate || employeeEdit?._id;
+
+      if (employeeId) {
+        if (employeeData instanceof FormData) employeeData.delete("IdTeam");
+        else delete employeeData.IdTeam;
+
+        await axios.put(`${API_URL}/employee/${employeeId}`, employeeData, config);
+        Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
       } else {
-        // Al crear sí se envía todo (incluyendo IdTeam si está)
-        await axios.post(
-          "http://localhost:4000/api/registerEmployees",
-          employeeData
-        );
+        await axios.post(`${API_URL}/registerEmployees`, employeeData, config);
         Swal.fire("¡Guardado!", "El empleado ha sido creado.", "success");
       }
-      fetchEmployees();
+
+      await fetchEmployees();
       handleCloseForm();
     } catch (error) {
-      console.error("Error al guardar/actualizar empleado:", error);
+      handleNetworkError(error);
       Swal.fire("Error", "No se pudo guardar el empleado.", "error");
     }
   };
 
-  // Eliminar empleado con confirmación
+  // Eliminar empleado
   const deleteEmployee = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -69,11 +76,11 @@ const useDataEmployee = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:4000/api/employee/${id}`);
+        await axios.delete(`${API_URL}/employee/${id}`, { withCredentials: true });
         Swal.fire("¡Eliminado!", "El empleado ha sido eliminado.", "success");
-        fetchEmployees();
+        await fetchEmployees();
       } catch (error) {
-        console.error("Error al eliminar empleado:", error);
+        handleNetworkError(error);
         Swal.fire("Error", "No se pudo eliminar el empleado.", "error");
       }
     }
@@ -82,6 +89,7 @@ const useDataEmployee = () => {
   // Cerrar formulario
   const handleCloseForm = () => {
     setShowForm(false);
+    setEmployeeEdit(null);
   };
 
   useEffect(() => {
@@ -92,6 +100,8 @@ const useDataEmployee = () => {
     employees,
     showForm,
     setShowForm,
+    employeeEdit,
+    setEmployeeEdit,
     fetchEmployees,
     saveEmployee,
     deleteEmployee,

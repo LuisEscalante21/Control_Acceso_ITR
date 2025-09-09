@@ -13,19 +13,24 @@ const useDataAdmin = () => {
   const [adminEdit, setAdminEdit] = useState(null);
   const navigate = useNavigate();
 
-  // Manejo de error de red
+  // Manejo de errores
   const handleNetworkError = (error) => {
     if (!error.response || error.code === "ERR_NETWORK" || error.response?.status === 503) {
       navigate("/503");
+    } else if (error.response?.status === 401) {
+      Swal.fire("Error", "No autorizado. Por favor inicia sesión.", "error");
+      navigate("/login");
     } else {
       console.error("Error:", error);
     }
   };
 
-  // Obtener todos los administradores
+  // Obtener administradores
   const fetchAdmins = async () => {
     try {
-      const res = await axios.get(`${API_URL}/administrators`);
+      const res = await axios.get(`${API_URL}/administrators`, {
+        withCredentials: true, // ✅ importante para enviar la cookie authToken
+      });
       setAdmins(res.data);
     } catch (error) {
       handleNetworkError(error);
@@ -36,29 +41,18 @@ const useDataAdmin = () => {
   // Guardar o actualizar administrador
   const saveAdmin = async (adminData, adminId = null) => {
     try {
+      const config = { withCredentials: true };
+      if (adminData instanceof FormData) config.headers = { "Content-Type": "multipart/form-data" };
+
       if (adminId) {
-        // Al actualizar, eliminar IdTeam para no modificarlo
-        if (adminData instanceof FormData) {
-          adminData.delete("IdTeam");
-        } else if (typeof adminData === "object") {
-          delete adminData.IdTeam;
-        }
+        // No modificar IdTeam al actualizar
+        if (adminData instanceof FormData) adminData.delete("IdTeam");
+        else delete adminData.IdTeam;
 
-        await axios.put(`${API_URL}/administrators/${adminId}`, adminData, {
-          headers: adminData instanceof FormData
-            ? { "Content-Type": "multipart/form-data" }
-            : undefined,
-        });
-
+        await axios.put(`${API_URL}/administrators/${adminId}`, adminData, config);
         Swal.fire("¡Actualizado!", "El administrador ha sido actualizado.", "success");
       } else {
-        // Crear nuevo administrador (envía todo, incluido IdTeam)
-        await axios.post(`${API_URL}/registerAdministrators`, adminData, {
-          headers: adminData instanceof FormData
-            ? { "Content-Type": "multipart/form-data" }
-            : undefined,
-        });
-
+        await axios.post(`${API_URL}/registerAdministrators`, adminData, config);
         Swal.fire("¡Guardado!", "El administrador ha sido creado.", "success");
       }
 
@@ -67,7 +61,6 @@ const useDataAdmin = () => {
     } catch (error) {
       handleNetworkError(error);
       const backendMessage = error?.response?.data?.message;
-
       if (backendMessage === "Email already exists in the system") {
         Swal.fire("Error", "Este correo ya está en uso.", "warning");
       } else if (backendMessage === "Invalid email format.") {
@@ -91,7 +84,7 @@ const useDataAdmin = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_URL}/administrators/${id}`);
+        await axios.delete(`${API_URL}/administrators/${id}`, { withCredentials: true });
         Swal.fire("¡Eliminado!", "El administrador ha sido eliminado.", "success");
         fetchAdmins();
       } catch (error) {
@@ -101,7 +94,7 @@ const useDataAdmin = () => {
     }
   };
 
-  // Cerrar formulario y limpiar estado
+  // Cerrar formulario
   const handleCloseForm = () => {
     setShowForm(false);
     setAdminEdit(null);

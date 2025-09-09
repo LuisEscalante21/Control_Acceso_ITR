@@ -44,7 +44,7 @@ const useEmployeeProfile = () => {
           return;
         }
 
-        let baseURL = "http://localhost:4000/api";
+        const baseURL = import.meta.env.VITE_BASE_URL + import.meta.env.VITE_PORT + "/api";
         let endpoint = "";
 
         switch (userInfo.userType.toLowerCase()) {
@@ -63,11 +63,12 @@ const useEmployeeProfile = () => {
             return;
         }
 
-        const { data } = await axios.get(`${baseURL}${endpoint}`);
+        // Axios enviará automáticamente la cookie httpOnly con 'withCredentials'
+        const { data } = await axios.get(`${baseURL}${endpoint}`, {
+          withCredentials: true,
+        });
 
-        // Normalizar la info para tener siempre 'team'
-        let normalizedData = { ...data, team: data.IdTeam || data.team || null };
-
+        const normalizedData = { ...data, team: data.IdTeam || data.team || null };
         setEmployee(normalizedData);
       } catch (error) {
         console.error("Error al obtener el perfil del usuario:", error);

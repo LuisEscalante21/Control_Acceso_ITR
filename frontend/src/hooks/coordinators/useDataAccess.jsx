@@ -6,13 +6,11 @@ import CryptoJS from "crypto-js";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT_ACCESS;
-const API_URL = `${BASE_URL}${PORT}/api`;
-
-const PORT_JUSTIFICATIONS = import.meta.env.VITE_PORT;
-const EMPLOYEE_API_URL = `${BASE_URL}4000/api/employee`;
-const COORDINATOR_API_URL = `${BASE_URL}4000/api/coordinators`;
-const JUSTIFICATIONS_API_URL = `${BASE_URL}${PORT_JUSTIFICATIONS}/api/justifications`;
-
+const API_URL = `${BASE_URL}${PORT}/api`; // Flask API
+const PORT_NODE = import.meta.env.VITE_PORT;
+const EMPLOYEE_API_URL = `${BASE_URL}4000/api/employee`; // Node
+const COORDINATOR_API_URL = `${BASE_URL}4000/api/coordinators`; // Node
+const JUSTIFICATIONS_API_URL = `${BASE_URL}${PORT_NODE}/api/justifications`; // Node
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
 const JWT_SECRET = import.meta.env.VITE_JWT_SECRET;
 
@@ -21,31 +19,46 @@ const useDataAccess = () => {
   const [justifications, setJustifications] = useState([]);
   const [justificationMap, setJustificationMap] = useState({});
   const [showForm, setShowForm] = useState(false);
-  const [userId, setUserId] = useState(null); // empleado o coordinador
+  const [userId, setUserId] = useState(null);
   const [userTeamId, setUserTeamId] = useState(null);
 
   const navigate = useNavigate();
+  const userCache = useRef({}); // Cache usuarios
 
-  const axiosConfig = {
+  // ------------------------------
+  // Config Axios
+  // ------------------------------
+  const axiosFlask = axios.create({
+    baseURL: API_URL,
     headers: {
       Authorization: `Bearer ${API_ACCESS_KEY}`,
       "Content-Type": "application/json",
     },
-  };
+    timeout: 10000,
+  });
 
-  // Cache para usuarios (persistente entre renders)
-  const userCache = useRef({});
+  const axiosNode = axios.create({
+    withCredentials: true,
+    headers: { "Content-Type": "application/json" },
+    timeout: 10000,
+  });
 
-  // Manejar errores de red
+  // ------------------------------
+  // Manejo de errores
+  // ------------------------------
   const handleNetworkError = (err) => {
     if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
       navigate("/503");
+    } else if (err.response?.status === 401 || err.response?.status === 403) {
+      Swal.fire("Error", "No autorizado. Inicia sesión nuevamente.", "error");
     } else {
-      console.error("Error:", err);
+      console.error("🔴 Error:", err);
     }
   };
 
-  // Leer y descifrar cookie para obtener userId y teamId
+  // ------------------------------
+  // Leer y descifrar cookie
+  // ------------------------------
   useEffect(() => {
     const userInfoCookie = document.cookie
       .split("; ")
@@ -56,65 +69,76 @@ const useDataAccess = () => {
         const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
         const bytes = CryptoJS.AES.decrypt(encrypted, JWT_SECRET);
         const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
-
         if (!decryptedStr) throw new Error("No se pudo descifrar correctamente.");
-
         const userInfo = JSON.parse(decryptedStr);
         setUserId(userInfo._id || null);
         setUserTeamId(userInfo.teamId || null);
       } catch (err) {
-        console.error("Error al descifrar userInfo:", err);
+        console.error("🔴 Error al descifrar userInfo:", err);
         setUserId(null);
         setUserTeamId(null);
       }
     }
   }, []);
 
-  // Obtener usuario (empleado o coordinador) con cache
+  // ------------------------------
+  // Obtener usuario (Empleado / Coordinador) con cache
+  // ------------------------------
   const fetchUserById = async (id) => {
     if (!id) return null;
     if (userCache.current[id]) return userCache.current[id];
 
     try {
-      // Intentar empleado, 404 no lanza error
-      const resEmployee = await axios.get(`${EMPLOYEE_API_URL}/${id}`, {
-        ...axiosConfig,
-        validateStatus: (status) => status < 500,
-      });
+      const resEmployee = await axiosNode.get(`${EMPLOYEE_API_URL}/${id}`);
       if (resEmployee.status === 200) {
-        userCache.current[id] = resEmployee.data;
-        return resEmployee.data;
+        userCache.current[id] = { ...resEmployee.data, userType: "Empleado" };
+        return userCache.current[id];
       }
 
-      // Si no existe, buscar coordinador
-      const resCoordinator = await axios.get(`${COORDINATOR_API_URL}/${id}`, axiosConfig);
-      userCache.current[id] = resCoordinator.data || null;
-      return userCache.current[id];
+      const resCoordinator = await axiosNode.get(`${COORDINATOR_API_URL}/${id}`);
+      if (resCoordinator.status === 200) {
+        userCache.current[id] = { ...resCoordinator.data, userType: "Coordinador" };
+        return userCache.current[id];
+      }
 
+      userCache.current[id] = null;
+      return null;
     } catch {
       userCache.current[id] = null;
       return null;
     }
   };
 
-  // Obtener registros de acceso
+  // ------------------------------
+  // Obtener registros de acceso (Flask)
+  // ------------------------------
   const fetchAccessRecords = async () => {
     try {
-      const url = userTeamId ? `${API_URL}/access?teamId=${userTeamId}` : `${API_URL}/access`;
-      const res = await axios.get(url, axiosConfig);
+      const url = userTeamId ? `/access?teamId=${userTeamId}` : "/access";
+      const res = await axiosFlask.get(url);
       const registros = res.data;
 
-      const registrosConUsuario = await Promise.all(
-        registros.map(async (reg) => {
-          const usuario = await fetchUserById(reg.id_Employee);
-          return {
-            ...reg,
-            employeeName: usuario ? `${usuario.names} ${usuario.surnames}` : "Usuario no encontrado",
-            employeeAvatar: usuario?.photo || null,
-            teamId: usuario?.IdTeam || null,
-          };
+      // Traer datos de usuarios
+      const uniqueIds = [...new Set(registros.map((r) => r.id_Employee))];
+      const usersMap = {};
+      await Promise.all(
+        uniqueIds.map(async (id) => {
+          if (id) {
+            const user = await fetchUserById(id);
+            if (user) usersMap[id] = user;
+          }
         })
       );
+
+      const registrosConUsuario = registros.map((reg) => {
+        const user = usersMap[reg.id_Employee];
+        return {
+          ...reg,
+          employeeName: user ? `${user.names} ${user.surnames}` : "Usuario no encontrado",
+          employeeAvatar: user?.photo || null,
+          employeeType: user?.userType || "Sin definir",
+        };
+      });
 
       setAccessRecords(registrosConUsuario);
     } catch (error) {
@@ -123,10 +147,12 @@ const useDataAccess = () => {
     }
   };
 
-  // Obtener justificaciones
+  // ------------------------------
+  // Obtener justificaciones (Node)
+  // ------------------------------
   const fetchJustifications = async () => {
     try {
-      const res = await axios.get(JUSTIFICATIONS_API_URL, axiosConfig);
+      const res = await axiosNode.get(JUSTIFICATIONS_API_URL);
       setJustifications(res.data);
 
       const map = (res.data || []).reduce((acc, j) => {
@@ -136,52 +162,50 @@ const useDataAccess = () => {
       setJustificationMap(map);
     } catch (error) {
       handleNetworkError(error);
-      console.error("Error al obtener justificaciones:", error);
+      console.error("🔴 Error al obtener justificaciones:", error);
       setJustificationMap({});
     }
   };
 
-  // Guardar registro de acceso
+  // ------------------------------
+  // Guardar / Eliminar registros (Flask)
+  // ------------------------------
   const saveAccessRecord = async (data) => {
     try {
-      await axios.post(`${API_URL}/access`, data, axiosConfig);
-      Swal.fire("¡Guardado!", "El registro de acceso ha sido guardado.", "success");
+      await axiosFlask.post("/access", data);
+      Swal.fire("¡Guardado!", "Registro de acceso guardado.", "success");
       await fetchAccessRecords();
       handleCloseForm();
     } catch (error) {
       handleNetworkError(error);
-      Swal.fire("Error", "No se pudo guardar el registro de acceso.", "error");
+      Swal.fire("Error", "No se pudo guardar el registro.", "error");
     }
   };
 
-  // Eliminar registro de acceso
   const deleteAccessRecord = async (id) => {
     const result = await Swal.fire({
-      title: "¿Estás seguro?",
-      text: "Esta acción eliminará el registro de acceso.",
+      title: "¿Eliminar registro?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
+      confirmButtonText: "Sí",
       cancelButtonText: "Cancelar",
     });
-
     if (!result.isConfirmed) return;
 
     try {
-      await axios.delete(`${API_URL}/access/${id}`, axiosConfig);
-      Swal.fire("¡Eliminado!", "El registro de acceso ha sido eliminado.", "success");
+      await axiosFlask.delete(`/access/${id}`);
+      Swal.fire("¡Eliminado!", "Registro eliminado.", "success");
       await fetchAccessRecords();
     } catch (error) {
       handleNetworkError(error);
-      Swal.fire("Error", "No se pudo eliminar el registro de acceso.", "error");
+      Swal.fire("Error", "No se pudo eliminar el registro.", "error");
     }
   };
 
   const handleCloseForm = () => setShowForm(false);
 
-  // Ejecutar fetch al tener userId
   useEffect(() => {
-    if (userId) fetchAccessRecords();
+    fetchAccessRecords();
     fetchJustifications();
   }, [userId, userTeamId]);
 
