@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../styles/PerfilCard.css";
 import { UserCircle, Mail, Copy } from "lucide-react";
 import useEmployeeProfile from "../../hooks/widgets/useProfile";
-import LogoutButton from "../../components/Logout";
+import LogoutButton from "../Logout";
 
 const UserFaceCardSimple = ({ onClick }) => {
   const employee = useEmployeeProfile();
@@ -10,7 +10,7 @@ const UserFaceCardSimple = ({ onClick }) => {
   const [teamName, setTeamName] = useState(""); 
   const [copied, setCopied] = useState(false);
 
-  // ⚡ Obtener el nombre del área directamente desde employee.IdTeam
+  // Obtener el nombre del área directamente desde employee.IdTeam
   useEffect(() => {
     if (employee?.IdTeam) {
       setTeamName(employee.IdTeam.name || "Área no especificada");
@@ -64,14 +64,14 @@ const UserFaceCardSimple = ({ onClick }) => {
           <div className="employee-panel" onClick={(e) => e.stopPropagation()}>
             <div className="panel-header">
               <button className="close-icon" onClick={closePanel}>×</button>
-              <h3>Perfil del empleado</h3>
+              <h3>Perfil del usuario</h3>
             </div>
 
             <div className="panel-content">
               <div className="employee-info">
                 <div className="employee-photo">
                   {employee.photo ? (
-                    <img src={employee.photo} alt="Foto del empleado" />
+                    <img src={employee.photo} alt="Foto del usuario" />
                   ) : (
                     <UserCircle size={120} />
                   )}

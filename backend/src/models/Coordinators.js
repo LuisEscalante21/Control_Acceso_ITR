@@ -48,7 +48,7 @@ const coordinatorsSchema = new Schema(
     },
     IdTeam: {
       type: Schema.Types.ObjectId,
-      ref: "teams",
+      ref: "Teams",
       require: true,
   },
     status: {

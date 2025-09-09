@@ -11,6 +11,13 @@ export const config = {
   server: {
     port: process.env.PORT,
   },
+  cors: {
+    allowedOrigins: [
+      process.env.CLIENT_URL_LOCAL,
+      process.env.CLIENT_URL_RENDER,
+      process.env.CLIENT_URL_VERCEL,
+    ],
+  },
   JWT: {
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES,

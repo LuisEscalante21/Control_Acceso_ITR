@@ -1,6 +1,7 @@
 // Importo todo lo de la libreria de Express
 import express from "express";
 import bodyParser from "body-parser";
+import { config } from './src/config.js';
 import employeeRoutes from "./src/routes/employeesRoute.js"
 import coordinatorsRoutes from "./src/routes/coordinatorsRoutes.js"
 import administratorsRoutes from "./src/routes/administratorsRoutes.js";
@@ -30,11 +31,7 @@ const app = express();
 // Configurar CORS
 // Opciones de CORS (permite tanto el frontend local como el de producción)
 const corsOptions = {
-  origin: [
-    'http://localhost:5173', // Desarrollo local (Vite/React)
-    'https://control-acceso-itr.onrender.com', // Render (Producción)
-    'https://control-acceso-itr.vercel.app', // Vercel (Producción)
-  ],
+  origin: config.cors.allowedOrigins,
   credentials: true, // Para cookies/tokens de autenticación
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos permitidos
   allowedHeaders: ['Content-Type', 'Authorization'], // Cabeceras permitidas

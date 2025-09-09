@@ -17,8 +17,10 @@ const useEmployeeProfile = () => {
           return;
         }
 
-        // Desencriptar
-        const bytes = CryptoJS.AES.decrypt(decodeURIComponent(encryptedUserInfo), JWT_SECRET);
+        const bytes = CryptoJS.AES.decrypt(
+          decodeURIComponent(encryptedUserInfo),
+          JWT_SECRET
+        );
         const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
 
         if (!decryptedText) {
@@ -27,17 +29,48 @@ const useEmployeeProfile = () => {
         }
 
         const userInfo = JSON.parse(decryptedText);
-        if (!userInfo?._id) {
-          console.error("userInfo no contiene _id");
+
+        if (!userInfo?._id || !userInfo?.userType) {
+          console.error("userInfo no contiene _id o userType");
           return;
         }
 
-        // Modifica la URL para que incluya la información del equipo
-        const { data } = await axios.get(`http://localhost:4000/api/employee/${userInfo._id}?populate=team`);
-        console.log(data);
-        setEmployee(data);
+        // Admin de .env solo lectura
+        if (userInfo.isReadOnly && userInfo._id === "Admin") {
+          setEmployee({
+            ...userInfo,
+            team: null, // Admin no tiene equipo
+          });
+          return;
+        }
+
+        let baseURL = "http://localhost:4000/api";
+        let endpoint = "";
+
+        switch (userInfo.userType.toLowerCase()) {
+          case "employee":
+            endpoint = `/employee/${userInfo._id}?populate=team`;
+            break;
+          case "coordinator":
+            endpoint = `/coordinators/${userInfo._id}`;
+            break;
+          case "admin":
+          case "administrator":
+            endpoint = `/administrators/${userInfo._id}`;
+            break;
+          default:
+            console.error("Tipo de usuario no reconocido:", userInfo.userType);
+            return;
+        }
+
+        const { data } = await axios.get(`${baseURL}${endpoint}`);
+
+        // Normalizar la info para tener siempre 'team'
+        let normalizedData = { ...data, team: data.IdTeam || data.team || null };
+
+        setEmployee(normalizedData);
       } catch (error) {
-        console.error("Error al obtener el perfil del empleado:", error);
+        console.error("Error al obtener el perfil del usuario:", error);
       }
     };
 

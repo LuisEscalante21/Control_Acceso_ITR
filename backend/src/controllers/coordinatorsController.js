@@ -25,10 +25,14 @@
   // Obtener un coordinador por ID
 coordinatorsController.getCoordinatorById = async (req, res) => {
   try {
-    const coordinator = await coordinatorsModel.findById(req.params.id);
+    const coordinator = await coordinatorsModel
+      .findById(req.params.id)
+      .populate("IdTeam"); // <-- Aquí hacemos populate para traer toda la info del equipo
+
     if (!coordinator) {
       return res.status(404).json({ message: "Coordinador no encontrado" });
     }
+
     res.json(coordinator);
   } catch (error) {
     res.status(500).json({ message: "Error al buscar coordinador", error });

@@ -12,6 +12,7 @@ router.route("/").get(administratorsController.getAdministrators);
 
 router
   .route("/:id")
+  .get(administratorsController.getAdministratorById) 
   .put(upload.single("photo"), administratorsController.updateAdministrator)
   .delete(administratorsController.deleteAdministrator);
 

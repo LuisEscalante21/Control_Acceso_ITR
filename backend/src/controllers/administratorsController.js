@@ -25,6 +25,30 @@ administratorsController.getAdministrators = async (req, res) => {
   }
 };
 
+// Obtener un administrador por ID
+administratorsController.getAdministratorById = async (req, res) => {
+  try {
+    const administrator = await administratorsModel
+      .findById(req.params.id)
+      .populate("IdTeam") // <-- populate para traer el equipo
+      .lean();
+
+    if (!administrator) {
+      return res.status(404).json({ message: "Administrador no encontrado" });
+    }
+
+    const normalizedAdmin = {
+      ...administrator,
+      team: administrator.IdTeam || null,
+    };
+
+    res.status(200).json(normalizedAdmin);
+  } catch (error) {
+    console.error("Error al buscar administrador:", error);
+    res.status(500).json({ message: "Error al buscar administrador", error: error.message });
+  }
+};
+
 // D E L E T E - Eliminar administrador por ID
 administratorsController.deleteAdministrator = async (req, res) => {
   try {

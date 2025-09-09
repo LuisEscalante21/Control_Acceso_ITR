@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
 import { Home, FileCheck, Clock, Menu, X, LogOut } from "lucide-react";
 import "../../components/styles/SidebarEmployee.css";
 import logoRical from "../../img/logo_rical.png";

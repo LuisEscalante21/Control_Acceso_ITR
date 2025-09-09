@@ -3,7 +3,7 @@ import CryptoJS from "crypto-js";
 import "../../components/styles/employee/Home.css";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple";
+import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 export default function Home() {
   const [greeting, setGreeting] = useState("");
