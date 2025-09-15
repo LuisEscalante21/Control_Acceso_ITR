@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import CryptoJS from "crypto-js";
 import NewPermissionModal from "../../components/employee/PageModals/NewPermissionModal";
 import ViewPermissionModal from "../../components/employee/PageModals/ViewPermissionModal";
 import useDataPermissions from "../../hooks/Global/UseDataPermissions";
+import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 import "../../styles/employee/Permission.css";
 
 const mapStatus = (status) => {
@@ -30,37 +32,91 @@ export default function Permissions() {
   const [viewOpen, setViewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
 
-  useEffect(() => { fetchPermissions(); }, []);
+  // perfil del usuario
+  const [userName, setUserName] = useState("");
+  const [userPhoto, setUserPhoto] = useState(null);
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
+
+  useEffect(() => {
+    fetchPermissions();
+
+    // Leer y parsear la cookie userInfo
+    const userInfoCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("userInfo="));
+
+    if (userInfoCookie && secretKey) {
+      try {
+        const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
+        const bytes = CryptoJS.AES.decrypt(encrypted, secretKey);
+        const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!decryptedStr)
+          throw new Error("No se pudo descifrar correctamente.");
+
+        const userInfo = JSON.parse(decryptedStr);
+        setUserName(userInfo.fullName || "Usuario");
+        setUserPhoto(userInfo.photoUrl || null);
+      } catch (err) {
+        console.error("Error al descifrar userInfo:", err);
+      }
+    }
+  }, [secretKey]);
 
   const filteredPermissions = useMemo(() => {
-  let list = permissions || [];
+    let list = permissions || [];
 
-  if (searchDate) {
-    const selectedDate = new Date(searchDate);
-    list = list.filter(p => {
-      const permDate = new Date(p.applicationDay);
-      return permDate <= selectedDate; // solo permisos de esa fecha o antes
-    });
-  }
+    if (searchDate) {
+      const selectedDate = new Date(searchDate);
+      list = list.filter((p) => {
+        const permDate = new Date(p.applicationDay);
+        return permDate <= selectedDate;
+      });
+    }
 
-  if (filterStatus !== "Todos") {
-    const wanted = { Urgente:"urgent", Rechazado:"rejected", Pendiente:"pending", Aprobado:"approved" }[filterStatus];
-    list = list.filter(p => (p.status || "").toLowerCase() === wanted);
-  }
+    if (filterStatus !== "Todos") {
+      const wanted = {
+        Urgente: "urgent",
+        Rechazado: "rejected",
+        Pendiente: "pending",
+        Aprobado: "approved",
+      }[filterStatus];
+      list = list.filter((p) => (p.status || "").toLowerCase() === wanted);
+    }
 
-  return list;
-}, [permissions, filterStatus, searchDate]);
+    return list;
+  }, [permissions, filterStatus, searchDate]);
 
-
-  const openView  = (perm) => { setSelected(perm); setViewOpen(true); };
-  const closeView = () => { setViewOpen(false); setSelected(null); };
-  const handleDeleted = async () => { await fetchPermissions(); };
+  const openView = (perm) => {
+    setSelected(perm);
+    setViewOpen(true);
+  };
+  const closeView = () => {
+    setViewOpen(false);
+    setSelected(null);
+  };
+  const handleDeleted = async () => {
+    await fetchPermissions();
+  };
 
   const handleOpenModal = () => setShowModal(true);
-  const handleCloseModal = async () => { setShowModal(false); await fetchPermissions(); };
+  const handleCloseModal = async () => {
+    setShowModal(false);
+    await fetchPermissions();
+  };
 
   return (
-    <div className="pgp">
+    <div className="pgp" style={{ position: "relative" }}>
+      {/* Perfil arriba a la derecha */}
+      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
+        <UserFaceCardSimple
+          name={userName}
+          photo={userPhoto}
+          description={"Mis Permisos"}
+          onClick={() => { /* acción al hacer click */ }}
+        />
+      </div>
+
       <div className="pgp__container">
         {/* encabezado */}
         <header className="pgp__header">
@@ -69,15 +125,13 @@ export default function Permissions() {
 
         <div className="pgp__new1">
           <button onClick={handleOpenModal} className="pgp__new">
-              Adjuntar un nuevo permiso
+            Adjuntar un nuevo permiso
           </button>
         </div>
 
         {/* container blanco con filtros y botón */}
         <section className="pgp__sheet">
           <div className="pgp__actions">
-            
-
             <div className="pgp__filters">
               <div className="pgp__chip">
                 <input
@@ -115,13 +169,17 @@ export default function Permissions() {
                 return (
                   <button
                     key={perm._id}
-                    className={`pgp__row ${idx === filteredPermissions.length - 1 ? "last" : ""}`}
+                    className={`pgp__row ${
+                      idx === filteredPermissions.length - 1 ? "last" : ""
+                    }`}
                     onClick={() => openView(perm)}
                     title="Ver detalles"
                   >
                     <div className="pgp__rowLeft">
                       <span className="pgp__dot" />
-                      <span className="pgp__doc" aria-hidden>📄</span>
+                      <span className="pgp__doc" aria-hidden>
+                        📄
+                      </span>
                       <span className="pgp__rowTitle">
                         Permiso {perm.applicationDay}
                       </span>

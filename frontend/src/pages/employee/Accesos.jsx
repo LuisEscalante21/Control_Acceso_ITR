@@ -7,6 +7,7 @@ import useDataAccess from "../../hooks/employee/useDataAccess.jsx";
 import AccessCard from "../../components/employee/Cards/AccessCard.jsx";
 import JustifyModal from "../../components/employee/PageModals/justifictions.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
+import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx"; 
 
 const HorarioOptions = ["Entrada", "Salida"];
 const JustificationFilterOptions = ["Todos", "Justificados", "Pendientes"];
@@ -24,24 +25,32 @@ const Accesos = () => {
   const justificationFilterRef = useRef(null);
   const salidasRef = useRef(null);
 
-  // Leer y descifrar info del usuario desde cookie cifrada con AES
+  // === Perfil desde cookie AES ===
+  const [userName, setUserName] = useState("Usuario");
+  const [userPhoto, setUserPhoto] = useState(null);
   const secretKey = import.meta.env.VITE_JWT_SECRET;
-  let userInfo = null;
-  const encryptedUserInfo = Cookies.get("userInfo");
-  if (encryptedUserInfo && secretKey) {
-    try {
-      const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
-      const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
-      userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
-    } catch (error) {
-      console.error("Error al descifrar userInfo:", error);
-      userInfo = null;
+  const [empleadoId, setEmpleadoId] = useState(null);
+
+  useEffect(() => {
+    const encryptedUserInfo = Cookies.get("userInfo");
+    if (encryptedUserInfo && secretKey) {
+      try {
+        const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
+        const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+        const userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
+
+        if (userInfo) {
+          setUserName(userInfo.fullName || "Usuario");
+          setUserPhoto(userInfo.photoUrl || null);
+          setEmpleadoId(userInfo._id || null);
+        }
+      } catch (error) {
+        console.error("Error al descifrar userInfo:", error);
+      }
     }
-  }
+  }, [secretKey]);
 
-  const empleadoId = userInfo?._id || null;
-
-  // Extraemos datos y funciones del hook
+  // Extraemos datos del hook
   const { accessRecords, fetchAccessRecords, fetchJustifications } =
     useDataAccess(empleadoId);
 
@@ -52,7 +61,7 @@ const Accesos = () => {
   };
 
   useEffect(() => {
-    refreshAccessData();
+    if (empleadoId) refreshAccessData();
   }, [empleadoId]);
 
   useEffect(() => {
@@ -104,7 +113,7 @@ const Accesos = () => {
     setJustificarInfo(null);
   };
 
-  // Filtrar accesos según usuario, tipo, estado justificación, y búsqueda
+  // Filtrar accesos
   const filteredAccess = (accessRecords || [])
     .filter((person) => person.id_Employee === empleadoId)
     .filter((person) => {
@@ -120,12 +129,11 @@ const Accesos = () => {
         );
       }
     })
-    // Filtro según justificación:
     .filter((person) => {
       const isJustified = !!person.justification;
       if (selectedJustificationFilter === "Justificados") return isJustified;
       if (selectedJustificationFilter === "Pendientes") return !isJustified;
-      return true; // "Todos"
+      return true;
     })
     .filter((person) => {
       if (!searchText.trim()) return true;
@@ -134,7 +142,19 @@ const Accesos = () => {
     });
 
   return (
-    <div className="access-history-container">
+    <div className="access-history-container" style={{ position: "relative" }}>
+      {/* Perfil arriba a la derecha */}
+      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
+        <UserFaceCardSimple
+          name={userName}
+          photo={userPhoto}
+          description={"Accesos"}
+          onClick={() => {
+            /* acción al hacer click, por ejemplo ir al perfil */
+          }}
+        />
+      </div>
+
       <div className="encabezado-accesos">
         <h1 className="titulo">Historial de accesos</h1>
 
@@ -235,9 +255,9 @@ const Accesos = () => {
                   justification={person.justification}
                   onJustifyClick={() => {
                     if (person.justification) {
-                      setViewJustify(person); // abre modal de ver justificación
+                      setViewJustify(person);
                     } else {
-                      handleOpenJustifyModal(person); // abre modal para justificar
+                      handleOpenJustifyModal(person);
                     }
                   }}
                 />
@@ -252,7 +272,7 @@ const Accesos = () => {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           record={justificarInfo}
-          currentUser={userInfo}
+          currentUser={{ name: userName, photo: userPhoto, id: empleadoId }}
           refreshAccessRecords={refreshAccessData}
         />
       )}
@@ -261,7 +281,7 @@ const Accesos = () => {
         <ViewJustifyModal
           isOpen={!!viewJustify}
           onClose={() => setViewJustify(null)}
-          justification={viewJustify} 
+          justification={viewJustify}
         />
       )}
     </div>
