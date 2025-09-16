@@ -29,12 +29,13 @@ const app = express();
 
 // Configurar CORS
 const corsOptions = {
-  origin: config.cors.allowedOrigins,
+  origin: "http://localhost:5173", // 👈 aquí pones la URL de tu frontend
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
 app.use(cors(corsOptions));
+
 
 // Middleware
 app.use(bodyParser.json({ limit: '10mb' }));

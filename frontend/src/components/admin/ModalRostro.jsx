@@ -4,6 +4,7 @@ import rostroImg1 from "../../img/Rostros-1.png";
 import rostroImg2 from "../../img/Rostros-2.png";
 import Swal from "sweetalert2";
 import useDataSchedules from "../../hooks/admin/useDataSchedule.jsx";
+import useDataTeams from "../../hooks/admin/useDataTeams.jsx";
 
 function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   const [newFile, setNewFile] = useState(null);
@@ -12,7 +13,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   const [selectedScheduleId, setSelectedScheduleId] = useState("");
   const [gender, setGender] = useState("");
   const [areaId, setAreaId] = useState("");
-  const [areas, setAreas] = useState([]);
+
   const [loadingAreas, setLoadingAreas] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
@@ -21,22 +22,17 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   const canvasRef = useRef(null);
 
   const { schedules } = useDataSchedules();
+  const { teams, fetchTeams } = useDataTeams();
 
   useEffect(() => {
-    const fetchAreas = async () => {
+    (async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/teams");
-        const data = await res.json();
-        setAreas(data);
-      } catch (err) {
-        console.error("Error al cargar áreas:", err);
-        setAreas([]);
+        await fetchTeams();
       } finally {
         setLoadingAreas(false);
       }
-    };
-    fetchAreas();
-  }, []);
+    })();
+  }, [fetchTeams]);
 
   useEffect(() => {
     if (mode === "edit" && face) {
@@ -44,7 +40,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
       setEmployeeCode(face.employee_code || "");
       setSelectedScheduleId(face.schedule_id || "");
       setGender(face.gender || "");
-      setAreaId(face.area_id || "");
+      setAreaId(face.area_id || face?.area?._id || "");
       setNewFile(null);
     } else {
       setName("");
@@ -56,6 +52,15 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     }
   }, [mode, face]);
 
+  const stopCamera = () => {
+    try {
+      const stream = videoRef.current?.srcObject;
+      if (stream && typeof stream.getTracks === "function") {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+    } catch (_) {}
+  };
+
   const handleClose = () => {
     setName("");
     setEmployeeCode("");
@@ -64,6 +69,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     setAreaId("");
     setNewFile(null);
     setIsSaving(false);
+    stopCamera();
     setShowCamera(false);
     onClose();
   };
@@ -87,41 +93,54 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     });
   };
 
-  // Abrir cámara
   const handleOpenCamera = async () => {
     setShowCamera(true);
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        videoRef.current.srcObject = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
       } catch (err) {
         Swal.fire("Error", "No se pudo acceder a la cámara.", "error");
         setShowCamera(false);
       }
+    } else {
+      Swal.fire("Error", "Tu navegador no soporta la cámara.", "error");
+      setShowCamera(false);
     }
   };
 
-  // Tomar foto
   const handleTakePhoto = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob((blob) => {
-      const file = new File([blob], "captura.jpg", { type: "image/jpeg" });
-      setNewFile(file);
-      Swal.fire({
-        icon: "success",
-        title: "Foto tomada",
-        text: "La foto se ha capturado correctamente.",
-        timer: 1000,
-        showConfirmButton: false,
-      });
-      // Detener cámara
-      video.srcObject.getTracks().forEach((track) => track.stop());
-      setShowCamera(false);
-    }, "image/jpeg");
+    if (!video || !canvas) return;
+
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          return Swal.fire("Error", "No se pudo capturar la imagen.", "error");
+        }
+        const file = new File([blob], "captura.jpg", { type: "image/jpeg" });
+        setNewFile(file);
+        Swal.fire({
+          icon: "success",
+          title: "Foto tomada",
+          text: "La foto se ha capturado correctamente.",
+          timer: 1000,
+          showConfirmButton: false,
+        });
+        stopCamera();
+        setShowCamera(false);
+      },
+      "image/jpeg",
+      0.92
+    );
   };
 
   const handleSave = async () => {
@@ -140,29 +159,45 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
 
     setIsSaving(true);
 
-    const data = new FormData();
-    data.append("name", name.trim());
-    data.append("employee_code", employeeCode.trim());
-    data.append("schedule_id", selectedScheduleId);
-    data.append("gender", gender);
-    data.append("area_id", areaId);
-    if (newFile) {
-      data.append("image", newFile);
-    }
+    const basePayload = {
+      name: name.trim(),
+      employee_code: employeeCode.trim(), // backend moderno
+      code: employeeCode.trim(),          // alias para backend antiguo
+      schedule_id: selectedScheduleId,
+      gender,
+      area_id: areaId,
+    };
 
     try {
-      await onSubmit(data);
+      if (mode === "edit") {
+        // COMPATIBILIDAD: en edición, SIEMPRE multipart/form-data
+        const data = new FormData();
+        Object.entries(basePayload).forEach(([k, v]) => data.append(k, v));
+        if (newFile) data.append("image", newFile);
+        await onSubmit(data, { asJson: false }); // onSubmit debe detectar FormData
+      } else {
+        // ADD siempre lleva imagen => multipart
+        const data = new FormData();
+        Object.entries(basePayload).forEach(([k, v]) => data.append(k, v));
+        if (newFile) data.append("image", newFile);
+        await onSubmit(data, { asJson: false });
+      }
       handleClose();
     } catch (err) {
+      console.error(err);
       setIsSaving(false);
-      Swal.fire("Error", "Ocurrió un error al guardar.", "error");
+      const msg =
+        (err && err.message) ||
+        (typeof err === "string" ? err : null) ||
+        "Ocurrió un error al guardar.";
+      Swal.fire("Error", msg, "error");
     }
   };
 
   return (
     <div className="employee-modal-overlay active" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="close-button" onClick={handleClose}>
+        <button className="close-button" onClick={handleClose} aria-label="Cerrar">
           &times;
         </button>
 
@@ -174,6 +209,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nombre completo"
+          autoComplete="off"
         />
 
         <label>Código de empleado:</label>
@@ -182,6 +218,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           value={employeeCode}
           onChange={(e) => setEmployeeCode(e.target.value)}
           placeholder="Código"
+          autoComplete="off"
         />
 
         <label>Género:</label>
@@ -204,17 +241,18 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
 
         <label>Área:</label>
         <select value={areaId} onChange={(e) => setAreaId(e.target.value)} disabled={loadingAreas}>
-          <option value="">Seleccione un área</option>
-          {areas.map((area) => (
-            <option key={area._id} value={area._id}>
-              {area.name}
-            </option>
-          ))}
+          <option value="">{loadingAreas ? "Cargando áreas..." : "Seleccione un área"}</option>
+          {!loadingAreas &&
+            teams.map((t) => (
+              <option key={t._id} value={t._id}>
+                {t.name}
+              </option>
+            ))}
         </select>
 
         <div className="biometric-options">
           <div className="option">
-            <label htmlFor="file-input">
+            <label htmlFor="file-input" style={{ cursor: "pointer" }}>
               <img src={rostroImg1} alt="Subir biométricos" />
               <p>Subir nuevos datos biométricos</p>
             </label>
@@ -232,29 +270,38 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
               </p>
             )}
           </div>
-          <div className="option">
+          <div className="option" onClick={handleOpenCamera} style={{ cursor: "pointer" }}>
             <img src={rostroImg2} alt="Abrir cámara" />
-            <p onClick={handleOpenCamera} style={{ cursor: "pointer" }}>Abrir cámara</p>
+            <p>Abrir cámara</p>
           </div>
         </div>
 
         {showCamera && (
           <div className="camera-modal">
-            <video ref={videoRef} autoPlay style={{ width: "100%" }} />
-            <button onClick={handleTakePhoto}>Tomar foto</button>
+            <video ref={videoRef} autoPlay playsInline style={{ width: "100%" }} />
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button onClick={handleTakePhoto}>Tomar foto</button>
+              <button
+                onClick={() => {
+                  stopCamera();
+                  setShowCamera(false);
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
             <canvas ref={canvasRef} style={{ display: "none" }} />
           </div>
         )}
 
-        <button
-          type="button"
-          className="save-btn"
-          onClick={handleSave}
-          disabled={isSaving}
-        >
+        <button type="button" className="save-btn" onClick={handleSave} disabled={isSaving}>
           {isSaving
-            ? (mode === "edit" ? "Actualizando..." : "Agregando...")
-            : (mode === "edit" ? "Actualizar" : "Agregar")}
+            ? mode === "edit"
+              ? "Actualizando..."
+              : "Agregando..."
+            : mode === "edit"
+            ? "Actualizar"
+            : "Agregar"}
         </button>
       </div>
     </div>
