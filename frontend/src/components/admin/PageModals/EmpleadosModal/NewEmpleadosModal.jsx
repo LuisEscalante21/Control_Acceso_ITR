@@ -4,6 +4,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { Camera } from "lucide-react";
 import "../../../../components/styles/Modal.css";
+import useDataTeams from "../../../../hooks/admin/useDataTeams.jsx";
 
 // Componente reutilizable para campos del formulario
 const FormField = ({ label, name, register, errors, validation = {}, type = "text", ...props }) => (
@@ -40,16 +41,13 @@ const FormSelect = ({ label, name, register, errors, options, loading, validatio
       aria-invalid={errors[name] ? "true" : "false"}
       {...props}
     >
-      <option value="">Selecciona una opción</option>
-      {loading ? (
-        <option disabled>Cargando...</option>
-      ) : (
+      <option value="">{loading ? "Cargando..." : "Selecciona una opción"}</option>
+      {!loading &&
         options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
-        ))
-      )}
+        ))}
     </select>
     {errors[name] && (
       <span className="error-message" role="alert">
@@ -70,19 +68,21 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
   } = useForm({
     mode: "onBlur",
     defaultValues: {
-      status: "activo"
-    }
+      status: "activo",
+    },
   });
 
-  const [teams, setTeams] = useState([]);
+  // ⬇️ Hook para equipos (igual que en tu otro modal)
+  const { teams: teamsRaw, fetchTeams } = useDataTeams();
   const [loadingTeams, setLoadingTeams] = useState(true);
+
   const [image, setImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
   // Watchers para campos con formato
   const dui = watch("DUI") || "";
   const telephone = watch("telephone") || "";
-  const email = watch("email") || "";
+  const email = watch("email") || ""; // (no se modifica, pero lo dejamos por consistencia)
   const hireDate = watch("hireDate");
   const birthday = watch("birthday");
 
@@ -107,38 +107,39 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     }
   }, [hireDate, birthday, setValue]);
 
-  // Cargar equipos
+  // Cargar equipos vía hook (igual patrón que tu ModalFace)
   useEffect(() => {
-    const fetchTeams = async () => {
+    (async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/teams");
-        setTeams(res.data.map(team => ({ value: team._id, label: team.name })));
-      } catch (error) {
-        console.error("Error al cargar equipos:", error);
-        setTeams([]);
+        await fetchTeams();
       } finally {
         setLoadingTeams(false);
       }
-    };
-    fetchTeams();
-  }, []);
+    })();
+  }, [fetchTeams]);
+
+  // Opciones del select de equipos mapeadas desde el hook
+  const teamOptions = (teamsRaw || []).map((t) => ({
+    value: t._id,
+    label: t.name,
+  }));
 
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
+
       // Validar tipo de imagen
       if (!file.type.match("image.*")) {
         Swal.fire("Error", "Por favor selecciona un archivo de imagen válido", "error");
         return;
       }
-      
+
       // Validar tamaño de imagen (2MB máximo)
       if (file.size > 2 * 1024 * 1024) {
         Swal.fire("Error", "La imagen no debe exceder los 2MB", "error");
         return;
       }
-      
+
       setImage(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
@@ -155,7 +156,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     }
 
     const formData = new FormData();
-    
+
     // Agregar campos al FormData
     Object.entries(data).forEach(([key, value]) => {
       if (key === "birthday" || key === "hireDate") {
@@ -181,7 +182,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         icon: "success",
         title: "¡Guardado!",
         text: "El empleado ha sido registrado exitosamente.",
-        timer: 2000
+        timer: 2000,
       });
 
       // Resetear formulario
@@ -198,12 +199,13 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     } catch (error) {
       console.error("Error al guardar:", error);
       let errorMessage = "Verifica que los campos estén correctos.";
-      
+
       if (error.response) {
-        errorMessage = error.response.data.message || 
+        errorMessage =
+          error.response.data.message ||
           (error.response.status === 409 ? "El empleado ya existe" : errorMessage);
       }
-      
+
       await Swal.fire({
         icon: "error",
         title: "Error al guardar",
@@ -232,7 +234,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
       >
         ×
       </button>
-      
+
       <h2>Crear un nuevo empleado</h2>
 
       <FormField
@@ -244,12 +246,12 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           minLength: {
             value: 3,
-            message: "Mínimo 3 caracteres"
+            message: "Mínimo 3 caracteres",
           },
           pattern: {
             value: /^[a-zA-Z0-9]+$/,
-            message: "Solo se permiten letras y números"
-          }
+            message: "Solo se permiten letras y números",
+          },
         }}
       />
 
@@ -262,8 +264,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$/,
-            message: "Solo se permiten letras"
-          }
+            message: "Solo se permiten letras",
+          },
         }}
       />
 
@@ -276,8 +278,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$/,
-            message: "Solo se permiten letras"
-          }
+            message: "Solo se permiten letras",
+          },
         }}
       />
 
@@ -290,8 +292,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^\d{8}-\d{1}$/,
-            message: "Formato: 12345678-9"
-          }
+            message: "Formato: 12345678-9",
+          },
         }}
         maxLength={10}
         placeholder="12345678-9"
@@ -305,11 +307,11 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         errors={errors}
         validation={{
           required: "Este campo es requerido",
-          validate: value => {
+          validate: (value) => {
             const date = new Date(value);
             const today = new Date();
             return date < today || "La fecha debe ser anterior al día actual";
-          }
+          },
         }}
       />
 
@@ -322,8 +324,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^\d{4}-\d{4}$/,
-            message: "Formato: 1234-5678"
-          }
+            message: "Formato: 1234-5678",
+          },
         }}
         maxLength={9}
         placeholder="1234-5678"
@@ -339,8 +341,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           pattern: {
             value: /^[^\s@]+@ricaldone\.edu\.sv$/,
-            message: "Debe ser un correo @ricaldone.edu.sv"
-          }
+            message: "Debe ser un correo @ricaldone.edu.sv",
+          },
         }}
         placeholder="usuario@ricaldone.edu.sv"
       />
@@ -355,12 +357,12 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           minLength: {
             value: 8,
-            message: "Mínimo 8 caracteres"
+            message: "Mínimo 8 caracteres",
           },
           pattern: {
             value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
-            message: "Debe incluir mayúsculas, minúsculas y números"
-          }
+            message: "Debe incluir mayúsculas, minúsculas y números",
+          },
         }}
       />
 
@@ -372,11 +374,10 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         errors={errors}
         validation={{
           required: "Este campo es requerido",
-          validate: value => {
+          validate: (value) => {
             if (!birthday) return true;
-            return new Date(value) > new Date(birthday) || 
-              "Debe ser posterior a la fecha de nacimiento";
-          }
+            return new Date(value) > new Date(birthday) || "Debe ser posterior a la fecha de nacimiento";
+          },
         }}
       />
 
@@ -385,7 +386,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         name="IdTeam"
         register={register}
         errors={errors}
-        options={teams}
+        options={teamOptions}
         loading={loadingTeams}
         validation={{ required: "Debes seleccionar un equipo" }}
       />
@@ -397,7 +398,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         errors={errors}
         options={[
           { value: "activo", label: "Activo" },
-          { value: "inactivo", label: "Inactivo" }
+          { value: "inactivo", label: "Inactivo" },
         ]}
       />
 
@@ -410,8 +411,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           required: "Este campo es requerido",
           minLength: {
             value: 5,
-            message: "Mínimo 5 caracteres"
-          }
+            message: "Mínimo 5 caracteres",
+          },
         }}
       />
 
@@ -423,23 +424,13 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
               <Camera className="camera-icon" />
               <span>{image ? "Cambiar imagen" : "Agregar imagen"}</span>
             </div>
-            <input
-              id="photo"
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              style={{ display: "none" }}
-            />
+            <input id="photo" type="file" accept="image/*" onChange={handleImageChange} style={{ display: "none" }} />
           </label>
           <div className="image-preview-area">
             {isSubmitting ? (
               <div className="image-uploading-spinner"></div>
             ) : previewUrl ? (
-              <img
-                src={previewUrl}
-                alt="Vista previa"
-                className="image-preview"
-              />
+              <img src={previewUrl} alt="Vista previa" className="image-preview" />
             ) : (
               <div className="image-placeholder">Sin imagen</div>
             )}
@@ -447,18 +438,15 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         </div>
       </div>
 
-      <button 
-        type="submit" 
-        className="btn-guardar" 
-        disabled={isSubmitting}
-        aria-busy={isSubmitting}
-      >
+      <button type="submit" className="btn-guardar" disabled={isSubmitting} aria-busy={isSubmitting}>
         {isSubmitting ? (
           <>
             <span className="spinner" aria-hidden="true"></span>
             <span className="sr-only">Guardando...</span>
           </>
-        ) : "GUARDAR"}
+        ) : (
+          "GUARDAR"
+        )}
       </button>
     </form>
   );

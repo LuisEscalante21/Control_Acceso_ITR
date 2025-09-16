@@ -59,19 +59,41 @@ export default function UpdateEmpleaods({
 
   // Cargar equipos
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchTeams = async () => {
+      setLoadingTeams(true);
       try {
-        const res = await fetch("http://localhost:4000/api/teams");
+        const res = await fetch(`http://localhost:4000/api/teams`, {
+          method: "GET",
+          credentials: "include", // ✅ envía cookies/sesión
+          headers: {
+            Accept: "application/json",
+          },
+          signal: controller.signal,
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
         const data = await res.json();
-        setTeams(data.map((team) => ({ value: team._id, label: team.name })));
+        setTeams(
+          (Array.isArray(data) ? data : []).map((team) => ({
+            value: team._id,
+            label: team.name,
+          }))
+        );
       } catch (error) {
-        console.error("Error al cargar equipos:", error);
-        setTeams([]);
+        if (error.name !== "AbortError") {
+          console.error("Error al cargar equipos:", error);
+          setTeams([]);
+        }
       } finally {
         setLoadingTeams(false);
       }
     };
+
     fetchTeams();
+    return () => controller.abort();
   }, []);
 
   const onSubmit = async (data) => {

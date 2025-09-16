@@ -24,6 +24,7 @@ import swaggerUi from "swagger-ui-express";
 import fs from "fs";
 import path from "path";
 import recoveryPasswordRoutes from "./src/routes/recoveryPasswordRoutes.js";
+import limiter from './src/middleware/rateLimiter.js';
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(limiter); // Aplicar el limitador de velocidad a todas las rutas
 
 // Documentación Swagger
 const swaggerDocument = JSON.parse(

@@ -12,11 +12,8 @@ import {
 const ArrivalBarChart = ({ accessRecords }) => {
   const data = useMemo(() => {
     if (!accessRecords?.length) {
-      console.log("⚠️ No hay accessRecords");
       return [];
     }
-
-    console.log("✅ accessRecords recibidos:", accessRecords);
 
     const today = new Date();
     const eightDaysAgo = new Date();
@@ -28,7 +25,6 @@ const ArrivalBarChart = ({ accessRecords }) => {
         !reg.entry_result ||
         !["entrada", "entrada y salida"].includes(reg.tipo_registro)
       ) {
-        console.log("⏭️ Registro descartado:", reg);
         return false;
       }
 
@@ -37,13 +33,10 @@ const ArrivalBarChart = ({ accessRecords }) => {
         !isNaN(entryDate) && entryDate >= eightDaysAgo && entryDate <= today;
 
       if (!valid) {
-        console.log("❌ Fecha fuera de rango:", reg.entry_time);
       }
 
       return valid;
     });
-
-    console.log("📊 Registros filtrados:", recentRecords);
 
     const grouped = {};
     recentRecords.forEach((reg) => {
@@ -72,8 +65,6 @@ const ArrivalBarChart = ({ accessRecords }) => {
         sinHorario: record["Sin horario"],
       });
     }
-
-    console.log("📈 chartData final:", chartData);
 
     return chartData;
   }, [accessRecords]);
