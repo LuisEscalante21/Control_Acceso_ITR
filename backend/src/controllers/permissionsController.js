@@ -3,41 +3,41 @@ import PermissionsModel from "../models/Permissions.js";
 import cloudinary from "../lib/cloudinary.js";
 import fs from "fs/promises";
 
+const allowedTypes = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+];
+const isValidFileType = (t) => allowedTypes.includes(t);
+
 const permissionsController = {};
 
-// Tipos de archivo permitidos
-const isValidFileType = (mimetype) => {
-  const allowedTypes = [
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "image/jpeg",
-    "image/png",
-    "image/jpg",
-  ];
-  return allowedTypes.includes(mimetype);
-};
-
-// Crear un nuevo permiso
+// Crear nuevo permiso
 permissionsController.InsertPermission = async (req, res) => {
   try {
     const user = req.user;
-    if (!user)
-      return res.status(401).json({ message: "No autorizado. Inicia sesión." });
+    if (!user) return res.status(401).json({ message: "No autorizado. Inicia sesión." });
 
     const { permissionType } = req.body;
-
     if (!req.body.applicationDay?.trim() || !req.body.department?.trim()) {
       return res.status(400).json({ message: "Faltan campos obligatorios" });
     }
 
     const files = req.files || (req.file && [req.file]);
 
-    let documentUrls = "";
+    // Metadatos del documento (solo 1 archivo soportado ahora; si quieres varios, cambia a arrays)
+    let supportingDocument = "";
     let supportingPublicId = null;
     let supportingResourceType = null;
+    let supportingFormat = null;
+    let supportingVersion = null;
+    let supportingType = null;        // "upload"
+    let supportingAccessMode = null;  // "public"
 
     if (files) {
       for (const file of files) {
@@ -45,27 +45,36 @@ permissionsController.InsertPermission = async (req, res) => {
           await fs.unlink(file.path).catch(() => {});
           return res.status(400).json({
             message:
-              "Tipo de archivo no permitido. Solo se permiten PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG",
+              "Tipo de archivo no permitido. Solo PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG.",
           });
         }
 
         try {
+          const isPdf = file.mimetype === "application/pdf";
+
+          // 🔑 Para PDF fuerza raw; para imágenes/docs deja auto.
           const result = await cloudinary.uploader.upload(file.path, {
             folder: "Permissions",
-            resource_type: "auto",
+            resource_type: isPdf ? "raw" : "auto",
+            type: "upload",          // público
+            access_mode: "public",   // público
             use_filename: true,
             unique_filename: false,
-            format: file.originalname.split(".").pop(),
+            // NO fuerces "format": Cloudinary ya preserva la extensión correcta
           });
 
-          documentUrls = result.secure_url;
-          supportingPublicId = result.public_id;
-          supportingResourceType = result.resource_type;
+          supportingDocument     = result.secure_url;   // URL lista para abrir
+          supportingPublicId     = result.public_id;
+          supportingResourceType = result.resource_type; // "raw" si es PDF
+          supportingFormat       = result.format;        // "pdf", "jpg", etc.
+          supportingVersion      = result.version;
+          supportingType         = result.type;          // "upload"
+          supportingAccessMode   = result.access_mode;   // "public"
 
           await fs.unlink(file.path).catch(() => {});
-        } catch (uploadError) {
+        } catch (err) {
           await fs.unlink(file.path).catch(() => {});
-          throw uploadError;
+          throw err;
         }
       }
     }
@@ -74,19 +83,23 @@ permissionsController.InsertPermission = async (req, res) => {
       ...req.body,
       idUser: String(user._id),
       employeeNumber: user.numEmpleado,
-      employeeName:
-        `${user.names ?? ""} ${user.surnames ?? ""}`.trim() || user.fullName,
+      employeeName: (`${user.names ?? ""} ${user.surnames ?? ""}`).trim() || user.fullName,
       department: req.body.department || user.department,
       idTeam: user.idTeam ?? user.IdTeam,
       createdBy: user._id,
       Discount: req.body.Discount === "true" || req.body.Discount === true,
       quantityDiscount: Number(req.body.quantityDiscount || 0),
-      supportingDocument: documentUrls,
+
+      supportingDocument,
       supportingPublicId,
       supportingResourceType,
+      supportingFormat,
+      supportingVersion,
+      supportingType,
+      supportingAccessMode,
     };
 
-    // Limpiezas por tipo
+    // Limpieza por tipo
     if (permissionType !== "minor") {
       delete permissionData.permissionDate;
       delete permissionData.startTime;
@@ -105,52 +118,25 @@ permissionsController.InsertPermission = async (req, res) => {
 
     // Validaciones por tipo
     if (permissionType === "minor") {
-      if (
-        !permissionData.permissionDate ||
-        !permissionData.startTime ||
-        !permissionData.endTime
-      ) {
-        return res
-          .status(400)
-          .json({ message: "Campos requeridos para permiso menor faltantes." });
+      if (!permissionData.permissionDate || !permissionData.startTime || !permissionData.endTime) {
+        return res.status(400).json({ message: "Campos requeridos para permiso menor faltantes." });
       }
-    }
-
-    if (permissionType === "major") {
-      if (
-        !permissionData.permissionDateFrom ||
-        !permissionData.permissionDateTo
-      ) {
-        return res
-          .status(400)
-          .json({ message: "Fechas requeridas para permiso mayor." });
+    } else if (permissionType === "major") {
+      if (!permissionData.permissionDateFrom || !permissionData.permissionDateTo) {
+        return res.status(400).json({ message: "Fechas requeridas para permiso mayor." });
       }
-      if (!permissionData.reason && !permissionData.supportingDocument.length) {
-        return res.status(400).json({
-          message:
-            "Debe proporcionar una razón o documento para permiso mayor.",
-        });
+      if (!permissionData.reason && !permissionData.supportingDocument) {
+        return res.status(400).json({ message: "Debe proporcionar una razón o documento para permiso mayor." });
       }
-    }
-
-    if (permissionType === "incapacity") {
-      if (
-        !permissionData.sickLeaveDateFrom ||
-        !permissionData.sickLeaveDateTo
-      ) {
-        return res
-          .status(400)
-          .json({ message: "Fechas requeridas para incapacidad." });
+    } else if (permissionType === "incapacity") {
+      if (!permissionData.sickLeaveDateFrom || !permissionData.sickLeaveDateTo) {
+        return res.status(400).json({ message: "Fechas requeridas para incapacidad." });
       }
       if (!permissionData.incapacityType || !permissionData.illnessType) {
-        return res
-          .status(400)
-          .json({ message: "Tipo de incapacidad y enfermedad requeridos." });
+        return res.status(400).json({ message: "Tipo de incapacidad y enfermedad requeridos." });
       }
-      if (!permissionData.supportingDocument.length) {
-        return res.status(400).json({
-          message: "Documento de respaldo requerido para incapacidad.",
-        });
+      if (!permissionData.supportingDocument) {
+        return res.status(400).json({ message: "Documento de respaldo requerido para incapacidad." });
       }
     }
 
@@ -164,30 +150,43 @@ permissionsController.InsertPermission = async (req, res) => {
     });
   } catch (error) {
     console.error("Error backend:", error);
-    return res
-      .status(500)
-      .json({ message: "Error creando permiso", error: error.message });
+    return res.status(500).json({ message: "Error creando permiso", error: error.message });
   }
 };
 
-//Ver documento asociado
+// controllers/permissionsController.js  (acción getDocument)
+
 permissionsController.getDocument = async (req, res) => {
   try {
     const { id } = req.params;
     const perm = await PermissionsModel.findById(id).lean();
     if (!perm) return res.status(404).send("Permiso no encontrado");
-    if (!perm.supportingDocument)
-      return res.status(404).send("No hay documento");
 
-    let viewUrl = perm.supportingDocument;
-
+    // Si hay URL completa y el asset es público, redirige tal cual
     if (
-      (perm.supportingResourceType === "raw" ||
-        /\/raw\/upload\//.test(viewUrl)) &&
-      !/\.(pdf)(\?|$)/i.test(viewUrl)
+      perm.supportingDocument &&
+      /^https?:\/\//i.test(perm.supportingDocument) &&
+      (perm.supportingType === "upload" || perm.supportingAccessMode === "public")
     ) {
-      viewUrl += ".pdf";
+      return res.redirect(302, perm.supportingDocument);
     }
+
+    // Si no, construimos (y firmamos si es authenticated)
+    const publicId = perm.supportingPublicId;
+    if (!publicId) return res.status(404).send("No hay documento");
+
+    const resourceType = perm.supportingResourceType || "raw";
+    const type = perm.supportingType || "upload";           // upload o authenticated
+    const format = perm.supportingFormat || "pdf";
+    const sign = type === "authenticated";                  // firma si está protegido
+
+    const viewUrl = cloudinary.url(publicId, {
+      secure: true,
+      resource_type: resourceType,
+      type,
+      format,
+      sign_url: sign,
+    });
 
     return res.redirect(302, viewUrl);
   } catch (error) {
@@ -195,6 +194,7 @@ permissionsController.getDocument = async (req, res) => {
     return res.status(500).send("Error obteniendo documento");
   }
 };
+
 
 //Mis permisos (filtra por id de usuario)
 permissionsController.getMyPermissions = async (req, res) => {

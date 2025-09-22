@@ -6,18 +6,34 @@ import fs from "fs";
 const dest = "tmp/permissions";
 if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
 
+// Tipos de archivo permitidos (igual que en tu controller)
+const allowedTypes = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+];
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, dest),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname); // .pdf / .png ...
+    const ext = path.extname(file.originalname); // .pdf / .png / .doc ...
     const base = path.basename(file.originalname, ext).replace(/\s+/g, "_");
     cb(null, `${base}-${Date.now()}${ext}`);
   },
 });
 
 const fileFilter = (_req, file, cb) => {
-  const ok = file.mimetype.startsWith("image/") || file.mimetype === "application/pdf";
-  cb(ok ? null : new Error("Solo se permiten imágenes o PDF."), ok);
+  const ok = allowedTypes.includes(file.mimetype);
+  if (ok) {
+    cb(null, true);
+  } else {
+    cb(new Error("Solo se permiten PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG"), false);
+  }
 };
 
 export const uploadPermissions = multer({
