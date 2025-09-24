@@ -29,7 +29,6 @@ const useDataPermissions = () => {
   };
 
   // EMPLEADO: Mis permisos
-  // GET /api/permissions/mine
   const fetchPermissions = async () => {
     try {
       setLoading(true);
@@ -68,8 +67,7 @@ const useDataPermissions = () => {
     });
   };
 
-  //COORDINADOR: Permisos del área
-  // GET /api/permissions/team
+  // COORDINADOR: Permisos del área
   const fetchTeamPermissions = async () => {
     try {
       setLoading(true);
@@ -77,7 +75,7 @@ const useDataPermissions = () => {
       const res = await fetch(`${API_URL}/team`, { credentials: "include" });
       if (!res.ok) {
         const msg = await safeJsonMessage(res);
-        throw new Error(msg || `Error ${res.status} al obtener permisos del área`);
+        throw new Error(msg || `Error ${res.status} al obtener permisos del área`);
       }
       const body = await res.json();
       setPermissions(Array.isArray(body?.data) ? body.data : []);
@@ -92,7 +90,7 @@ const useDataPermissions = () => {
     }
   };
 
-  //ACTUALIZAR ESTADO
+  // ACTUALIZAR ESTADO
   const updatePermissionStatus = async (id, { status, supervisorComments, Discount, quantityDiscount }) => {
     return fetch(`${API_URL}/${id}/status`, {
       method: "PATCH",
@@ -108,70 +106,27 @@ const useDataPermissions = () => {
     });
   };
 
-  // ADMIN: TODOS LOS PERMISOS (NUEVO)
-const fetchAllPermissions = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-    const res = await fetch(API_URL, { credentials: "include" });
-    if (!res.ok) {
-      const msg = await safeJsonMessage(res);
-      throw new Error(msg || `Error ${res.status} al obtener todos los permisos`);
+  // ADMIN: TODOS LOS PERMISOS
+  const fetchAllPermissions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(API_URL, { credentials: "include" });
+      if (!res.ok) {
+        const msg = await safeJsonMessage(res);
+        throw new Error(msg || `Error ${res.status} al obtener todos los permisos`);
+      }
+      const body = await res.json();
+      setPermissions(Array.isArray(body?.data) ? body.data : []);
+      return res;
+    } catch (err) {
+      setError(err);
+      handleNetworkError(err);
+      Swal.fire("Error", err.message || "No se pudieron obtener los permisos globales.", "error");
+      return null;
+    } finally {
+      setLoading(false);
     }
-    const body = await res.json();
-    setPermissions(Array.isArray(body?.data) ? body.data : []);
-    return res;
-  } catch (err) {
-    setError(err);
-    handleNetworkError(err);
-    Swal.fire("Error", err.message || "No se pudieron obtener los permisos globales.", "error");
-    return null;
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-  // ELIMINAR TODOS LOS PERMISOS (NUEVO)
-  const clearAllPermissions = async () => {
-    return fetch(`${API_URL}/clear/all?confirm=REMOVE`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-  };
-
-
-  // Confirmación y borrado masivo (NUEVO)
-  const confirmAndClearAllPermissions = async () => {
-    const { value } = await Swal.fire({
-      title: "¿Borrar TODOS los permisos?",
-      html: `Para continuar escribe: <b>REMOVE</b>`,
-      input: "text",
-      inputPlaceholder: "REMOVE",
-      inputAttributes: { autocapitalize: "off" },
-      showCancelButton: true,
-      confirmButtonText: "Eliminar",
-      confirmButtonColor: "#dc2626",
-      cancelButtonText: "Cancelar",
-      preConfirm: (val) => {
-        if ((val || "").trim() !== "REMOVE") {
-          Swal.showValidationMessage("Debes escribir exactamente: REMOVE");
-        }
-        return val;
-      },
-    });
-
-    if ((value || "").trim() !== "REMOVE") return { ok: false, skipped: true };
-
-    const res = await clearAllPermissions();
-    if (!res.ok) {
-      const msg = await safeJsonMessage(res);
-      Swal.fire("Error", msg || `No se pudo eliminar (HTTP ${res.status})`, "error");
-      return { ok: false };
-    }
-
-    Swal.fire("Listo", "Se eliminaron todos los permisos.", "success");
-    return { ok: true };
   };
 
   // EFECTO INICIAL
@@ -188,10 +143,8 @@ const fetchAllPermissions = async () => {
     // coordinador
     fetchTeamPermissions,
     updatePermissionStatus,
-    // admin (NUEVO)
+    // admin
     fetchAllPermissions,
-    clearAllPermissions,
-    confirmAndClearAllPermissions,
     // ui
     showModal,
     setShowModal,

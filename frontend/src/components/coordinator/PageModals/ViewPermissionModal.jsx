@@ -1,7 +1,18 @@
+// src/components/coordinator/PageModals/ViewPermissionModal.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
 import "../PageStyles/ViewPermission.css";
+
+// 🔧 Normalizador para PDFs (igual que empleados)
+function normalizeCloudinaryUrl(url) {
+  if (!url) return url;
+  const isPdf = /\.pdf(\?|$)/i.test(url);
+  if (isPdf && url.includes("/image/upload/")) {
+    return url.replace("/image/upload/", "/raw/upload/");
+  }
+  return url;
+}
 
 export default function ViewPermissionModal({
   isOpen, onClose, permission,
@@ -9,13 +20,18 @@ export default function ViewPermissionModal({
 }) {
   if (!isOpen || !permission) return null;
 
-  const { _id, idUser, permissionType, status, employeeName, employeeNumber,
+  const {
+    _id, idUser, permissionType, status, employeeName, employeeNumber,
     department, applicationDay, reason, supervisorComments,
     permissionDate, startTime, endTime,
     permissionDateFrom, permissionDateTo,
     sickLeaveDateFrom, sickLeaveDateTo, incapacityType, illnessType,
     createdAt, updatedAt,
-    Discount: discountSaved, quantityDiscount: qtySaved } = permission;
+    Discount: discountSaved, quantityDiscount: qtySaved,
+    supportingDocument // 👈 aquí está la URL del PDF/imagen
+  } = permission;
+
+  const docUrl = normalizeCloudinaryUrl(supportingDocument);
 
   const isPending = (status || "").toLowerCase() === "pending";
   const isOwn = currentUserId && String(idUser) === String(currentUserId);
@@ -74,7 +90,21 @@ export default function ViewPermissionModal({
         </div>
 
         <div className="vp2-body">
-          <span className={`vp2-status ${status?.toLowerCase()}`}>{labelStatus}</span>
+          {/* fila estado + acciones igual que empleados */}
+          <div className="vp2-row">
+            <span className={`vp2-status ${status?.toLowerCase()}`}>{labelStatus}</span>
+
+            <div className="vp2-actions">
+              <button
+                className="vp2-btn ghost"
+                onClick={() => docUrl && window.open(docUrl, "_blank", "noopener,noreferrer")}
+                disabled={!docUrl}
+                title={docUrl ? "Abrir en nueva pestaña" : "Sin documento"}
+              >
+                Ver documento
+              </button>
+            </div>
+          </div>
 
           <div className="vp2-grid">
             <div className="vp2-field"><label>Colaborador</label><div>{employeeName}</div></div>

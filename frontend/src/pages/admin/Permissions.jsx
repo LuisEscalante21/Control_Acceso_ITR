@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
 import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
-//Qué es urgente
+// Qué es urgente
 const isUrgent = (p) =>
   p?.permissionType === "incapacity" &&
   (p?.status || "").toLowerCase() === "pending";
@@ -26,7 +26,6 @@ export default function AdminPermissions() {
     fetchAllPermissions,
     updatePermissionStatus,
     deletePermission,
-    confirmAndClearAllPermissions,
   } = useDataPermissions();
 
   const [filterStatus, setFilterStatus] = useState("Todos");
@@ -54,8 +53,7 @@ export default function AdminPermissions() {
     }
   }
 
-
-  //Filtrado + orden urgentes primero
+  // Filtrado + orden urgentes primero
   const filtered = useMemo(() => {
     let list = permissions || [];
 
@@ -78,7 +76,7 @@ export default function AdminPermissions() {
       }
     }
 
-    //Urgentes al inicio (como prioridad)
+    // Urgentes al inicio (como prioridad)
     list = [...list].sort((a, b) => {
       if (isUrgent(a) && !isUrgent(b)) return -1;
       if (!isUrgent(a) && isUrgent(b)) return 1;
@@ -101,11 +99,6 @@ export default function AdminPermissions() {
     await fetchAllPermissions();
   };
 
-  const handleClearAll = async () => {
-    const res = await confirmAndClearAllPermissions();
-    if (res?.ok) refresh();
-  };
-
   return (
     <div className="apg__page">
       {/* Perfil pequeño arriba a la derecha */}
@@ -114,7 +107,9 @@ export default function AdminPermissions() {
           name={userInfo?.fullName || userInfo?.names || "Usuario"}
           photo={userInfo?.photo || userInfo?.photoUrl || null}
           description={"Perfil"}
-          onClick={() => { /* navegar o mostrar panel */ }}
+          onClick={() => {
+            /* navegar o mostrar panel */
+          }}
         />
       </div>
 
@@ -123,11 +118,6 @@ export default function AdminPermissions() {
         <header className="apg__header">
           <h2 className="apg__title">Permisos — Administrador</h2>
         </header>
-        <div className="a">
-          <button onClick={handleClearAll} className="apg__danger">
-              Eliminar Todos Permisos
-            </button>
-          </div>
 
         <section className="apg__sheet">
           <div className="apg__actions">
@@ -155,8 +145,6 @@ export default function AdminPermissions() {
                 </select>
               </div>
             </div>
-
-            
           </div>
 
           {/* Lista */}
@@ -174,9 +162,12 @@ export default function AdminPermissions() {
                   >
                     <div className="apg__rowLeft">
                       <span className="apg__dot" />
-                      <span className="apg__doc" aria-hidden>📄</span>
+                      <span className="apg__doc" aria-hidden>
+                        📄
+                      </span>
                       <span className="apg__rowTitle">
-                        {perm.employeeName || "Colaborador"} — {perm.applicationDay}
+                        {perm.employeeName || "Colaborador"} —{" "}
+                        {perm.applicationDay}
                       </span>
                     </div>
                     <div className="apg__rowRight">

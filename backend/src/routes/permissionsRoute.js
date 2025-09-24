@@ -8,16 +8,6 @@ import { uploadPermissions } from "../middleware/upload.js";
 
 const router = express.Router();
 
-// ⚠️ IMPORTANTE: coloca primero las rutas "estáticas" con paths largos,
-// para que no choquen con "/:id".
-router.delete(
-  "/clear/all",
-  verifyToken,
-  permissionsController.clearAllPermissions
-);
-
-// Crear nuevo permiso (archivo opcional -> campo "supportingDocumentFile")
-// FE debe enviar: fd.append("supportingDocumentFile", file)
 router
   .route("/")
   .post(
