@@ -5,6 +5,9 @@ import { CirclePlus } from "lucide-react";
 import ModalNuevaArea from "../../components/admin/PageModals/AreasModal/NewTeamsModal.jsx";
 import useDataTeams from "../../hooks/admin/useDataTeams.jsx";
 import UpdateTeams from "../../components/admin/PageModals/AreasModal/UpdateTeams.jsx";
+import Cookies from "js-cookie";
+import CryptoJS from "crypto-js";
+import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const Areas = () => {
   const [showModal, setShowModal] = useState(false);
@@ -16,8 +19,32 @@ const Areas = () => {
     fetchTeams();
   }, []);
 
+  // Obtener userInfo descifrado (si existe cookie cifrada)
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
+  let userInfo = null;
+  const encryptedUserInfo = Cookies.get("userInfo");
+  if (encryptedUserInfo && secretKey) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
+      const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+      userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
+    } catch (err) {
+      console.error("Error descifrando userInfo:", err);
+      userInfo = null;
+    }
+  }
+
   return (
     <>
+      {/* Perfil pequeño arriba a la derecha */}
+      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
+        <UserFaceCardSimple
+          name={userInfo?.fullName || userInfo?.names || "Usuario"}
+          photo={userInfo?.photo || userInfo?.photoUrl || null}
+          description={"Perfil"}
+          onClick={() => { /* navegar a perfil o abrir panel */ }}
+        />
+      </div>
       <div className="encabezado">
         <h1 className="titulo">Gestión de Áreas</h1>
         <div style={{ display: "flex", justifyContent: "flex-start" }}>

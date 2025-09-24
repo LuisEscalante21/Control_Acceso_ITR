@@ -42,8 +42,8 @@ export default function VideoDashboard() {
         <div className="vd-content">
           {/* Header */}
           <div className="vd-header">
-            <div className="vd-badge">🧿</div>
-            <h1>BIENVENIDO/A</h1>
+            <div className="vd-badge">*</div>
+            <h1>BIENVENIDO</h1>
           </div>
 
           {/* Principal */}

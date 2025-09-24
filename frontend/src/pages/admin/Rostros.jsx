@@ -4,6 +4,9 @@ import UserFaceCard from "../../components/admin/Cards/UserFaceCard.jsx";
 import { Search, CirclePlus } from "lucide-react";
 import useDataFace from "../../hooks/admin/useDataFaces.jsx";
 import ModalFace from "../../components/admin/ModalRostro.jsx";
+import Cookies from "js-cookie";
+import CryptoJS from "crypto-js";
+import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const Rostros = () => {
   const {
@@ -37,35 +40,56 @@ const Rostros = () => {
     setShowForm(true);
   };
 
+  // Obtener userInfo descifrado (si existe cookie cifrada)
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
+  let userInfo = null;
+  const encryptedUserInfo = Cookies.get("userInfo");
+  if (encryptedUserInfo && secretKey) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
+      const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+      userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
+    } catch (err) {
+      console.error("Error descifrando userInfo:", err);
+      userInfo = null;
+    }
+  }
+
   return (
     <>
-      <div
-        className="encabezado"
-        style={{ display: "flex", flexDirection: "column", gap: "15px" }}
-      >
-        <h1 className="titulo">Gestión de rostros</h1>
-        <div className="busqueda-bar-G">
-          <div className="buscador-G" style={{ flexGrow: 1 }}>
-            <Search className="search-icon" size={18} />
-            <input
-              type="text"
-              placeholder="Buscar por nombre"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <button
-            className="nuevo-empleado-btn-G"
-            style={{ maxWidth: "250px" }}
-            onClick={handleAddFace}
-          >
-            <CirclePlus size={20} />
-            Subir rostro
-          </button>
-        </div>
+      {/* Perfil pequeño arriba a la derecha */}
+      <div className="profile-card-wrapper">
+        <UserFaceCardSimple
+          name={userInfo?.fullName || userInfo?.names || "Usuario"}
+          photo={userInfo?.photo || userInfo?.photoUrl || null}
+          description={"Perfil"}
+          onClick={() => { /* navegar o mostrar panel */ }}
+        />
       </div>
+      <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+              <h1 className="titulo">Gestión de Rostros</h1>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between" }}>
+                <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
+                  <Search className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre o apellido"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ flex: 1, minWidth: "440px" }}
+                  />
+                </div>
+      
+                <button
+                  className="nuevo-empleado-btn-G"
+                  onClick={() => handleAddFace(true)}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  <CirclePlus size={20} />
+                  Nuevo Empleado
+                </button>
+              </div>
+            </div>
 
       <div className="gestion-de-rostros">
         <div

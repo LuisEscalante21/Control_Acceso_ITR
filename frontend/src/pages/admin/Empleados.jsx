@@ -6,6 +6,9 @@ import ModalEmpleado from "../../components/admin/PageModals/EmpleadosModal/NewE
 import EditEmpleadoModal from "../../components/admin/PageModals/EmpleadosModal/UpdateEmpleaods.jsx";
 import useEmployees from "../../hooks/admin/useDataEmployee.jsx";
 import useDataTeams from "../../hooks/admin/useDataTeams.jsx"; 
+import Cookies from "js-cookie";
+import CryptoJS from "crypto-js";
+import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const Empleados = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,6 +23,21 @@ const Empleados = () => {
     fetchEmployees();
     fetchTeams();
   }, []);
+
+  // Obtener userInfo descifrado (si existe cookie cifrada)
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
+  let userInfo = null;
+  const encryptedUserInfo = Cookies.get("userInfo");
+  if (encryptedUserInfo && secretKey) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
+      const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+      userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
+    } catch (err) {
+      console.error("Error descifrando userInfo:", err);
+      userInfo = null;
+    }
+  }
 
   // Filtrar empleados por nombre completo
   const filteredEmpleados = useMemo(() => {
@@ -51,21 +69,33 @@ const Empleados = () => {
 
   return (
     <>
+      {/* Perfil pequeño arriba a la derecha */}
+      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
+        <UserFaceCardSimple
+          name={userInfo?.fullName || userInfo?.names || "Usuario"}
+          photo={userInfo?.photo || userInfo?.photoUrl || null}
+          description={"Perfil"}
+          onClick={() => { /* navegar o mostrar panel */ }}
+        />
+      </div>
       <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
         <h1 className="titulo">Gestión de Empleados</h1>
-        <div className="busqueda-bar-G">
-          <div className="buscador-G">
-            <Search className="search-icon" size={18} />
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between" }}>
+          <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
+            <Search className="search-icon" />
             <input
               type="text"
-              placeholder="Buscar por nombres y apellidos"
+              placeholder="Buscar por nombre o apellido"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ flex: 1, minWidth: "440px" }}
             />
           </div>
+
           <button
             className="nuevo-empleado-btn-G"
             onClick={() => setShowNewEmpleado(true)}
+            style={{ whiteSpace: "nowrap" }}
           >
             <CirclePlus size={20} />
             Nuevo Empleado

@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import useDataPermissions from "../../hooks/Global/UseDataPermissions";
 import AdminViewPermissionModal from "../../components/admin/PageModals/PermisionsModal/ViewPermissionModal";
 import "../../styles/admin/Permission.css";
+import Cookies from "js-cookie";
+import CryptoJS from "crypto-js";
+import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 //Qué es urgente
 const isUrgent = (p) =>
@@ -35,6 +38,21 @@ export default function AdminPermissions() {
     fetchAllPermissions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Obtener userInfo descifrado (si existe cookie cifrada)
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
+  let userInfo = null;
+  const encryptedUserInfo = Cookies.get("userInfo");
+  if (encryptedUserInfo && secretKey) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
+      const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+      userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
+    } catch (err) {
+      console.error("Error descifrando userInfo:", err);
+      userInfo = null;
+    }
+  }
 
 
   //Filtrado + orden urgentes primero
@@ -90,6 +108,16 @@ export default function AdminPermissions() {
 
   return (
     <div className="apg__page">
+      {/* Perfil pequeño arriba a la derecha */}
+      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
+        <UserFaceCardSimple
+          name={userInfo?.fullName || userInfo?.names || "Usuario"}
+          photo={userInfo?.photo || userInfo?.photoUrl || null}
+          description={"Perfil"}
+          onClick={() => { /* navegar o mostrar panel */ }}
+        />
+      </div>
+
       <div className="apg__container">
         {/* Título solo */}
         <header className="apg__header">

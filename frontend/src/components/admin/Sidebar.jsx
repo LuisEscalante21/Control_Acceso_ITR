@@ -154,13 +154,7 @@ export default function Sidebar() {
             );
           })}
 
-          <button
-            onClick={handleLogout}
-            className="admin-nav-item admin-logout-btn"
-          >
-            <LogOut className="admin-nav-icon" />
-            <span className="admin-nav-text">Cerrar sesión</span>
-          </button>
+          {/* Logout button removed as requested */}
         </nav>
       </div>
     </>

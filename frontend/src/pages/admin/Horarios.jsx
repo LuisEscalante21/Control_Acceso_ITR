@@ -6,6 +6,9 @@ import NewScheduleModal from "../../components/admin/PageModals/ScheduleModals/N
 import ScheduleEditModal from "../../components/admin/PageModals/ScheduleModals/UpdateScheduleModal.jsx";
 import ScheduleDetailsModal from "../../components/admin/PageModals/ScheduleModals/ScheduleDetailsModal.jsx";
 import { Search, CirclePlus } from "lucide-react";
+import Cookies from "js-cookie";
+import CryptoJS from "crypto-js";
+import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const Schedule = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,6 +28,21 @@ const Schedule = () => {
     fetchSchedules();
   }, []);
 
+  // Obtener userInfo descifrado (si existe cookie cifrada)
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
+  let userInfo = null;
+  const encryptedUserInfo = Cookies.get("userInfo");
+  if (encryptedUserInfo && secretKey) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
+      const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+      userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
+    } catch (err) {
+      console.error("Error descifrando userInfo:", err);
+      userInfo = null;
+    }
+  }
+
   const filteredSchedules = useMemo(() => {
     return schedules.filter((schedule) =>
       schedule.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -33,6 +51,15 @@ const Schedule = () => {
 
   return (
     <>
+      {/* Perfil pequeño arriba a la derecha */}
+      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
+        <UserFaceCardSimple
+          name={userInfo?.fullName || userInfo?.names || "Usuario"}
+          photo={userInfo?.photo || userInfo?.photoUrl || null}
+          description={"Perfil"}
+          onClick={() => { /* navegar o mostrar panel */ }}
+        />
+      </div>
       <div className="encabezadoschedule">
         <h1 className="titulo">Gestión de Horarios</h1>
 

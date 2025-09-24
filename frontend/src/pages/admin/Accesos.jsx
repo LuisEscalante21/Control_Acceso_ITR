@@ -9,6 +9,7 @@ import useDataAccess from "../../hooks/admin/useDataAccess";
 import useDataTeams from "../../hooks/admin/useDataTeams";
 import AccessCard from "../../components/admin/Cards/AccessCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
+import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const HorarioOptions = ["Entrada", "Salida"];
 
@@ -171,7 +172,7 @@ const Accesos = () => {
     }
   };
 
-  // Filtrar registros según tipo deregistro, búsqueda y justificación
+  // Filtrar registros según tipo de registro, búsqueda y justificación
   const filteredAccess = accessRecords
     .filter((person) => {
       if (selectedSalida === "Entrada") {
@@ -194,6 +195,18 @@ const Accesos = () => {
 
   return (
     <div className="access-history-container">
+      {/* Perfil pequeño arriba a la derecha */}
+      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
+        <UserFaceCardSimple
+          name={userInfo?.fullName || userInfo?.names || "Usuario"}
+          photo={userInfo?.photo || userInfo?.photoUrl || null}
+          description={"Perfil"}
+          onClick={() => {
+            /* navegar o mostrar panel de perfil */
+          }}
+        />
+      </div>
+
       <div className="encabezado-accesos">
         <h1 className="titulo">Historial de accesos</h1>
 

@@ -4,7 +4,7 @@ import { UserCircle, Mail, Copy } from "lucide-react";
 import useEmployeeProfile from "../../hooks/widgets/useProfile";
 import LogoutButton from "../Logout";
 
-const UserFaceCardSimple = ({ onClick }) => {
+const UserFaceCardSimple = ({ onClick, name: propName, photo: propPhoto }) => {
   const employee = useEmployeeProfile();
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [teamName, setTeamName] = useState(""); 
@@ -29,6 +29,10 @@ const UserFaceCardSimple = ({ onClick }) => {
 
   const photoSize = 56;
 
+  // Prefer props if provided (used when embedding in admin header)
+  const displayName = propName || `${employee?.names || "Nombre"} ${employee?.surnames || ""}`.trim();
+  const displayPhoto = propPhoto || employee?.photo || null;
+
   const openPanel = () => {
     setIsPanelOpen(true);
     if (onClick) onClick();
@@ -43,10 +47,10 @@ const UserFaceCardSimple = ({ onClick }) => {
       {/* Tarjeta de vista previa */}
       <div className="user-face-card-simple" onClick={openPanel}>
         <div className="photo-wrapper-simple">
-          {employee?.photo ? (
+          {displayPhoto ? (
             <img
-              src={employee.photo}
-              alt={employee.names}
+              src={displayPhoto}
+              alt={displayName}
               className="circular-photo"
             />
           ) : (
@@ -59,19 +63,19 @@ const UserFaceCardSimple = ({ onClick }) => {
       </div>
 
       {/* Panel lateral */}
-      {isPanelOpen && employee && (
+      {isPanelOpen && (
         <div className="employee-panel-overlay" onClick={closePanel}>
           <div className="employee-panel" onClick={(e) => e.stopPropagation()}>
             <div className="panel-header">
-              <button className="close-icon" onClick={closePanel}>×</button>
+              <button aria-label="Cerrar" className="close-btn" onClick={closePanel}>×</button>
               <h3>Perfil del usuario</h3>
             </div>
 
             <div className="panel-content">
               <div className="employee-info">
                 <div className="employee-photo">
-                  {employee.photo ? (
-                    <img src={employee.photo} alt="Foto del usuario" />
+                  {displayPhoto ? (
+                    <img src={displayPhoto} alt="Foto del usuario" />
                   ) : (
                     <UserCircle size={120} />
                   )}
@@ -80,12 +84,12 @@ const UserFaceCardSimple = ({ onClick }) => {
                 <div className="employee-details">
                   <p className="employee-code">
                     <span className="label">Código: </span> 
-                    {employee.numEmpleado || "N/A"}
+                    {employee?.numEmpleado || "N/A"}
                   </p>
 
                   <div className="employee-name">
                     <h2>
-                      {`${employee.names || "Nombre"} ${employee.surnames || "no disponible"}`}
+                      {displayName || "Usuario"}
                     </h2>
                   </div>
 
@@ -95,8 +99,8 @@ const UserFaceCardSimple = ({ onClick }) => {
 
                   <div className="employee-email">
                     <Mail size={18} />
-                    <span>{employee.email || "Correo no disponible"}</span>
-                    {employee.email && (
+                    <span>{employee?.email || "Correo no disponible"}</span>
+                    {(employee?.email) && (
                       <button
                         className="copy-email-btn"
                         title="Copiar correo"
