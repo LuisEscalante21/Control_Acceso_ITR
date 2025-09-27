@@ -2,6 +2,8 @@ import PDFDocument from "pdfkit";
 import Employee from "../models/Employees.js";
 import JustificationLateArrival from "../models/Justifications.js";
 import Permissions from "../models/Permissions.js";
+import Team from "../models/Teams.js";
+import Access from "../models/registrationAccess.js";
 import { Types } from "mongoose";
 import path from "path";
 import fs from "fs";
@@ -21,68 +23,73 @@ generateReportController.generateUserReport = async (req, res) => {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
+    let teamName = "No definido";
+    if (user.IdTeam) {
+      const team = await Team.findById(user.IdTeam);
+      if (team) teamName = team.name || "No definido";
+    }
+
     const justifications = await JustificationLateArrival.find({ userId });
     const permissions = await Permissions.find({ idUser: userId });
 
-    const doc = new PDFDocument({ margin: 50 });
+    // Aquí: traemos los registros de acceso para ese usuario
+    const accessRecords = await Access.find({ id_Employee: userId }).sort({ date: 1 });
 
-    // 📌 REGISTRAR FUENTE
+    console.log("accessRecords:", accessRecords);  // <-- log para ver qué trae
+
+    const doc = new PDFDocument({ margin: 50 });
     const fontPath = path.resolve("src/font/Roboto-Regular.ttf");
     doc.registerFont("Roboto", fontPath);
     doc.font("Roboto");
 
-    // ✅ Ruta del logo (sin importarlo)
     const logoPath = path.resolve("../../../frontend/src/img/logo_redondo.png");
-
-    // 🛠️ Configuración de headers
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=reporte_${userId}.pdf`);
     doc.pipe(res);
 
-    // 🖼️ LOGO ESQUINA SUPERIOR DERECHA
     if (fs.existsSync(logoPath)) {
       doc.image(logoPath, 450, 40, { width: 80 });
     }
 
-    // 🧾 ENCABEZADO
-    doc.fillColor("#2c3e50").fontSize(20).text("Reporte del empleado", 50, 50, {
-      align: "left",
-    });
+    doc.fillColor("#2c3e50").fontSize(20).text("Reporte del empleado", 50, 50, { align: "left" });
     doc.moveDown();
     doc.moveTo(50, doc.y).lineTo(550, doc.y).strokeColor("#3498db").stroke();
     doc.moveDown();
 
-    // 👤 INFORMACIÓN DEL EMPLEADO
+    const startX = 50;
+    const startY = doc.y;
+
     doc.fontSize(14).fillColor("#000");
-    doc.text(`👤 Empleado: ${user.names} ${user.surnames}`);
-    doc.text(`🆔 ID: ${user._id.toString()}`);
-    doc.text(`💼 Cargo: ${user.position || "No definido"}`);
-    doc.text(`🗓️ Fecha de generación: ${new Date().toLocaleDateString("es-ES")}`);
-    doc.moveDown(1.5);
+    doc.text(`Empleado: ${user.names} ${user.surnames}`, startX, startY);
+    doc.text(`Código de empleado: ${user.numEmpleado || "No definido"}`);
+    doc.text(`Área: ${teamName}`);
+    doc.text(`Fecha de generación: ${new Date().toLocaleDateString("es-ES")}`);
 
-    // 🕒 JUSTIFICACIONES
-    doc.fontSize(16).fillColor("#34495e").text("🕒 Justificaciones de llegadas tarde", { underline: true });
-    doc.moveDown(0.5);
-
-    if (justifications.length === 0) {
-      doc.fontSize(12).fillColor("#7f8c8d").text("No se encontraron justificaciones.");
-    } else {
-      justifications.forEach((just, index) => {
-        doc.fontSize(12).fillColor("#000");
-        doc.text(`🔹 #${index + 1} - Fecha: ${just.date.toISOString().split("T")[0]}`);
-        doc.text(`     Hora de llegada: ${just.arrivalTime}`);
-        doc.text(`     Motivo: ${just.reason}`);
-        doc.text(`     Tipo de usuario: ${just.userType}`);
-        doc.moveDown(0.5);
-      });
+    if (user.photo) {
+      try {
+        if (user.photo.startsWith("data:image")) {
+          const matches = user.photo.match(/^data:(image\/(png|jpeg|jpg));base64,(.+)$/);
+          if (matches) {
+            const base64Data = matches[3];
+            const imageBuffer = Buffer.from(base64Data, "base64");
+            doc.image(imageBuffer, 460, startY, { width: 100, height: 100, fit: [100, 100] });
+          }
+        } else if (user.photo.startsWith("http") || fs.existsSync(user.photo)) {
+          doc.image(user.photo, 460, startY, { width: 100, height: 100, fit: [100, 100] });
+        } else {
+          const imageBuffer = Buffer.from(user.photo, "base64");
+          doc.image(imageBuffer, 460, startY, { width: 100, height: 100, fit: [100, 100] });
+        }
+      } catch (err) {
+        // ignorar fallo de imagen
+      }
     }
 
-    doc.moveDown(1);
+    doc.moveDown(1.5);
 
-    // 📝 PERMISOS
-    doc.fontSize(16).fillColor("#34495e").text("📝 Permisos solicitados", { underline: true });
+    // Permisos justo debajo de la info
+    doc.fontSize(16).fillColor("#34495e").text("Permisos solicitados", { underline: true });
     doc.moveDown(0.5);
-
     if (permissions.length === 0) {
       doc.fontSize(12).fillColor("#7f8c8d").text("No se encontraron permisos.");
     } else {
@@ -92,24 +99,20 @@ generateReportController.generateUserReport = async (req, res) => {
         doc.text(`     Tipo: ${perm.permissionType}`);
         doc.text(`     Estado: ${perm.status}`);
         doc.text(`     Motivo: ${perm.reason || "No especificado"}`);
-
         if (perm.permissionType === "minor") {
           doc.text(`     Fecha: ${perm.permissionDate?.toISOString().split("T")[0] || "N/A"}`);
           doc.text(`     Desde: ${perm.startTime || "N/A"} hasta ${perm.endTime || "N/A"}`);
         }
-
         if (perm.permissionType === "major") {
           doc.text(`     Desde: ${perm.permissionDateFrom?.toISOString().split("T")[0] || "N/A"}`);
           doc.text(`     Hasta: ${perm.permissionDateTo?.toISOString().split("T")[0] || "N/A"}`);
         }
-
         if (perm.permissionType === "incapacity") {
           doc.text(`     Desde: ${perm.sickLeaveDateFrom?.toISOString().split("T")[0] || "N/A"}`);
           doc.text(`     Hasta: ${perm.sickLeaveDateTo?.toISOString().split("T")[0] || "N/A"}`);
           doc.text(`     Tipo de incapacidad: ${perm.incapacityType || "No definido"}`);
           doc.text(`     Tipo de enfermedad: ${perm.illnessType || "No definido"}`);
         }
-
         doc.text(`     ¿Con descuento? ${perm.Discount ? "Sí" : "No"}`);
         doc.text(`     Descuento estimado: ${perm.quantityDiscount || 0}`);
         doc.text(`     Documento de soporte: ${perm.supportingDocument || "No cargado"}`);
@@ -118,7 +121,80 @@ generateReportController.generateUserReport = async (req, res) => {
       });
     }
 
-    // 🔚 PIE DE PÁGINA
+    doc.moveDown(1);
+
+    // Comparativo entradas
+    doc.fontSize(16).fillColor("#34495e").text("Comparativo de Entradas", { underline: true });
+    doc.moveDown(0.5);
+    if (accessRecords.length === 0) {
+      doc.fontSize(12).fillColor("#7f8c8d").text("No se encontraron registros de entrada.");
+    } else {
+      const dateX = 50, timeX = 200, resultX = 350;
+      doc.fontSize(12).fillColor("#000");
+      doc.text("Fecha", dateX).text("Hora Entrada", timeX).text("Resultado", resultX);
+      doc.moveTo(50, doc.y + 5).lineTo(550, doc.y + 5).strokeColor("#3498db").stroke();
+      doc.moveDown(0.5);
+      accessRecords.forEach(rec => {
+        const dateStr = rec.date.toISOString().split("T")[0];
+        let eTime = "N/A";
+        if (rec.entry_time) {
+          eTime = new Date(rec.entry_time).toTimeString().split(" ")[0];
+        }
+        const res = rec.entry_result || "Sin registro";
+        doc.fontSize(11).fillColor("#000");
+        doc.text(dateStr, dateX);
+        doc.text(eTime, timeX);
+        doc.text(res, resultX);
+        doc.moveDown(0.5);
+      });
+    }
+
+    doc.moveDown(1);
+
+    // Comparativo salidas
+    doc.fontSize(16).fillColor("#34495e").text("Comparativo de Salidas", { underline: true });
+    doc.moveDown(0.5);
+    if (accessRecords.length === 0) {
+      doc.fontSize(12).fillColor("#7f8c8d").text("No se encontraron registros de salida.");
+    } else {
+      const dateX = 50, timeX = 200, resultX = 350;
+      doc.fontSize(12).fillColor("#000");
+      doc.text("Fecha", dateX).text("Hora Salida", timeX).text("Resultado", resultX);
+      doc.moveTo(50, doc.y + 5).lineTo(550, doc.y + 5).strokeColor("#3498db").stroke();
+      doc.moveDown(0.5);
+      accessRecords.forEach(rec => {
+        const dateStr = rec.date.toISOString().split("T")[0];
+        let exTime = "N/A";
+        if (rec.exit_time) {
+          exTime = new Date(rec.exit_time).toTimeString().split(" ")[0];
+        }
+        const res = rec.exit_result || "Sin registro";
+        doc.fontSize(11).fillColor("#000");
+        doc.text(dateStr, dateX);
+        doc.text(exTime, timeX);
+        doc.text(res, resultX);
+        doc.moveDown(0.5);
+      });
+    }
+
+    doc.moveDown(1);
+
+    // Justificaciones (debajo de las tablas)
+    doc.fontSize(16).fillColor("#34495e").text("Justificaciones de llegadas tarde", { underline: true });
+    doc.moveDown(0.5);
+    if (justifications.length === 0) {
+      doc.fontSize(12).fillColor("#7f8c8d").text("No se encontraron justificaciones.");
+    } else {
+      justifications.forEach((just, idx) => {
+        doc.fontSize(12).fillColor("#000");
+        doc.text(`🔹 #${idx + 1} - Fecha: ${just.date.toISOString().split("T")[0]}`);
+        doc.text(`     Hora de llegada: ${just.arrivalTime}`);
+        doc.text(`     Motivo: ${just.reason}`);
+        doc.text(`     Tipo de usuario: ${just.userType}`);
+        doc.moveDown(0.5);
+      });
+    }
+
     doc.moveDown(2);
     doc.fontSize(10).fillColor("#95a5a6").text(
       "Este documento fue generado automáticamente. No requiere firma.",
@@ -128,8 +204,9 @@ generateReportController.generateUserReport = async (req, res) => {
     );
 
     doc.end();
+
   } catch (error) {
-    console.error("Error generando reporte PDF:", error);
+    console.error("Error generando reporte:", error);
     res.status(500).json({ message: "Error generando reporte", error: error.message });
   }
 };

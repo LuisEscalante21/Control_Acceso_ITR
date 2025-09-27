@@ -5,7 +5,6 @@ import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
 import ArrivalBarChart from "../Tools/graphics/ArrivalBarChart.jsx";
 import useDataAccess from "../../hooks/coordinators/useDataAccess";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple";
 
 export default function AdminHome() {
   const [greeting, setGreeting] = useState("");
@@ -68,18 +67,6 @@ export default function AdminHome() {
 
   return (
     <div className="dashboard-home-container" style={{ position: "relative" }}>
-      {/* Perfil pequeño arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userName}
-          photo={userPhoto}
-          description={"Bienvenido"}
-          onClick={() => {
-            /* acción al hacer click, por ejemplo navegar al perfil */
-          }}
-        />
-      </div>
-
       {/* Mostrar saludo solo si existe */}
       <h2>{greeting && `${greeting}, ${userName}`}</h2>
 
@@ -92,9 +79,7 @@ export default function AdminHome() {
 
       {/* Segunda fila: GreetingCard + SchoolYearProgress */}
       <div className="dashboard-row widgets-bottom">
-        <div className="widget widget-day">
-          <GreetingCard onGreetingReady={setGreeting} />
-        </div>
+        <GreetingCard onGreetingReady={setGreeting} />
 
         <div className="widget widget-progress">
           <SchoolYearProgress />

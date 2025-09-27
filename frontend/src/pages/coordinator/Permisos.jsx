@@ -107,7 +107,7 @@ const filteredPermissions = useMemo(() => {
     <div className="cpg">
       <div className="cpg__container">
         <header className="cpg__header">
-          <h2 className="cpg__title">Permisos — Coordinador</h2>
+           <h1 className="titulo">Gestión de Empleados</h1>
         </header>
 
         <div className="cpg__newWrap">

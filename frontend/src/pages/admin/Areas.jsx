@@ -7,7 +7,6 @@ import useDataTeams from "../../hooks/admin/useDataTeams.jsx";
 import UpdateTeams from "../../components/admin/PageModals/AreasModal/UpdateTeams.jsx";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const Areas = () => {
   const [showModal, setShowModal] = useState(false);
@@ -36,15 +35,6 @@ const Areas = () => {
 
   return (
     <>
-      {/* Perfil pequeño arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userInfo?.fullName || userInfo?.names || "Usuario"}
-          photo={userInfo?.photo || userInfo?.photoUrl || null}
-          description={"Perfil"}
-          onClick={() => { /* navegar a perfil o abrir panel */ }}
-        />
-      </div>
       <div className="encabezado">
         <h1 className="titulo">Gestión de Áreas</h1>
         <div style={{ display: "flex", justifyContent: "flex-start" }}>

@@ -8,7 +8,6 @@ import useEmployees from "../../hooks/admin/useDataEmployee.jsx";
 import useDataTeams from "../../hooks/admin/useDataTeams.jsx"; 
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const Empleados = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,18 +68,9 @@ const Empleados = () => {
 
   return (
     <>
-      {/* Perfil pequeño arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userInfo?.fullName || userInfo?.names || "Usuario"}
-          photo={userInfo?.photo || userInfo?.photoUrl || null}
-          description={"Perfil"}
-          onClick={() => { /* navegar o mostrar panel */ }}
-        />
-      </div>
       <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
         <h1 className="titulo">Gestión de Empleados</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between" }}>
+        <div className="busqueda-bar">
           <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
             <Search className="search-icon" />
             <input
@@ -88,12 +78,12 @@ const Empleados = () => {
               placeholder="Buscar por nombre o apellido"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ flex: 1, minWidth: "440px" }}
+              className="buscador-input-responsive"
+              style={{ flex: 1 }}
             />
           </div>
-
           <button
-            className="nuevo-empleado-btn-G"
+            className="nuevo-empleado-btn-G responsive-btn"
             onClick={() => setShowNewEmpleado(true)}
             style={{ whiteSpace: "nowrap" }}
           >

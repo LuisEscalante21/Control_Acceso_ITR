@@ -8,7 +8,6 @@ import ScheduleDetailsModal from "../../components/admin/PageModals/ScheduleModa
 import { Search, CirclePlus } from "lucide-react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const Schedule = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,15 +50,6 @@ const Schedule = () => {
 
   return (
     <>
-      {/* Perfil pequeño arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userInfo?.fullName || userInfo?.names || "Usuario"}
-          photo={userInfo?.photo || userInfo?.photoUrl || null}
-          description={"Perfil"}
-          onClick={() => { /* navegar o mostrar panel */ }}
-        />
-      </div>
       <div className="encabezadoschedule">
         <h1 className="titulo">Gestión de Horarios</h1>
 

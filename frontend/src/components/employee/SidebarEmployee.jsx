@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Home, FileCheck, Clock, Menu, X, LogOut } from "lucide-react";
+import { Home, FileCheck, Clock, Menu, X, UserCog} from "lucide-react";
 import "../../components/styles/SidebarEmployee.css";
 import logoRical from "../../img/logo_rical.png";
+import UserFaceCardSimple from "../Perfil/UserFaceCardSimple.jsx"
 
 const BASE = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
@@ -10,6 +11,7 @@ const API_URL = `${BASE}${PORT}/api`;
 
 export default function Sidebar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false); 
   const navigate = useNavigate();
 
   const navigationItems = [
@@ -24,7 +26,10 @@ export default function Sidebar() {
       path: "/employee-dashboard/historial",
       icon: Clock,
     },
-    
+    {
+      name: "Perfil",
+      icon: UserCog
+    }
   ];
 
   return (
@@ -75,6 +80,19 @@ export default function Sidebar() {
         <nav className="admin-navigation">
           {navigationItems.map((item, index) => {
             const Icon = item.icon;
+            if (item.name === "Perfil") {
+              return (
+                <button
+                  key={index}
+                  className="admin-nav-item"
+                  type="button"
+                  onClick={() => setShowProfileModal(true)}
+                >
+                  <Icon className="admin-nav-icon" />
+                  <span className="admin-nav-text">{item.name}</span>
+                </button>
+              );
+            }
             return (
               <Link key={index} to={item.path} className="admin-nav-item">
                 <Icon className="admin-nav-icon" />
@@ -84,6 +102,14 @@ export default function Sidebar() {
           })}
         </nav>
       </div>
+      {/* Modal para el perfil */}
+      {showProfileModal && (
+        <div className="profile-modal-overlay" onClick={() => setShowProfileModal(false)}>
+          <div className="profile-modal" onClick={e => e.stopPropagation()}>
+            <UserFaceCardSimple onClose={() => setShowProfileModal(false)} />
+          </div>
+        </div>
+      )}
     </>
   );
 }
