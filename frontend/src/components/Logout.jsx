@@ -86,10 +86,19 @@ const LogoutButton = ({ className = "logout-btn" }) => {
   };
 
   return (
-    <button className={className} onClick={handleLogout}>
-      <LogOut size={18} />
-      Cerrar sesión
-    </button>
+    <>
+      <style>
+        {`
+          .swal2-container {
+            z-index: 10000 !important;
+          }
+        `}
+      </style>
+      <button className={className} onClick={handleLogout}>
+        <LogOut size={18} />
+        Cerrar sesión
+      </button>
+    </>
   );
 };
 

@@ -2,7 +2,6 @@ import React, { useEffect, useState, Suspense } from "react";
 import CryptoJS from "crypto-js";
 import "../../components/styles/admin/Home.css";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
-import UserFaceCardSimple from "../Perfil/UserFaceCardSimple";
 
 // Carga diferida de gráficas pesadas
 const LateArrivalsChart = React.lazy(() =>
@@ -43,15 +42,6 @@ export default function AdminHome() {
 
   return (
     <div className="dashboard-home-container">
-      {/* Perfil pequeño arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userName}
-          photo={userPhoto}
-          description={"Bienvenido"}
-          onClick={() => { /* acción al hacer click, por ejemplo navegar al perfil */ }}
-        />
-      </div>
       <h2>
         {greeting
           ? `${greeting} ${userName}`

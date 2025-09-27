@@ -4,7 +4,6 @@ import AdminViewPermissionModal from "../../components/admin/PageModals/Permisio
 import "../../styles/admin/Permission.css";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 // Qué es urgente
 const isUrgent = (p) =>
@@ -101,22 +100,11 @@ export default function AdminPermissions() {
 
   return (
     <div className="apg__page">
-      {/* Perfil pequeño arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userInfo?.fullName || userInfo?.names || "Usuario"}
-          photo={userInfo?.photo || userInfo?.photoUrl || null}
-          description={"Perfil"}
-          onClick={() => {
-            /* navegar o mostrar panel */
-          }}
-        />
-      </div>
 
       <div className="apg__container">
         {/* Título solo */}
         <header className="apg__header">
-          <h2 className="apg__title">Permisos — Administrador</h2>
+          <h1 className="titulo">Gestión de Permisos - Administrador</h1>
         </header>
 
         <section className="apg__sheet">

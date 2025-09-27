@@ -6,7 +6,6 @@ import useDataFace from "../../hooks/admin/useDataFaces.jsx";
 import ModalFace from "../../components/admin/ModalRostro.jsx";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const Rostros = () => {
   const {
@@ -57,15 +56,6 @@ const Rostros = () => {
 
   return (
     <>
-      {/* Perfil pequeño arriba a la derecha */}
-      <div className="profile-card-wrapper">
-        <UserFaceCardSimple
-          name={userInfo?.fullName || userInfo?.names || "Usuario"}
-          photo={userInfo?.photo || userInfo?.photoUrl || null}
-          description={"Perfil"}
-          onClick={() => { /* navegar o mostrar panel */ }}
-        />
-      </div>
       <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
               <h1 className="titulo">Gestión de Rostros</h1>
               <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between" }}>

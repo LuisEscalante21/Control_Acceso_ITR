@@ -74,32 +74,30 @@ const Empleados = () => {
 
   return (
     <>
-      <div
-        className="encabezado"
-        style={{ display: "flex", flexDirection: "column", gap: "15px" }}
-      >
-        <h1 className="titulo">Gestión de Empleados</h1>
-        <div className="busqueda-bar-G">
-          <div className="buscador-G">
-            <Search className="search-icon" size={18} />
-            <input
-              type="text"
-              placeholder="Buscar por nombres y apellidos"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Buscar empleados"
-            />
-          </div>
-          <button
-            className="nuevo-empleado-btn-G"
-            onClick={() => setShowNewEmpleado(true)}
-            aria-label="Agregar nuevo empleado"
-          >
-            <CirclePlus size={20} />
-            Nuevo Empleado
-          </button>
-        </div>
-      </div>
+      <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+              <h1 className="titulo">Gestión de Empleados</h1>
+              <div className="busqueda-bar">
+                <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
+                  <Search className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre o apellido"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="buscador-input-responsive"
+                    style={{ flex: 1 }}
+                  />
+                </div>
+                <button
+                  className="nuevo-empleado-btn-G responsive-btn"
+                  onClick={() => setShowNewEmpleado(true)}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  <CirclePlus size={20} />
+                  Nuevo Empleado
+                </button>
+              </div>
+            </div>
 
       <div className="gestion-de-empleados">
         <div className="empleados-lists">

@@ -1,12 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
-import {
-  Home, UserCheck, Settings, Shield, Clock,
-  Scan, LayoutGrid, UserCog, Menu, X, LogOut, Calendar,
-} from "lucide-react";
+import {Home, UserCheck, Settings, Shield, Clock,Scan, LayoutGrid, UserCog, Menu, X, Calendar} from "lucide-react";
 import "../../components/styles/Sidebar.css";
 import logoRical from "../../img/logo_rical.png";
+import UserFaceCardSimple from "../Perfil/UserFaceCardSimple.jsx"
 
 const BASE = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
@@ -14,6 +11,7 @@ const API_URL = `${BASE}${PORT}/api`;
 
 export default function Sidebar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false); 
   const navigate = useNavigate();
 
   const navigationItems = [
@@ -26,85 +24,8 @@ export default function Sidebar() {
     { name: "Registros faciales", path: "/admin-dashboard/registros", icon: Scan },
     { name: "Gestión de áreas", path: "/admin-dashboard/areas", icon: LayoutGrid },
     { name: "Horarios", path: "/admin-dashboard/horarios", icon: Calendar },
+    { name: "Perfil", icon: UserCog}
   ];
-
-  const handleLogout = async () => {
-    const result = await Swal.fire({
-      title: "¿Cerrar sesión?",
-      text: "¿Estás seguro de que deseas cerrar la sesión?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Sí, cerrar sesión",
-      cancelButtonText: "Cancelar",
-      reverseButtons: true,
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      Swal.fire({
-        title: "Cerrando sesión...",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
-      await fetch(`${API_URL}/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("userRole");
-      localStorage.removeItem("userData");
-      sessionStorage.clear();
-
-      document.cookie = "userInfo=; Max-Age=0; path=/";
-      document.cookie = "authToken=; Max-Age=0; path=/";
-
-      Swal.close();
-
-      await Swal.fire({
-        title: "¡Sesión cerrada!",
-        text: "Has cerrado sesión correctamente",
-        icon: "success",
-        timer: 1000,
-        showConfirmButton: false,
-      });
-
-      navigate("/login", { replace: true });
-
-      // Prevenir retroceso
-      window.history.pushState(null, "", window.location.href);
-      window.addEventListener("popstate", () => {
-        window.history.pushState(null, "", window.location.href);
-      });
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-      Swal.close();
-
-      await Swal.fire({
-        title: "Error de conexión",
-        text: "Hubo un problema al cerrar sesión en el servidor, pero se cerrará la sesión local",
-        icon: "warning",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("userRole");
-      localStorage.removeItem("userData");
-      sessionStorage.clear();
-
-      //También eliminar cookie userInfo en caso de error
-      document.cookie = "userInfo=; Max-Age=0; path=/";
-
-      navigate("/login", { replace: true });
-    }
-  };
 
   return (
     <>
@@ -144,19 +65,38 @@ export default function Sidebar() {
         </div>
 
         <nav className="admin-navigation">
-          {navigationItems.map((item, index) => {
-            const Icon = item.icon;
+        {navigationItems.map((item, index) => {
+          const Icon = item.icon;
+          if (item.name === "Perfil") {
             return (
-              <Link key={index} to={item.path} className="admin-nav-item">
+              <button
+                key={index}
+                className="admin-nav-item"
+                type="button"
+                onClick={() => setShowProfileModal(true)}
+              >
                 <Icon className="admin-nav-icon" />
                 <span className="admin-nav-text">{item.name}</span>
-              </Link>
+              </button>
             );
-          })}
-
-          {/* Logout button removed as requested */}
-        </nav>
+          }
+          return (
+            <Link key={index} to={item.path} className="admin-nav-item">
+              <Icon className="admin-nav-icon" />
+              <span className="admin-nav-text">{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
       </div>
+      {/* Modal para el perfil */}
+      {showProfileModal && (
+        <div className="profile-modal-overlay" onClick={() => setShowProfileModal(false)}>
+          <div className="profile-modal" onClick={e => e.stopPropagation()}>
+            <UserFaceCardSimple onClose={() => setShowProfileModal(false)} />
+          </div>
+        </div>
+      )}
     </>
   );
 }

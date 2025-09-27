@@ -345,3 +345,30 @@ select:focus {
   font-size: 13px;
   border: 2px dashed #bfc2cc;
 }
+
+.buscador-input-responsive {
+  width: 100%;
+  min-width: 200px;
+  max-width: 600px;
+  padding: 8px 12px;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .buscador-input-responsive {
+    min-width: 120px;
+    max-width: 100%;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .buscador-input-responsive {
+    min-width: 80px;
+    font-size: 0.9rem;
+    padding: 6px 8px;
+  }
+}

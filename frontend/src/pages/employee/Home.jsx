@@ -3,7 +3,6 @@ import CryptoJS from "crypto-js";
 import "../../components/styles/employee/Home.css";
 import SchoolYearProgress from "../../components/Tools/graphics/SchoolYearProgress.jsx";
 import GreetingCard from "../../components/Tools/widgets/GreetingCard.jsx";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 export default function Home() {
   const [greeting, setGreeting] = useState("");
@@ -37,15 +36,6 @@ export default function Home() {
 
   return (
     <div className="dashboard-home-container" style={{ position: "relative" }}>
-      {/* Perfil pequeño arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userName}
-          photo={userPhoto}
-          description={"Bienvenido"}
-          onClick={() => { /* acción al hacer click, por ejemplo navegar al perfil */ }}
-        />
-      </div>
       <h2>{`${greeting || "Hola"}, ${userName || "Usuario"}`}</h2>
       <div className="dashboard-widgets">
         <GreetingCard onGreetingReady={setGreeting} />

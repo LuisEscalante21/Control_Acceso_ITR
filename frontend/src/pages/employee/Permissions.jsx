@@ -3,7 +3,6 @@ import CryptoJS from "crypto-js";
 import NewPermissionModal from "../../components/employee/PageModals/NewPermissionModal";
 import ViewPermissionModal from "../../components/employee/PageModals/ViewPermissionModal";
 import useDataPermissions from "../../hooks/Global/UseDataPermissions";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 import "../../styles/employee/Permission.css";
 
 const mapStatus = (status) => {
@@ -107,20 +106,11 @@ export default function Permissions() {
 
   return (
     <div className="pgp" style={{ position: "relative" }}>
-      {/* Perfil arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userName}
-          photo={userPhoto}
-          description={"Mis Permisos"}
-          onClick={() => { /* acción al hacer click */ }}
-        />
-      </div>
-
+      
       <div className="pgp__container">
         {/* encabezado */}
         <header className="pgp__header">
-          <h2 className="pgp__title">Gestión de mis permisos</h2>
+          <h1 className="titulo">Gestión de mis permisos</h1>
         </header>
 
         <div className="pgp__new1">

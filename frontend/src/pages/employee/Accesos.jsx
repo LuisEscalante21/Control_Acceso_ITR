@@ -7,7 +7,6 @@ import useDataAccess from "../../hooks/employee/useDataAccess.jsx";
 import AccessCard from "../../components/employee/Cards/AccessCard.jsx";
 import JustifyModal from "../../components/employee/PageModals/justifictions.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx"; 
 
 const HorarioOptions = ["Entrada", "Salida"];
 const JustificationFilterOptions = ["Todos", "Justificados", "Pendientes"];
@@ -143,18 +142,7 @@ const Accesos = () => {
 
   return (
     <div className="access-history-container" style={{ position: "relative" }}>
-      {/* Perfil arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userName}
-          photo={userPhoto}
-          description={"Accesos"}
-          onClick={() => {
-            /* acción al hacer click, por ejemplo ir al perfil */
-          }}
-        />
-      </div>
-
+     
       <div className="encabezado-accesos">
         <h1 className="titulo">Historial de accesos</h1>
 

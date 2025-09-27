@@ -7,7 +7,6 @@ import UpdateCoordinators from "../../components/admin/PageModals/CoordinadoresM
 import useCoordinators from "../../hooks/admin/useDataCoordinators.jsx";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-import UserFaceCardSimple from "../../components/Perfil/UserFaceCardSimple.jsx";
 
 const Coordinadores = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,39 +48,30 @@ const Coordinadores = () => {
 
   return (
     <>
-      {/* Perfil pequeño arriba a la derecha */}
-      <div style={{ position: "absolute", top: 24, right: 32, zIndex: 1000 }}>
-        <UserFaceCardSimple
-          name={userInfo?.fullName || userInfo?.names || "Usuario"}
-          photo={userInfo?.photo || userInfo?.photoUrl || null}
-          description={"Perfil"}
-          onClick={() => { /* navegar o mostrar panel */ }}
-        />
+    <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+        <h1 className="titulo">Gestión de Coordinadores</h1>
+        <div className="busqueda-bar">
+          <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
+            <Search className="search-icon" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o apellido"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="buscador-input-responsive"
+              style={{ flex: 1 }}
+            />
+          </div>
+          <button
+            className="nuevo-empleado-btn-G responsive-btn"
+            onClick={() => setShowNewCoordinador(true)}
+            style={{ whiteSpace: "nowrap" }}
+          >
+            <CirclePlus size={20} />
+            Nuevo Coordinador
+          </button>
+        </div>
       </div>
-      <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-              <h1 className="titulo">Gestión de Coordinadores</h1>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between" }}>
-                <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
-                  <Search className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por nombre o apellido"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ flex: 1, minWidth: "440px" }}
-                  />
-                </div>
-      
-                <button
-                  className="nuevo-empleado-btn-G"
-                  onClick={() => setShowNewCoordinador(true)}
-                  style={{ whiteSpace: "nowrap" }}
-                >
-                  <CirclePlus size={20} />
-                  Nuevo Coordinador
-                </button>
-              </div>
-            </div>
 
       <div className="gestion-de-coordinadores">
         <div
