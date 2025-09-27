@@ -3,6 +3,7 @@ import Swal from "sweetalert2";
 import { useForm } from "react-hook-form";
 import "../../../styles/Admin/Empleados.css";
 import { Pencil, Trash2, Camera, UserCircle } from "lucide-react";
+import { useGenerateReport } from "../../../hooks/Global/useGenerateReport";
 
 // Convierte una fecha a formato yyyy-mm-dd para input[type="date"]
 const toInputDateFormat = (date) => {
@@ -22,12 +23,26 @@ const formatPhone = (value) => {
   return value;
 };
 
-export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose }) {
-  const { register, handleSubmit, reset, formState: { errors }, setValue } = useForm();
+export default function UpdateEmpleaods({
+  empleado,
+  onSave,
+  onDelete,
+  onClose,
+}) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    setValue,
+  } = useForm();
   const [editMode, setEditMode] = useState(false);
 
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(empleado?.photo || "");
+
+  const { generateReport } = useGenerateReport();
+  const [loadingPDF, setLoadingPDF] = useState(false);
 
   useEffect(() => {
     reset({
@@ -46,7 +61,11 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      Swal.fire("Error", "Por favor selecciona un archivo de imagen válido.", "error");
+      Swal.fire(
+        "Error",
+        "Por favor selecciona un archivo de imagen válido.",
+        "error"
+      );
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
@@ -73,7 +92,7 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
         "address",
         "DUI",
         "birthday",
-        "status"
+        "status",
       ];
 
       // Formatear status y teléfono
@@ -98,7 +117,11 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
 
       await onSave(formData, empleado._id);
 
-      Swal.fire("Actualizado", "El empleado ha sido actualizado exitosamente.", "success");
+      Swal.fire(
+        "Actualizado",
+        "El empleado ha sido actualizado exitosamente.",
+        "success"
+      );
       setEditMode(false);
       onClose();
     } catch (error) {
@@ -142,7 +165,9 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
           ) : (
             <UserCircle className="cvcard-avatar-placeholder" size={80} />
           )}
-          <div className="cvcard-nombre">{empleado.names} {empleado.surnames}</div>
+          <div className="cvcard-nombre">
+            {empleado.names} {empleado.surnames}
+          </div>
         </div>
 
         <div className="cvcard-info">
@@ -176,7 +201,9 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
             <>
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Nombres y apellidos</span>
-                <span className="cvcard-value">{empleado.names} {empleado.surnames}</span>
+                <span className="cvcard-value">
+                  {empleado.names} {empleado.surnames}
+                </span>
               </div>
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Correo electrónico</span>
@@ -200,7 +227,33 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
               </div>
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Fecha de nacimiento</span>
-                <span className="cvcard-value">{toInputDateFormat(empleado.birthday)}</span>
+                <span className="cvcard-value">
+                  {toInputDateFormat(empleado.birthday)}
+                </span>
+              </div>
+              {/* ✅ BOTÓN PARA GENERAR REPORTE */}
+              <div style={{ textAlign: "center", marginTop: "20px" }}>
+                <button
+                  className="btn-reporte"
+                  onClick={async () => {
+                    setLoadingPDF(true);
+                    try {
+                      await generateReport(empleado._id); // ✅ Ejecuta el reporte
+                    } catch (error) {
+                      console.error("Error al generar reporte:", error);
+                      Swal.fire(
+                        "Error",
+                        "No se pudo generar el reporte",
+                        "error"
+                      );
+                    } finally {
+                      setLoadingPDF(false);
+                    }
+                  }}
+                  disabled={loadingPDF}
+                >
+                  {loadingPDF ? "Generando..." : "Generar Reporte PDF"}
+                </button>
               </div>
             </>
           ) : (
@@ -214,10 +267,14 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                 <label htmlFor="numEmpleado">Código de empleado:</label>
                 <input
                   id="numEmpleado"
-                  {...register("numEmpleado", { required: "Código obligatorio" })}
+                  {...register("numEmpleado", {
+                    required: "Código obligatorio",
+                  })}
                 />
                 {errors.numEmpleado && (
-                  <span className="error-message">{errors.numEmpleado.message}</span>
+                  <span className="error-message">
+                    {errors.numEmpleado.message}
+                  </span>
                 )}
               </div>
               <div className="form-field">
@@ -234,10 +291,14 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                 <label htmlFor="surnames">Apellidos:</label>
                 <input
                   id="surnames"
-                  {...register("surnames", { required: "Apellidos obligatorios" })}
+                  {...register("surnames", {
+                    required: "Apellidos obligatorios",
+                  })}
                 />
                 {errors.surnames && (
-                  <span className="error-message">{errors.surnames.message}</span>
+                  <span className="error-message">
+                    {errors.surnames.message}
+                  </span>
                 )}
               </div>
               <div className="form-field">
@@ -255,14 +316,18 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                 <label htmlFor="telephone">Número telefónico:</label>
                 <input
                   id="telephone"
-                  {...register("telephone", { required: "Teléfono obligatorio" })}
+                  {...register("telephone", {
+                    required: "Teléfono obligatorio",
+                  })}
                   onChange={(e) => {
                     const formatted = formatPhone(e.target.value);
                     setValue("telephone", formatted);
                   }}
                 />
                 {errors.telephone && (
-                  <span className="error-message">{errors.telephone.message}</span>
+                  <span className="error-message">
+                    {errors.telephone.message}
+                  </span>
                 )}
               </div>
               <div className="form-field">
@@ -271,16 +336,22 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
                 </select>
-                {errors.status && <span className="error-message">Estado obligatorio</span>}
+                {errors.status && (
+                  <span className="error-message">Estado obligatorio</span>
+                )}
               </div>
               <div className="form-field">
                 <label htmlFor="address">Dirección de residencia:</label>
                 <input
                   id="address"
-                  {...register("address", { required: "Dirección obligatoria" })}
+                  {...register("address", {
+                    required: "Dirección obligatoria",
+                  })}
                 />
                 {errors.address && (
-                  <span className="error-message">{errors.address.message}</span>
+                  <span className="error-message">
+                    {errors.address.message}
+                  </span>
                 )}
               </div>
               <div className="form-field">
@@ -301,7 +372,9 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                   {...register("birthday", { required: "Fecha obligatoria" })}
                 />
                 {errors.birthday && (
-                  <span className="error-message">{errors.birthday.message}</span>
+                  <span className="error-message">
+                    {errors.birthday.message}
+                  </span>
                 )}
               </div>
               <div className="form-field">
@@ -309,7 +382,9 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                 <div className="image-upload-container">
                   <label htmlFor="photo" className="custom-image-upload">
                     <Camera className="camera-icon" />
-                    <span>{photoPreview ? "Cambiar imagen" : "Agregar imagen"}</span>
+                    <span>
+                      {photoPreview ? "Cambiar imagen" : "Agregar imagen"}
+                    </span>
                     <input
                       id="photo"
                       name="photo"
@@ -321,9 +396,16 @@ export default function UpdateEmpleaods({ empleado, onSave, onDelete, onClose })
                   </label>
                   <div className="image-preview-area">
                     {photoPreview ? (
-                      <img src={photoPreview} alt="Preview" className="image-preview" />
+                      <img
+                        src={photoPreview}
+                        alt="Preview"
+                        className="image-preview"
+                      />
                     ) : (
-                      <UserCircle className="image-preview-placeholder" size={80} />
+                      <UserCircle
+                        className="image-preview-placeholder"
+                        size={80}
+                      />
                     )}
                   </div>
                 </div>

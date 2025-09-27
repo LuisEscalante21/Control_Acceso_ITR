@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 import "../../../../styles/Admin/Empleados.css";
 import { Pencil, Trash2, Camera, UserCircle } from "lucide-react";
+import { useGenerateReport } from "../../../../hooks/Global/useGenerateReport";
 
 const toInputDateFormat = (date) => {
   if (!date) return "";
@@ -32,6 +33,10 @@ export default function UpdateEmpleaods({
   const [photoFile, setPhotoFile] = useState(null);
   const [teams, setTeams] = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(true);
+  const [loadingPDF, setLoadingPDF] = useState(false);
+
+  const { generateReport } = useGenerateReport();
+
 
   const {
     register,
@@ -66,7 +71,7 @@ export default function UpdateEmpleaods({
       try {
         const res = await fetch(`http://localhost:4000/api/teams`, {
           method: "GET",
-          credentials: "include", // ✅ envía cookies/sesión
+          credentials: "include", // envía cookies/sesión
           headers: {
             Accept: "application/json",
           },
@@ -260,6 +265,30 @@ export default function UpdateEmpleaods({
                 <span className="cvcard-value">
                   {empleado.IdTeam?.name || "No asignado"}
                 </span>
+              </div>
+              {/* ✅ BOTÓN PARA GENERAR REPORTE */}
+              <div style={{ textAlign: "center", marginTop: "20px" }}>
+                <button
+                  className="btn-reporte"
+                  onClick={async () => {
+                    setLoadingPDF(true);
+                    try {
+                      await generateReport(empleado._id); // ✅ Ejecuta el reporte
+                    } catch (error) {
+                      console.error("Error al generar reporte:", error);
+                      Swal.fire(
+                        "Error",
+                        "No se pudo generar el reporte",
+                        "error"
+                      );
+                    } finally {
+                      setLoadingPDF(false);
+                    }
+                  }}
+                  disabled={loadingPDF}
+                >
+                  {loadingPDF ? "Generando..." : "Generar Reporte PDF"}
+                </button>
               </div>
             </>
           ) : (

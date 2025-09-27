@@ -111,67 +111,6 @@ const Accesos = () => {
     setOpenDropdown(null);
   };
 
-  // Botón para eliminar todos los accesos y justificaciones
-  const handleDeleteAllAccess = async () => {
-    const { value: text } = await Swal.fire({
-      title: "Eliminar todos los accesos y justificaciones",
-      html: `Para confirmar, escribe <b>REMOVE</b> en el campo`,
-      input: "text",
-      inputPlaceholder: "Escribe REMOVE",
-      showCancelButton: true,
-      confirmButtonText: "Eliminar",
-      cancelButtonText: "Cancelar",
-      customClass: {
-        confirmButton: "swal-confirm-danger",
-        cancelButton: "swal-cancel",
-      },
-      inputValidator: (value) => {
-        if (value.toLowerCase() !== "remove") {
-          return "Debes escribir 'remove' para confirmar";
-        }
-      },
-    });
-
-    if (text && text.toLowerCase() === "remove") {
-      try {
-        // 1️ Eliminar todos los accesos
-        const resAccess = await axios.delete(`${API_URL_ACCESS}/access`, {
-          headers: {
-            Authorization: `Bearer ${API_ACCESS_KEY}`,
-          },
-        });
-
-        // 2️ Eliminar todas las justificaciones
-        const resJustifications = await axios.delete(
-          `${import.meta.env.VITE_BASE_URL}${
-            import.meta.env.VITE_PORT
-          }/api/justifications`,
-          {
-            headers: {
-              Authorization: `Bearer ${API_ACCESS_KEY}`,
-            },
-          }
-        );
-
-        Swal.fire(
-          "Eliminado",
-          `Se eliminaron ${resAccess.data.deleted_count} registros de acceso y ${resJustifications.data.deleted_count} justificaciones`,
-          "success"
-        );
-
-        fetchAccessRecords(); // refrescar lista
-        fetchJustifications(); // refrescar justificaciones
-      } catch (error) {
-        console.error(error);
-        Swal.fire(
-          "Error",
-          "No se pudieron eliminar los registros de acceso y justificaciones.",
-          "error"
-        );
-      }
-    }
-  };
-
   // Filtrar registros según tipo de registro, búsqueda y justificación
   const filteredAccess = accessRecords
     .filter((person) => {
@@ -280,11 +219,6 @@ const Accesos = () => {
               </div>
             )}
           </div>
-
-          {/* Botón eliminar todos los accesos */}
-          <button className="delete-all-access" onClick={handleDeleteAllAccess}>
-            Eliminar todos los accesos
-          </button>
         </div>
       </div>
 

@@ -418,27 +418,10 @@ def eliminar_registro(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-
-# Endpoint para eliminar todos los registros de acceso
-@app.route("/api/access", methods=["DELETE"])
-@require_api_key
-def eliminar_todos_registros():
-    try:
-        result = access_collection.delete_many({})
-        return jsonify(
-            {
-                "message": "Todos los registros de acceso han sido eliminados",
-                "deleted_count": result.deleted_count,
-            }
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
+# Iniciar el script
 def iniciar_api_acceso():
     print("La API de registro de acceso ha iniciado.")
     app.run(debug=True, use_reloader=False, host="0.0.0.0", port=PORT_ACCESO)
-
 
 if __name__ == "__main__":
     iniciar_api_acceso()

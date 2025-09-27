@@ -24,6 +24,7 @@ import swaggerUi from "swagger-ui-express";
 import fs from "fs";
 import path from "path";
 import recoveryPasswordRoutes from "./src/routes/recoveryPasswordRoutes.js";
+import reportRoutes from "./src/routes/reportRoutes.js";
 import limiter from './src/middleware/rateLimiter.js';
 
 const app = express();
@@ -69,6 +70,7 @@ app.use("/api/administrators", authMiddleware, administratorsRoutes);
 app.use("/api/teams", authMiddleware, teamsRoutes);
 app.use("/api/permissions", authMiddleware, permissionsRoutes);
 app.use("/api/justifications", authMiddleware, justificationsRoutes);
+app.use("/api/reports", authMiddleware, reportRoutes);
 app.use("/api/users", authMiddleware, usersRoutes);
 app.use("/api/profile", authMiddleware, profileRoutes);
 
