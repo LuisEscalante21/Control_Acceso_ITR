@@ -14,6 +14,7 @@ export default function Dashboard() {
     '/employee-dashboard/dashboard',
     '/employee-dashboard/permisos',
     '/employee-dashboard/historial',
+    '/employee-dashboard/inasistencias',
   ];
 
   // Determina si es una página de error o ruta no válida

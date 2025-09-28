@@ -1,20 +1,17 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-import "../../styles/Admin/Inasistencias.css";
+import "../../styles/coordinators/Inasistencias.css";
 import useDataAbsences from "../../hooks/admin/useDataAbsences.jsx";
 import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
-const justifyOptions = ["Todas", "Justificadas", "Sin justificar"];
-
 const Absences = () => {
-  const [selectedJustify, setSelectedJustify] = useState(justifyOptions[0]);
+  const [selectedAreaFilter, setSelectedAreaFilter] = useState("Todos");
+  const [selectedJustify, setSelectedJustify] = useState("Todas");
   const [searchText, setSearchText] = useState("");
   const [viewJustify, setViewJustify] = useState(null);
-
-  const justifyRef = useRef(null);
 
   // Leer info del usuario desde cookie cifrada
   const secretKey = import.meta.env.VITE_JWT_SECRET;
@@ -31,40 +28,24 @@ const Absences = () => {
     }
   }
   const empleadoId = userInfo?._id || null;
-  const teamId = userInfo?.teamId || null; // ID del área del usuario
+  const teamId = userInfo?.teamId || null;
 
   // Hooks
-  const {
-    absenceRecords,
-    justificationMap,
-    fetchAbsenceRecords,
-    fetchJustifications,
-  } = useDataAbsences(empleadoId);
+  const { absenceRecords, justificationMap, fetchAbsenceRecords, fetchJustifications } =
+    useDataAbsences(empleadoId);
 
   useEffect(() => {
     fetchAbsenceRecords();
     fetchJustifications();
   }, []);
 
-  // Cerrar dropdown de justificación
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (justifyRef.current && !justifyRef.current.contains(event.target)) {
-        setSelectedJustify(justifyOptions[0]);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelectJustify = (option) => {
-    setSelectedJustify(option);
-  };
-
   // Filtrado
   const filteredAbsences = absenceRecords
-    .filter((absence) => absence.teamId === teamId) // Solo del mismo team
+    .filter((absence) => absence.teamId === teamId)
+    .filter((absence) => {
+      if (selectedAreaFilter === "Mis inasistencias") return absence.employeeId === empleadoId;
+      return true;
+    })
     .filter((absence) => {
       if (selectedJustify === "Justificadas") return !!justificationMap?.[absence._id];
       if (selectedJustify === "Sin justificar") return !justificationMap?.[absence._id];
@@ -72,15 +53,14 @@ const Absences = () => {
     })
     .filter((absence) => {
       if (!searchText.trim()) return true;
-      const nombre = absence.employeeName?.toLowerCase() || "";
-      return nombre.includes(searchText.toLowerCase());
+      return absence.employeeName?.toLowerCase().includes(searchText.toLowerCase());
     });
 
   return (
     <div className="absence-history-container">
+      {/* Encabezado y buscador */}
       <div className="encabezado-inasistencias">
         <h1 className="titulo">Historial de inasistencias</h1>
-
         <div className="buscador">
           <Search className="search-icon" />
           <input
@@ -89,6 +69,34 @@ const Absences = () => {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
+        </div>
+
+        {/* Filtros */}
+        <div className="filters">
+          {/* Área */}
+          <div className="area-filters">
+            <select
+              value={selectedAreaFilter}
+              onChange={(e) => setSelectedAreaFilter(e.target.value)}
+              className="filter-dropdown"
+            >
+              <option value="Todos">Todos</option>
+              <option value="Mis inasistencias">Mis inasistencias</option>
+            </select>
+          </div>
+
+          {/* Justificación */}
+          <div className="justify-filters">
+            <select
+              value={selectedJustify}
+              onChange={(e) => setSelectedJustify(e.target.value)}
+              className="filter-dropdown"
+            >
+              <option value="Todas">Todas</option>
+              <option value="Justificadas">Justificadas</option>
+              <option value="Sin justificar">Sin justificar</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -107,9 +115,7 @@ const Absences = () => {
                 date={absence.date}
                 isJustified={!!justificationMap?.[absence._id]}
                 justification={justificationMap?.[absence._id]}
-                onViewJustification={() =>
-                  setViewJustify(justificationMap?.[absence._id])
-                }
+                onViewJustification={() => setViewJustify(justificationMap?.[absence._id])}
               />
             ))
           )}

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Home, FileCheck, Clock, Menu, X, UserCog} from "lucide-react";
+import { Home, FileCheck, Clock, Menu, X, UserX, UserCog} from "lucide-react";
 import "../../components/styles/SidebarEmployee.css";
 import logoRical from "../../img/logo_rical.png";
 import UserFaceCardSimple from "../Perfil/UserFaceCardSimple.jsx"
@@ -25,6 +25,11 @@ export default function Sidebar() {
       name: "Historial de accesos",
       path: "/employee-dashboard/historial",
       icon: Clock,
+    },
+    {
+      name: "inasistencias",
+      path: "/employee-dashboard/inasistencias",
+      icon: UserX,
     },
     {
       name: "Perfil",

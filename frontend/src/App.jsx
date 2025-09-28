@@ -39,6 +39,7 @@ import EmployeeDashboard from "./pages/employee/Dashboard.jsx";
 import HomeEmployee from "./pages/employee/Home.jsx";
 import EmployeeAccesos from "./pages/employee/Accesos.jsx";
 import EmployeePermisos from "./pages/employee/Permissions.jsx";
+import EmployeeAbsences from "./pages/employee/Absences.jsx";
 
 //Face recognition
 import FaceReco from "./pages//videoCapture/VideoDashboard.jsx";
@@ -124,6 +125,8 @@ function App() {
           <Route path="dashboard" element={<HomeEmployee />} />
           <Route path="permisos" element={<EmployeePermisos />} />
           <Route path="historial" element={<EmployeeAccesos />} />
+          <Route path="inasistencias" element={<EmployeeAbsences />} />
+        
           <Route path="*" element={<Error404 />} />
         </Route>
 
