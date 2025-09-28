@@ -13,6 +13,7 @@ from cloudinary.uploader import upload
 from cloudinary import config as cloudinary_config
 from PIL import Image, ImageOps
 import numpy as np
+from datetime import datetime
 
 # Blueprints y FAISS
 from Health import health_bp
@@ -248,7 +249,39 @@ def Mapeo_cara(ruta_imagen):
 # Endpoints
 # ============================
 
-# Registrar rostro
+# Validar que el empleado exista en alguna colección
+def validar_empleado_existe(employee_code):
+    """
+    Valida que el employee_code exista en alguna de las colecciones de empleados.
+    Retorna (existe: bool, user_type: str, user_data: dict)
+    """
+    # Conectar a las colecciones de empleados
+    employee_collection = db["employees"]
+    coordinator_collection = db["coordinators"] 
+    admin_collection = db["administrators"]
+    
+    collections_to_check = [
+        ("Employee", employee_collection),
+        ("Coordinator", coordinator_collection),
+        ("Administrator", admin_collection)
+    ]
+    
+    for user_type, collection in collections_to_check:
+        # Buscar por _id si es un ObjectId válido
+        user = None
+        if ObjectId.is_valid(employee_code):
+            user = collection.find_one({"_id": ObjectId(employee_code)})
+        
+        # Si no se encontró por _id, buscar por numEmpleado
+        if not user:
+            user = collection.find_one({"numEmpleado": employee_code})
+            
+        if user:
+            return True, user_type, user
+            
+    return False, None, None
+
+# Registrar nuevo rostro
 @app.route('/mapeo', methods=['POST'])
 @require_api_key(MAPEO_API_KEY)
 def mapeo():
@@ -267,9 +300,20 @@ def mapeo():
     if image.filename == '' or not allowed_file(image.filename):
         return jsonify({'status': 'error', 'message': 'Imagen no válida'}), 400
 
-    # Validación de duplicado antes de procesar la imagen
+    # NUEVA VALIDACIÓN: Verificar que el empleado exista
+    empleado_existe, user_type, user_data = validar_empleado_existe(employee_code)
+    if not empleado_existe:
+        return jsonify({
+            'status': 'error', 
+            'message': f'El código de empleado "{employee_code}" no existe en el sistema. Debe registrar al empleado antes de mapear su rostro.'
+        }), 404
+
+    # Validación de duplicado en la colección de caras
     if coleccion_de_caras.find_one({'employee_code': employee_code}):
-        return jsonify({'status': 'duplicate', 'message': 'Código duplicado'}), 409
+        return jsonify({'status': 'duplicate', 'message': 'Este empleado ya tiene un rostro registrado'}), 409
+
+    # Log para debug
+    print(f"[MAPEO] Empleado validado: {employee_code} - Tipo: {user_type} - Nombre: {user_data.get('names', 'N/A')}")
 
     # Subir a Cloudinary
     try:
@@ -300,7 +344,9 @@ def mapeo():
         'employee_code': employee_code,
         'schedule_id': schedule_id,
         'gender': gender,
-        'area_id': area_id
+        'area_id': area_id,
+        'user_type': user_type,  # Agregar el tipo de usuario
+        'validated_at': datetime.now()  # Timestamp de validación
     }
 
     coleccion_de_caras.insert_one(documento)
@@ -309,7 +355,9 @@ def mapeo():
 
     return jsonify({
         'status': 'success',
-        'message': 'Rostro guardado',
+        'message': f'Rostro guardado para {user_type}: {user_data.get("names", "N/A")}',
+        'employee_validated': True,
+        'user_type': user_type,
         'image_url': image_url,
         'encoding': encoding.tolist(),
         'quality_info': info.get("quality", {})

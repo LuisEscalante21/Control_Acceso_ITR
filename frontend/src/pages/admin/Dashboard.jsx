@@ -19,6 +19,7 @@ export default function RicaldoneNavigation() {
     '/admin-dashboard/usuarios',
     '/admin-dashboard/permisos',
     '/admin-dashboard/historial',
+    '/admin-dashboard/inasistencias',
     '/admin-dashboard/registros',
     '/admin-dashboard/areas',
   ];

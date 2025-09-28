@@ -1,0 +1,94 @@
+.absence-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem; /* igual que AccessCard */
+  padding: 1rem 1.5rem;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px #00000012;
+  transition: all 0.3s ease;
+}
+
+.absence-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Avatar */
+.absence-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #f2f2f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.absence-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.absence-avatar-icon {
+  color: #aaa;
+}
+
+/* Nombre y tipo */
+.absence-name {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.absence-employee-type {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 2px;
+}
+
+/* Fecha */
+.absence-date {
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #444;
+}
+
+/* Estado de justificación */
+.absence-status {
+  display: flex;
+  align-items: center;
+}
+
+.justified-label {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #dcfce7;
+  color: #15803d;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pending-label {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #fee2e2;
+  color: #b91c1c;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

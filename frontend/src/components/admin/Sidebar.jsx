@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {Home, UserCheck, Settings, Shield, Clock,Scan, LayoutGrid, UserCog, Menu, X, Calendar} from "lucide-react";
+import {Home, UserCheck, Settings, Shield, Clock,Scan, LayoutGrid, UserCog, UserX, Menu, X, Calendar} from "lucide-react";
 import "../../components/styles/Sidebar.css";
 import logoRical from "../../img/logo_rical.png";
 import UserFaceCardSimple from "../Perfil/UserFaceCardSimple.jsx"
@@ -21,6 +21,7 @@ export default function Sidebar() {
     { name: "Gestión de administradores", path: "/admin-dashboard/usuarios", icon: Settings },
     { name: "Gestión de permisos", path: "/admin-dashboard/permisos", icon: Shield },
     { name: "Historial de accesos", path: "/admin-dashboard/historial", icon: Clock },
+    { name: "inasistencias", path: "/admin-dashboard/inasistencias", icon: UserX},
     { name: "Registros faciales", path: "/admin-dashboard/registros", icon: Scan },
     { name: "Gestión de áreas", path: "/admin-dashboard/areas", icon: LayoutGrid },
     { name: "Horarios", path: "/admin-dashboard/horarios", icon: Calendar },

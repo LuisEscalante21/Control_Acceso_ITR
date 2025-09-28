@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import Swal from "sweetalert2";
 import RostroReconocido from "../../../../backend/audio/RostroReconocido.mp3";
 
 export default function useFaceRecognition(
@@ -8,24 +7,12 @@ export default function useFaceRecognition(
 ) {
   const [recognized, setRecognized] = useState(null);
 
-  // Desbloquear audio tras primer clic del usuario
-  useEffect(() => {
-    const unlockAudio = () => {
-      const audio = new Audio(RostroReconocido);
-      audio.play().catch(() => {});
-      window.removeEventListener("click", unlockAudio);
-    };
-    window.addEventListener("click", unlockAudio);
-  }, []);
-
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(pollUrl, {
           headers: {
-            Authorization: `Bearer ${
-              import.meta.env.VITE_RECONOCIMIENTO_API_KEY
-            }`,
+            Authorization: `Bearer ${import.meta.env.VITE_RECONOCIMIENTO_API_KEY}`,
           },
         });
 
@@ -35,30 +22,22 @@ export default function useFaceRecognition(
         }
 
         const data = await res.json();
-        console.log("Polling data:", data); // <-- log para depuración
+        console.log("Polling data:", data);
 
         // Si se reconoce un rostro nuevo
         if (data.reconocido && data.id !== recognized?.id) {
-          setRecognized(data);
-
-          const saludo =
-            data.gender?.toLowerCase() === "femenino"
-              ? "Bienvenida"
-              : "Bienvenido";
-
-          Swal.fire({
-            title: `${saludo} ${data.nombre || "Empleado"}`,
-            text: "Rostro reconocido correctamente",
-            icon: "success",
-            timer: 3000,
-            showConfirmButton: false,
+          console.log("Nuevo rostro reconocido:", {
+            id: data.id,
+            nombre: data.nombre,
+            gender: data.gender,
+            tipo: data.tipo,
           });
 
-          // Reproducir audio
+          setRecognized(data);
+
+          // Reproducir audio automáticamente
           const audio = new Audio(RostroReconocido);
-          audio
-            .play()
-            .catch((e) => console.error("Error reproduciendo audio:", e));
+          audio.play().catch((e) => console.error("Error reproduciendo audio:", e));
         }
       } catch (error) {
         console.error("Error consultando estado:", error);

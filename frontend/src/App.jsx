@@ -20,6 +20,7 @@ import Empleados from "./pages/admin/Empleados.jsx";
 import Coordinators from "./pages/admin/Coordinadores.jsx";
 import Admins from "./pages/admin/Admins.jsx";
 import Accesos from "./pages/admin/Accesos.jsx";
+import Absences from "./pages/admin/Absences.jsx";
 import Areas from "./pages/admin/Areas.jsx";
 import Horarios from "./pages/admin/Horarios.jsx";
 import Rostros from "./pages/admin/Rostros.jsx";
@@ -31,6 +32,7 @@ import HomeCoordinator from "./components/coordinator/home.jsx";
 import EmpleadosC from "./pages/coordinator/Empleados.jsx";
 import CoordinatorAccesos from "./pages/coordinator/Accesos.jsx";
 import CoordinatorPermisos from "./pages/coordinator/Permisos.jsx";
+import CoordinatorsInasistencias from "./pages/coordinator/Absences.jsx";
 
 // Employee
 import EmployeeDashboard from "./pages/employee/Dashboard.jsx";
@@ -84,6 +86,7 @@ function App() {
           <Route path="usuarios" element={<Admins />} />
           <Route path="permisos" element={<PermisosAdmin />} />
           <Route path="historial" element={<Accesos />} />
+          <Route path="inasistencias" element={<Absences />} />
           <Route path="registros" element={<Rostros />} />
           <Route path="areas" element={<Areas />} />
           <Route path="*" element={<Error404 />} />
@@ -103,6 +106,7 @@ function App() {
           <Route path="empleado" element={<EmpleadosC />} />
           <Route path="permisosC" element={<CoordinatorPermisos />} />
           <Route path="historial" element={<CoordinatorAccesos />} />
+          <Route path="inasistencias" element={<CoordinatorsInasistencias />} />
 
           <Route path="*" element={<Error404 />} />
         </Route>

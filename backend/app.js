@@ -16,6 +16,7 @@ import registerEmployeesRoutes from "./src/routes/registerEmployees.js";
 import cors from 'cors';
 import authRoutes from "./src/routes/authRoutes.js";
 import registerCoordinatorsRoutes from "./src/routes/registerCoordinators.js";
+import absences from "./src/routes/absenceRoutes.js";
 import teamsRoutes from "./src/routes/teamsRoutes.js";
 import ScheduleRoutes from "./src/routes/schedules.js";
 import usersRoutes from "./src/routes/UserRoute.js";
@@ -31,7 +32,7 @@ const app = express();
 
 // Configurar CORS
 const corsOptions = {
-  origin: "http://localhost:5173", // 👈 aquí pones la URL de tu frontend
+  origin: "http://localhost:5173", 
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -53,25 +54,26 @@ const swaggerDocument = JSON.parse(
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Rutas públicas
-app.use("/api/login", loginRoutes);
-app.use("/api/registerEmployees", registerEmployeesRoutes);
-app.use("/api/registerAdministrators", registerAdministratorsRoutes);
-app.use("/api/registerCoordinators", registerCoordinatorsRoutes);
-app.use("/api/recoveryPassword", recoveryPasswordRoutes);
-app.use("/api/forcePasswordUpdate", newPasswordRoutes);
+app.use("/api/login", loginRoutes); // Ruta de login
+app.use("/api/registerEmployees", registerEmployeesRoutes); // Nueva ruta para registrar empleados
+app.use("/api/registerAdministrators", registerAdministratorsRoutes); // Nueva ruta para registrar administradores
+app.use("/api/registerCoordinators", registerCoordinatorsRoutes); // Nueva ruta para registrar coordinadores
+app.use("/api/recoveryPassword", recoveryPasswordRoutes); // Para recuperación de contraseña
+app.use("/api/forcePasswordUpdate", newPasswordRoutes); // Para forzar cambio de contraseña
 
 // Rutas privadas (requieren autenticación)
-app.use("/api/checkAuth", authRoutes);
-app.use("/api/employee", authMiddleware, employeeRoutes);
-app.use("/api/schedules", authMiddleware, ScheduleRoutes);
-app.use("/api/logout", authMiddleware, logoutRoutes);
-app.use("/api/coordinators", authMiddleware, coordinatorsRoutes);
-app.use("/api/administrators", authMiddleware, administratorsRoutes);
-app.use("/api/teams", authMiddleware, teamsRoutes);
-app.use("/api/permissions", authMiddleware, permissionsRoutes);
-app.use("/api/justifications", authMiddleware, justificationsRoutes);
-app.use("/api/reports", authMiddleware, reportRoutes);
-app.use("/api/users", authMiddleware, usersRoutes);
-app.use("/api/profile", authMiddleware, profileRoutes);
+app.use("/api/checkAuth", authRoutes); // Ruta para verificar token
+app.use("/api/employee", authMiddleware, employeeRoutes); // Rutas de empleados
+app.use("/api/schedules", authMiddleware, ScheduleRoutes); // Rutas de horarios
+app.use("/api/logout", authMiddleware, logoutRoutes); // Rutas de logout
+app.use("/api/coordinators", authMiddleware, coordinatorsRoutes); // Rutas de coordinadores
+app.use("/api/administrators", authMiddleware, administratorsRoutes); // Rutas de administradores
+app.use("/api/teams", authMiddleware, teamsRoutes); // Rutas de equipos
+app.use("/api/permissions", authMiddleware, permissionsRoutes); // Rutas de permisos
+app.use("/api/justifications", authMiddleware, justificationsRoutes); // Rutas de justificaciones
+app.use("/api/reports", authMiddleware, reportRoutes); // Rutas de reportes
+app.use("/api/users", authMiddleware, usersRoutes); // Rutas de gestión de usuarios
+app.use("/api/profile", authMiddleware, profileRoutes); // Rutas de perfil
+app.use("/api/absences", authMiddleware, absences); // Rutas de inasistencias
 
 export default app;
