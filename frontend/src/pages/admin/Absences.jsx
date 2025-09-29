@@ -13,6 +13,7 @@ const justifyOptions = ["Todas", "Justificadas", "Sin justificar"];
 const Absences = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [selectedArea, setSelectedArea] = useState("Todas");
+  const [selectedAreaId, setSelectedAreaId] = useState(null);
   const [selectedJustify, setSelectedJustify] = useState(justifyOptions[0]);
   const [searchText, setSearchText] = useState("");
   const [viewJustify, setViewJustify] = useState(null);
@@ -42,14 +43,23 @@ const Absences = () => {
     justificationMap,
     fetchAbsenceRecords,
     fetchJustifications,
+    loading,
   } = useDataAbsences(empleadoId);
   const { teams: areaOptions, fetchTeams } = useDataTeams();
 
+  // Cargar datos iniciales
   useEffect(() => {
-    fetchAbsenceRecords();
     fetchJustifications();
     fetchTeams();
+    fetchAbsenceRecords();
   }, []);
+
+  // ⭐ Recargar inasistencias cuando cambia el área seleccionada
+  useEffect(() => {
+    if (selectedAreaId !== undefined) {
+      fetchAbsenceRecords({ idTeam: selectedAreaId });
+    }
+  }, [selectedAreaId]);
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -66,8 +76,11 @@ const Absences = () => {
       }
     }
 
-    if (openDropdown) document.addEventListener("mousedown", handleClickOutside);
-    else document.removeEventListener("mousedown", handleClickOutside);
+    if (openDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openDropdown]);
@@ -76,8 +89,9 @@ const Absences = () => {
     setOpenDropdown(openDropdown === dropdown ? null : dropdown);
   };
 
-  const handleSelectArea = (option) => {
+  const handleSelectArea = (option, areaId = null) => {
     setSelectedArea(option);
+    setSelectedAreaId(areaId);
     setOpenDropdown(null);
   };
 
@@ -86,18 +100,16 @@ const Absences = () => {
     setOpenDropdown(null);
   };
 
-  // Filtrado
+  // Filtrado (solo justificación y búsqueda, el área se filtra en backend)
   const filteredAbsences = absenceRecords
     .filter((absence) => {
+      // Filtro por justificación
       if (selectedJustify === "Justificadas") return !!justificationMap?.[absence._id];
       else if (selectedJustify === "Sin justificar") return !justificationMap?.[absence._id];
       return true;
     })
     .filter((absence) => {
-      if (selectedArea === "Todas") return true;
-      return absence.areaName === selectedArea;
-    })
-    .filter((absence) => {
+      // Filtro por búsqueda de nombre
       if (!searchText.trim()) return true;
       const nombre = absence.employeeName?.toLowerCase() || "";
       return nombre.includes(searchText.toLowerCase());
@@ -130,7 +142,7 @@ const Absences = () => {
             {openDropdown === "area" && (
               <div className="dropdown-menu docentes">
                 <button
-                  onClick={() => handleSelectArea("Todas")}
+                  onClick={() => handleSelectArea("Todas", null)}
                   className={selectedArea === "Todas" ? "selected" : ""}
                 >
                   Todas las áreas
@@ -138,7 +150,7 @@ const Absences = () => {
                 {areaOptions.map((area) => (
                   <button
                     key={area._id}
-                    onClick={() => handleSelectArea(area.name)}
+                    onClick={() => handleSelectArea(area.name, area._id)}
                     className={selectedArea === area.name ? "selected" : ""}
                   >
                     {area.name}
@@ -176,7 +188,9 @@ const Absences = () => {
       {/* Lista de inasistencias */}
       <div className="absence-list-container">
         <div className="absence-list">
-          {filteredAbsences.length === 0 ? (
+          {loading ? (
+            <p>Cargando inasistencias...</p>
+          ) : filteredAbsences.length === 0 ? (
             <p>No hay inasistencias para mostrar.</p>
           ) : (
             filteredAbsences.map((absence, index) => (

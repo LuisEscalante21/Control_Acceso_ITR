@@ -5,7 +5,6 @@ import "../../styles/videoCapture/VideoDashboard.css";
 
 export default function VideoDashboard() {
   const [time, setTime] = useState(new Date());
-  const [showAlert, setShowAlert] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [accessRegistered, setAccessRegistered] = useState(false);
   const recognized = useFaceRecognition();
@@ -18,10 +17,7 @@ export default function VideoDashboard() {
   // Resetear estado cuando cambia el rostro reconocido
   useEffect(() => {
     if (recognized) {
-      setShowAlert(true);
       setAccessRegistered(false); // Resetear acceso registrado para nuevo rostro
-      const timer = setTimeout(() => setShowAlert(false), 3000);
-      return () => clearTimeout(timer);
     }
   }, [recognized]);
 
@@ -65,10 +61,8 @@ export default function VideoDashboard() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const now = new Date();
-      const currentHour = now.getHours();
-      const isEntryTime = currentHour >= 6 && currentHour < 14;
-      const accessType = isEntryTime ? "entrada" : "salida";
-
+      const accessType = recognized.tipo || "entrada";
+      
       const accessData = {
         id_Employee: recognized.id,
         date: now.toISOString().split('T')[0],
@@ -83,8 +77,6 @@ export default function VideoDashboard() {
         accessData.exit_result = "Reconocido";
       }
 
-      console.log("Enviando datos de acceso:", accessData);
-
       const response = await fetch("http://localhost:4800/api/access", {
         method: "POST",
         headers: {
@@ -94,16 +86,10 @@ export default function VideoDashboard() {
         body: JSON.stringify(accessData)
       });
 
-      console.log("Status de respuesta:", response.status);
-
       if (response.ok) {
         const result = await response.json();
-        console.log("Respuesta del backend:", result);
-        
-        // Marcar como registrado para este empleado
         setAccessRegistered(true);
-        
-        // SEGUNDA ALERTA: Mostrar acceso registrado
+
         await Swal.fire({
           title: "¡Acceso registrado manualmente!",
           html: `
@@ -122,11 +108,9 @@ export default function VideoDashboard() {
         });
       } else {
         const errorText = await response.text();
-        console.error("Error del servidor:", response.status, errorText);
         throw new Error(`Error ${response.status}: ${errorText}`);
       }
     } catch (error) {
-      console.error("Error registrando acceso:", error);
       Swal.fire({
         title: "Error",
         text: `No se pudo registrar el acceso: ${error.message}`,
@@ -146,16 +130,6 @@ export default function VideoDashboard() {
   return (
     <div className="vd-shell">
       <div className="vd-board">
-        {/* Alerta horizontal */}
-        <div className={`vd-alert ${showAlert ? "vd-alert--show" : ""}`}>
-          {recognized && showAlert ? (
-            <>
-              <span className="vd-dot" /> Rostro reconocido:{" "}
-              <b>{recognized.nombre || recognized.id}</b>
-            </>
-          ) : null}
-        </div>
-        
         <div className="vd-content">
           {/* Header */}
           <div className="vd-header">
@@ -198,7 +172,7 @@ export default function VideoDashboard() {
               ) : accessRegistered ? (
                 'Acceso Ya Registrado'
               ) : (
-                'Registrar Acceso Manual'
+                `Registrar ${recognized?.tipo === "salida" ? "Salida" : "Entrada"} Manual`
               )}
             </button>
             
@@ -207,7 +181,7 @@ export default function VideoDashboard() {
                 ? "Espera a ser reconocido para registrar acceso manual"
                 : accessRegistered
                 ? "Acceso registrado. Espere reconocimiento de otro empleado."
-                : "Presiona para registrar tu acceso manualmente (se evaluará según tu horario)"
+                : `Presiona para registrar tu ${recognized.tipo || "acceso"} manualmente (se evaluará según tu horario)`
               }
             </div>
           </div>

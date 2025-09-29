@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
 import "../../styles/coordinators/Inasistencias.css";
-import useDataAbsences from "../../hooks/admin/useDataAbsences.jsx";
+import useDataAbsences from "../../hooks/coordinators/useDataAbsences.jsx";
 import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
@@ -13,7 +13,7 @@ const Absences = () => {
   const [searchText, setSearchText] = useState("");
   const [viewJustify, setViewJustify] = useState(null);
 
-  // Leer info del usuario desde cookie cifrada
+  // 🔹 Leer info del usuario desde cookie cifrada
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
   const encryptedUserInfo = Cookies.get("userInfo");
@@ -30,30 +30,41 @@ const Absences = () => {
   const empleadoId = userInfo?._id || null;
   const teamId = userInfo?.teamId || null;
 
-  // Hooks
-  const { absenceRecords, justificationMap, fetchAbsenceRecords, fetchJustifications } =
-    useDataAbsences(empleadoId);
+  // 🔹 Hook de datos
+  const {
+    absenceRecords,
+    justificationMap,
+    fetchAbsenceRecords,
+    fetchJustifications,
+  } = useDataAbsences(empleadoId);
 
+  // 🔹 Cargar registros cuando cambian los filtros
   useEffect(() => {
-    fetchAbsenceRecords();
-    fetchJustifications();
-  }, []);
+    const loadAbsences = async () => {
+      if (selectedAreaFilter === "Mis inasistencias") {
+        await fetchAbsenceRecords({ onlyMine: true });
+      } else {
+        await fetchAbsenceRecords({ idTeam: teamId });
+      }
+      await fetchJustifications();
+    };
+    loadAbsences();
+  }, [selectedAreaFilter, teamId]);
 
-  // Filtrado
+  // 🔹 Filtro extra (justificación + búsqueda) en frontend
   const filteredAbsences = absenceRecords
-    .filter((absence) => absence.teamId === teamId)
     .filter((absence) => {
-      if (selectedAreaFilter === "Mis inasistencias") return absence.employeeId === empleadoId;
-      return true;
-    })
-    .filter((absence) => {
-      if (selectedJustify === "Justificadas") return !!justificationMap?.[absence._id];
-      if (selectedJustify === "Sin justificar") return !justificationMap?.[absence._id];
+      if (selectedJustify === "Justificadas")
+        return !!justificationMap?.[absence._id];
+      if (selectedJustify === "Sin justificar")
+        return !justificationMap?.[absence._id];
       return true;
     })
     .filter((absence) => {
       if (!searchText.trim()) return true;
-      return absence.employeeName?.toLowerCase().includes(searchText.toLowerCase());
+      return absence.employeeName
+        ?.toLowerCase()
+        .includes(searchText.toLowerCase());
     });
 
   return (
@@ -80,7 +91,7 @@ const Absences = () => {
               onChange={(e) => setSelectedAreaFilter(e.target.value)}
               className="filter-dropdown"
             >
-              <option value="Todos">Todos</option>
+              <option value="Todos">Todos (mi área)</option>
               <option value="Mis inasistencias">Mis inasistencias</option>
             </select>
           </div>
@@ -115,7 +126,9 @@ const Absences = () => {
                 date={absence.date}
                 isJustified={!!justificationMap?.[absence._id]}
                 justification={justificationMap?.[absence._id]}
-                onViewJustification={() => setViewJustify(justificationMap?.[absence._id])}
+                onViewJustification={() =>
+                  setViewJustify(justificationMap?.[absence._id])
+                }
               />
             ))
           )}

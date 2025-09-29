@@ -1,14 +1,29 @@
-import Absence from "../models/Absences.js"; //
+import Absence from "../models/Absences.js";
 
 const absencesController = {};
 
 // --------------------------------------------------------------------------
-// 🔹 GET ALL (Obtener todas las inasistencias)
+// 🔹 GET ALL (Obtener todas las inasistencias con filtros)
 // --------------------------------------------------------------------------
 absencesController.getAbsences = async (req, res) => {
   try {
-    // Puedes añadir filtros, paginación o populate aquí si fuera necesario
-    const absences = await Absence.find().sort({ date: -1, createdAt: -1 });
+    const { idTeam, onlyEmployeeId } = req.query;
+    
+    // Construir filtro dinámico
+    const filter = {};
+    
+    if (idTeam && idTeam !== 'Todas') {
+      filter.idTeam = idTeam;
+    }
+    
+    if (onlyEmployeeId) {
+      filter.id_Employee = onlyEmployeeId;
+    }
+    
+    const absences = await Absence.find(filter)
+      .sort({ date: -1, createdAt: -1 })
+      .populate('idTeam', 'name'); // Populate para obtener el nombre del equipo
+    
     res.status(200).json(absences);
   } catch (error) {
     console.error("Error retrieving absences:", error);
@@ -21,7 +36,7 @@ absencesController.getAbsences = async (req, res) => {
 // --------------------------------------------------------------------------
 absencesController.getAbsenceById = async (req, res) => {
   try {
-    const absence = await Absence.findById(req.params.id);
+    const absence = await Absence.findById(req.params.id).populate('idTeam', 'name');
     if (!absence) {
       return res.status(404).json({ message: "Absence record not found" });
     }
@@ -40,51 +55,47 @@ absencesController.createOrUpdateAbsence = async (req, res) => {
   try {
     const {
       id_Employee,
-      date, // Formato YYYY-MM-DD
-      reason, // "Ausencia total", "Ausencia de entrada", "Ausencia de salida"
+      date,
+      reason,
       names,
       surnames,
       employee_type,
+      idTeam,
     } = req.body;
 
-    // 1. 🔹 Validación de campos mínimos
     if (!id_Employee?.trim() || !date?.trim() || !reason?.trim()) {
       return res.status(400).json({ message: "Missing required fields: id_Employee, date, or reason" });
     }
     
-    // 2. 🔹 Definir el filtro de búsqueda (para upsert)
     const filter = { id_Employee, date };
 
-    // 3. 🔹 Definir los datos a insertar/actualizar
     const updateData = {
-        id_Employee,
-        date,
-        reason,
-        names,
-        surnames,
-        employee_type,
-        registered_at: new Date(), // Actualiza la fecha de registro en cada upsert
-        // No incluimos 'createdAt' aquí, ya que 'timestamps: true' lo maneja Mongoose
+      id_Employee,
+      date,
+      reason,
+      names,
+      surnames,
+      employee_type,
+      idTeam,
+      registered_at: new Date(),
     };
 
-    // 4. 🔹 Ejecutar FindOneAndUpdate con upsert: true
     const absence = await Absence.findOneAndUpdate(
-        filter, 
-        { $set: updateData }, 
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-    );
+      filter, 
+      { $set: updateData }, 
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    ).populate('idTeam', 'name');
 
     res.status(201).json({
       message: absence.__v === 0 ? "Absence record created successfully" : "Absence record updated successfully",
       absence,
     });
   } catch (error) {
-    // 🚨 Manejar error de índice único si el script intenta insertarlo dos veces
     if (error.code === 11000) {
-        return res.status(409).json({ 
-            message: "Absence record already exists for this employee and date", 
-            error: error.message
-        });
+      return res.status(409).json({ 
+        message: "Absence record already exists for this employee and date", 
+        error: error.message
+      });
     }
     console.error("Error creating/updating absence:", error);
     res.status(500).json({ message: "Error creating/updating absence", error: error.message });
@@ -96,24 +107,22 @@ absencesController.createOrUpdateAbsence = async (req, res) => {
 // --------------------------------------------------------------------------
 absencesController.updateAbsence = async (req, res) => {
   try {
-    // No se necesita desestructurar todos los campos, solo los que se actualizan
     const updateFields = {
-        reason: req.body.reason,
-        names: req.body.names,
-        surnames: req.body.surnames,
-        employee_type: req.body.employee_type,
-        date: req.body.date, // Actualizar la fecha es peligroso, pero lo permitimos si es necesario
+      reason: req.body.reason,
+      names: req.body.names,
+      surnames: req.body.surnames,
+      employee_type: req.body.employee_type,
+      date: req.body.date,
+      idTeam: req.body.idTeam,
     };
     
-    // Eliminar campos indefinidos para no sobrescribir con null
     Object.keys(updateFields).forEach(key => updateFields[key] === undefined && delete updateFields[key]);
 
-
     const absence = await Absence.findByIdAndUpdate(
-        req.params.id, 
-        { $set: updateFields },
-        { new: true, runValidators: true }
-    );
+      req.params.id, 
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    ).populate('idTeam', 'name');
 
     if (!absence) {
       return res.status(404).json({ message: "Absence record not found" });
@@ -145,6 +154,5 @@ absencesController.deleteAbsence = async (req, res) => {
     res.status(500).json({ message: "Error deleting absence", error: error.message });
   }
 };
-
 
 export default absencesController;

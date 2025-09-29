@@ -3,6 +3,7 @@ import requests
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from bson import ObjectId
 
 # Cargar variables de entorno
 load_dotenv()
@@ -16,8 +17,9 @@ API_KEY = os.getenv("API_ACCESS_KEY")
 # Nombres de colecciones
 EMPLOYEE_COLLECTION_NAME = "employees"
 ACCESS_COLLECTION_NAME = "registrationAccess"
-COORDINATOR_COLLECTION_NAME = "coordinators" # Incluir si manejan horarios
-ADMIN_COLLECTION_NAME = "administrators"     # Excluir de inasistencias
+COORDINATOR_COLLECTION_NAME = "coordinators"
+ADMIN_COLLECTION_NAME = "administrators"
+PERMISSIONS_COLLECTION_NAME = "permissions" 
 
 # Conexión a MongoDB
 client = MongoClient(MONGO_URI)
@@ -25,6 +27,7 @@ db = client[DB_NAME]
 employee_collection = db[EMPLOYEE_COLLECTION_NAME]
 access_collection = db[ACCESS_COLLECTION_NAME]
 coordinator_collection = db[COORDINATOR_COLLECTION_NAME]
+permissions_collection = db[PERMISSIONS_COLLECTION_NAME]  
 
 # -----------------------------------------------------------
 # Utilidades
@@ -49,7 +52,6 @@ def _normalize_schedule_keys(schedule: dict) -> dict:
                 out[dia_k][_norm(sec)] = data
     return out
 
-#S|
 def get_expected_schedule(schedule: dict, target_date: datetime):
     """Obtiene el horario de trabajo esperado para un día específico."""
     dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -60,7 +62,6 @@ def get_expected_schedule(schedule: dict, target_date: datetime):
     
     expected_blocks = schedule_n.get(dia_n, {})
     
-    # 🔹 Simplificar el retorno para el registro de inasistencia
     # Solo devolver bloques que tienen 'start' y 'end'
     simplified_schedule = {}
     for sec, data in expected_blocks.items():
@@ -70,18 +71,92 @@ def get_expected_schedule(schedule: dict, target_date: datetime):
     return dia_str, simplified_schedule
 
 # -----------------------------------------------------------
+# FUNCIÓN: Verificar si hay permiso aprobado
+# -----------------------------------------------------------
+def has_approved_permission(user_id: str, target_date: datetime) -> dict:
+    """
+    Verifica si el usuario tiene un permiso APROBADO que cubra la fecha objetivo.
+    Consulta directamente MongoDB por eficiencia.
+    Retorna: {"has_permission": bool, "permission_type": str, "reason": str}
+    """
+    target_date_str = target_date.strftime("%Y-%m-%d")
+    
+    # Consulta directa a MongoDB
+    permissions = permissions_collection.find({
+        "idUser": user_id,
+        "status": "approved"
+    })
+    
+    for perm in permissions:
+        perm_type = perm.get("permissionType")
+        
+        # Permiso menor (horas específicas en un día)
+        if perm_type == "minor":
+            perm_date = perm.get("permissionDate")
+            if perm_date and perm_date == target_date_str:
+                return {
+                    "has_permission": True,
+                    "permission_type": "Permiso menor (horas)",
+                    "reason": perm.get("reason", "Permiso aprobado"),
+                    "details": f"De {perm.get('startTime')} a {perm.get('endTime')}"
+                }
+        
+        # Permiso mayor (días completos)
+        elif perm_type == "major":
+            date_from = perm.get("permissionDateFrom")
+            date_to = perm.get("permissionDateTo")
+            
+            if date_from and date_to:
+                try:
+                    from_dt = datetime.strptime(date_from, "%Y-%m-%d")
+                    to_dt = datetime.strptime(date_to, "%Y-%m-%d")
+                    
+                    if from_dt.date() <= target_date.date() <= to_dt.date():
+                        return {
+                            "has_permission": True,
+                            "permission_type": "Permiso mayor",
+                            "reason": perm.get("reason", "Permiso aprobado"),
+                            "details": f"Del {date_from} al {date_to}"
+                        }
+                except ValueError:
+                    continue
+        
+        # Incapacidad (días completos)
+        elif perm_type == "incapacity":
+            date_from = perm.get("sickLeaveDateFrom")
+            date_to = perm.get("sickLeaveDateTo")
+            
+            if date_from and date_to:
+                try:
+                    from_dt = datetime.strptime(date_from, "%Y-%m-%d")
+                    to_dt = datetime.strptime(date_to, "%Y-%m-%d")
+                    
+                    if from_dt.date() <= target_date.date() <= to_dt.date():
+                        return {
+                            "has_permission": True,
+                            "permission_type": "Incapacidad",
+                            "reason": perm.get("illnessType", "Incapacidad médica"),
+                            "details": f"Del {date_from} al {date_to}"
+                        }
+                except ValueError:
+                    continue
+    
+    return {"has_permission": False}
+
+# -----------------------------------------------------------
 # Lógica Principal
 # -----------------------------------------------------------
 def check_absences(target_date: datetime):
     """
     Busca inasistencias (ausencia de registro de entrada/salida)
-    para la fecha objetivo.
+    para la fecha objetivo, EXCLUYENDO empleados con permisos aprobados.
     """
     target_date_str = target_date.strftime("%Y-%m-%d")
-    print(f"Buscando inasistencias para la fecha: {target_date_str}...")
+    print(f"\n{'='*60}")
+    print(f"Buscando inasistencias para la fecha: {target_date_str}")
+    print(f"{'='*60}\n")
 
-    # 🔹 1. Obtener todos los empleados (y coordinadores, si aplican)
-    # Excluir Administradores ya que su acceso puede ser diferente o libre
+    # Obtener todos los empleados (y coordinadores)
     user_data = []
     
     # Empleados
@@ -94,7 +169,7 @@ def check_absences(target_date: datetime):
             "employee_type": "Employee"
         })
         
-    # Coordinadores (asumiendo que tienen un horario que deben cumplir)
+    # Coordinadores
     for user in coordinator_collection.find({"schedule": {"$exists": True, "$ne": {}}}):
         user_data.append({
             "id_Employee": str(user["_id"]),
@@ -104,55 +179,69 @@ def check_absences(target_date: datetime):
             "employee_type": "Coordinator"
         })
 
-    print(f"Total de usuarios con horario a verificar: {len(user_data)}")
+    print(f"Total de usuarios con horario a verificar: {len(user_data)}\n")
     
-    # 🔹 2. Iterar sobre cada usuario y verificar su horario/acceso
+    # Contadores
+    total_absences = 0
+    total_with_permission = 0
+    total_checked = 0
+    
+    # Iterar sobre cada usuario
     for user in user_data:
         emp_id = user["id_Employee"]
         schedule = user["schedule"]
+        full_name = f"{user['names']} {user['surnames']}"
         
         dia_str, expected_schedule = get_expected_schedule(schedule, target_date)
         
         if not expected_schedule:
-            # print(f" - {user['names']} {user['surnames']} ({emp_id}): Sin horario para el {dia_str}.")
-            continue # No hay horario asignado para ese día
+            continue  # No hay horario asignado para ese día
+        
+        total_checked += 1
 
-        # 🔹 3. Buscar el registro de acceso para ese usuario en la fecha
+        # VERIFICAR SI HAY PERMISO APROBADO
+        permission_check = has_approved_permission(emp_id, target_date)
+        
+        if permission_check["has_permission"]:
+            total_with_permission += 1
+            print(f"✓ {full_name} ({emp_id})")
+            print(f"  └─ Tiene permiso aprobado: {permission_check['permission_type']}")
+            print(f"     Motivo: {permission_check['reason']}")
+            print(f"     {permission_check['details']}")
+            print(f"     ➜ NO se marca como inasistencia\n")
+            continue  # Saltar, no marcar inasistencia
+
+        # Buscar el registro de acceso
         access_record = access_collection.find_one({
             "id_Employee": emp_id,
             "date": target_date_str
         })
         
-        # 🔹 4. Determinar el tipo de inasistencia
+        # Determinar el tipo de inasistencia
         is_missing_entry = False
         is_missing_exit = False
         
-        for sec in expected_schedule:
-            # Si hay horario (entrada/salida) para una sección, y NO hay registro en Mongo
-            if "entry_time" not in access_record or access_record.get("entry_time") is None:
-                is_missing_entry = True
-            
-            # Solo verificar salida si la entrada NO está en 'Salió antes' o 'Tarde' (o si el turno es largo)
-            # Para simplificar, solo verificamos si el campo exit_time está o no en el registro.
-            if "exit_time" not in access_record or access_record.get("exit_time") is None:
-                is_missing_exit = True
-            
-            # Si ya encontramos una falta en cualquier bloque, salimos de la verificación de bloques
-            if is_missing_entry or is_missing_exit:
-                break
+        if not access_record or "entry_time" not in access_record or access_record.get("entry_time") is None:
+            is_missing_entry = True
         
+        if not access_record or "exit_time" not in access_record or access_record.get("exit_time") is None:
+            is_missing_exit = True
         
         reason = None
         if is_missing_entry and is_missing_exit:
-            reason = "Ausencia total" # No hay registro de entrada ni de salida
+            reason = "Ausencia total"
         elif is_missing_entry:
-            reason = "Ausencia de entrada" # Solo falta la entrada
+            reason = "Ausencia de entrada"
         elif is_missing_exit:
-            reason = "Ausencia de salida" # Solo falta la salida
+            reason = "Ausencia de salida"
 
-        # 🔹 5. Registrar la inasistencia si aplica
+        # Registrar la inasistencia si aplica
         if reason:
-            print(f"🚨 INASISTENCIA: {user['names']} {user['surnames']} - {reason} para el {target_date_str}")
+            total_absences += 1
+            print(f"🚨 INASISTENCIA: {full_name}")
+            print(f"   Tipo: {reason}")
+            print(f"   Fecha: {target_date_str}")
+            print(f"   Horario esperado: {expected_schedule}\n")
             
             absence_payload = {
                 "id_Employee": emp_id,
@@ -165,6 +254,14 @@ def check_absences(target_date: datetime):
             }
             
             register_absence_via_api(absence_payload)
+    
+    print(f"\n{'='*60}")
+    print(f"RESUMEN DE VERIFICACIÓN")
+    print(f"{'='*60}")
+    print(f"Empleados verificados con horario: {total_checked}")
+    print(f"Con permiso aprobado (exentos): {total_with_permission}")
+    print(f"Inasistencias registradas: {total_absences}")
+    print(f"{'='*60}\n")
 
 
 def register_absence_via_api(payload: dict):
@@ -178,26 +275,23 @@ def register_absence_via_api(payload: dict):
     
     try:
         response = requests.post(API_URL, json=payload, headers=headers)
-        response.raise_for_status() # Lanza HTTPError si la respuesta es 4xx o 5xx
-        print(f" ✓ Registro API exitoso. Status: {response.status_code}")
+        response.raise_for_status()
+        print(f"   ✓ Registro API exitoso. Status: {response.status_code}")
     except requests.exceptions.RequestException as e:
-        print(f"ERROR al registrar inasistencia via API: {e}")
+        print(f"   ✗ ERROR al registrar inasistencia via API: {e}")
         try:
-            print(f"    Respuesta del servidor: {response.text}")
+            print(f"      Respuesta del servidor: {response.text}")
         except:
             pass
-
 
 # -----------------------------------------------------------
 # Ejecución
 # -----------------------------------------------------------
 if __name__ == "__main__":
-    # Obtener la fecha del día anterior (ideal para ejecutar a medianoche)
+    # Obtener la fecha del día anterior
     yesterday = datetime.now().date() - timedelta(days=1)
-    
-    # Transformar a datetime para usar en la función
     target_date = datetime.combine(yesterday, datetime.min.time()) 
     
     check_absences(target_date)
-
-    print("Proceso de verificación de inasistencias finalizado.")
+    
+    print(" Proceso de verificación de inasistencias finalizado.")

@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
 import "../../styles/employee/Inasistencias.css";
-import useDataAbsences from "../../hooks/admin/useDataAbsences.jsx";
+import useDataAbsences from "../../hooks/employee/useDataAbsences.jsx";
 import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 

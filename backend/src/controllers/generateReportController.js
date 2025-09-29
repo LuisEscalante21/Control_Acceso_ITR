@@ -4,6 +4,7 @@ import JustificationLateArrival from "../models/Justifications.js";
 import Permissions from "../models/Permissions.js";
 import Team from "../models/Teams.js";
 import Access from "../models/registrationAccess.js";
+import Absence from "../models/Absences.js"; // ✅ Importar inasistencias
 import { Types } from "mongoose";
 import path from "path";
 import fs from "fs";
@@ -31,11 +32,10 @@ generateReportController.generateUserReport = async (req, res) => {
 
     const justifications = await JustificationLateArrival.find({ userId });
     const permissions = await Permissions.find({ idUser: userId });
-
-    // Aquí: traemos los registros de acceso para ese usuario
     const accessRecords = await Access.find({ id_Employee: userId }).sort({ date: 1 });
 
-    console.log("accessRecords:", accessRecords);  // <-- log para ver qué trae
+    // ✅ Obtener inasistencias del usuario
+    const absences = await Absence.find({ id_Employee: userId }).sort({ date: -1 });
 
     const doc = new PDFDocument({ margin: 50 });
     const fontPath = path.resolve("src/font/Roboto-Regular.ttf");
@@ -80,14 +80,14 @@ generateReportController.generateUserReport = async (req, res) => {
           const imageBuffer = Buffer.from(user.photo, "base64");
           doc.image(imageBuffer, 460, startY, { width: 100, height: 100, fit: [100, 100] });
         }
-      } catch (err) {
-        // ignorar fallo de imagen
-      }
+      } catch (err) {}
     }
 
     doc.moveDown(1.5);
 
-    // Permisos justo debajo de la info
+    // -----------------------------
+    // Permisos
+    // -----------------------------
     doc.fontSize(16).fillColor("#34495e").text("Permisos solicitados", { underline: true });
     doc.moveDown(0.5);
     if (permissions.length === 0) {
@@ -123,7 +123,28 @@ generateReportController.generateUserReport = async (req, res) => {
 
     doc.moveDown(1);
 
-    // Comparativo entradas
+    // -----------------------------
+    // Inasistencias
+    // -----------------------------
+    doc.addPage();
+    doc.fontSize(16).fillColor("#34495e").text("Inasistencias registradas", { underline: true });
+    doc.moveDown(0.5);
+    if (absences.length === 0) {
+      doc.fontSize(12).fillColor("#7f8c8d").text("No se encontraron inasistencias.");
+    } else {
+      absences.forEach((absence, idx) => {
+        doc.fontSize(12).fillColor("#000");
+        doc.text(`🔹 #${idx + 1} - Fecha: ${absence.date.toISOString().split("T")[0]}`);
+        doc.text(`     Motivo: ${absence.reason || "No especificado"}`);
+        doc.text(`     Tipo de empleado: ${absence.employee_type || "No definido"}`);
+        doc.moveDown(0.5);
+      });
+    }
+
+    // -----------------------------
+    // Accesos
+    // -----------------------------
+    doc.moveDown(1);
     doc.fontSize(16).fillColor("#34495e").text("Comparativo de Entradas", { underline: true });
     doc.moveDown(0.5);
     if (accessRecords.length === 0) {
@@ -136,10 +157,7 @@ generateReportController.generateUserReport = async (req, res) => {
       doc.moveDown(0.5);
       accessRecords.forEach(rec => {
         const dateStr = rec.date.toISOString().split("T")[0];
-        let eTime = "N/A";
-        if (rec.entry_time) {
-          eTime = new Date(rec.entry_time).toTimeString().split(" ")[0];
-        }
+        let eTime = rec.entry_time ? new Date(rec.entry_time).toTimeString().split(" ")[0] : "N/A";
         const res = rec.entry_result || "Sin registro";
         doc.fontSize(11).fillColor("#000");
         doc.text(dateStr, dateX);
@@ -150,8 +168,6 @@ generateReportController.generateUserReport = async (req, res) => {
     }
 
     doc.moveDown(1);
-
-    // Comparativo salidas
     doc.fontSize(16).fillColor("#34495e").text("Comparativo de Salidas", { underline: true });
     doc.moveDown(0.5);
     if (accessRecords.length === 0) {
@@ -164,10 +180,7 @@ generateReportController.generateUserReport = async (req, res) => {
       doc.moveDown(0.5);
       accessRecords.forEach(rec => {
         const dateStr = rec.date.toISOString().split("T")[0];
-        let exTime = "N/A";
-        if (rec.exit_time) {
-          exTime = new Date(rec.exit_time).toTimeString().split(" ")[0];
-        }
+        let exTime = rec.exit_time ? new Date(rec.exit_time).toTimeString().split(" ")[0] : "N/A";
         const res = rec.exit_result || "Sin registro";
         doc.fontSize(11).fillColor("#000");
         doc.text(dateStr, dateX);
@@ -177,9 +190,10 @@ generateReportController.generateUserReport = async (req, res) => {
       });
     }
 
+    // -----------------------------
+    // Justificaciones
+    // -----------------------------
     doc.moveDown(1);
-
-    // Justificaciones (debajo de las tablas)
     doc.fontSize(16).fillColor("#34495e").text("Justificaciones de llegadas tarde", { underline: true });
     doc.moveDown(0.5);
     if (justifications.length === 0) {

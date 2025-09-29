@@ -14,3 +14,5 @@ faiss-cpu
 cmake
 requests
 dotenv
+apscheduler==3.10.4
+pytz==2024.1

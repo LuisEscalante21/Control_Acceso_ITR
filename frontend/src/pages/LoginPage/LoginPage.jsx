@@ -197,7 +197,7 @@ const LoginPage = () => {
             {loading ? "Cargando..." : <b>Iniciar sesión</b>}
           </button>
         </form>
-
+        
         {/* 🔗 Enlace para recuperar contraseña (abre el modal de RECOVERY) */}
         <div style={{ marginTop: 12 }}>
           <button
