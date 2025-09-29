@@ -327,10 +327,8 @@ def obtener_todos_registros():
                 "$project": {
                     "_id": 1,
                     "date": 1,
-                    "entry_photo": 1,
                     "entry_result": 1,
                     "entry_time": 1,
-                    "exit_photo": 1,
                     "exit_result": 1,
                     "exit_time": 1,
                     "id_Employee": 1,
