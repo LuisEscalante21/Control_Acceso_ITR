@@ -88,7 +88,7 @@ export default function VideoDashboard() {
       const response = await fetch("http://localhost:4800/api/access", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${import.meta.env.VITE_ACCESS_API_KEY}`,
+          "Authorization": `Bearer ${"b11qp8D&UeX2@9"}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(accessData)

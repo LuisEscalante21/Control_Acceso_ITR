@@ -27,9 +27,6 @@ mongo_uri = os.getenv("DB_URI")
 port = int(os.getenv("PORT_RECONOCIMIENTO", 5000))
 db_name = os.getenv("DB_NAME", "PTC_2025")
 collection_name = os.getenv("DB_COLLECTION")
-SCHEDULES_URL = os.getenv("SCHEDULES_URL", "http://localhost:4000/api/schedules")
-ACCESS_API_URL = os.getenv("ACCESS_API_URL", "http://localhost:4800/api/access")
-ACCESS_API_KEY = os.getenv("API_ACCESS_KEY")
 
 # ---------------- DB ----------------
 mongo_client = MongoClient(mongo_uri)
@@ -106,66 +103,7 @@ def require_api_key(expected_key):
         return wrapper
     return decorator
 
-def determinar_tipo_acceso(schedule, ahora):
-    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-    dia = dias[ahora.weekday()]
-    seccion = "Matutino" if ahora.hour < 12 else "Vespertino"
-
-    dia_key = _norm(dia)
-    seccion_key = _norm(seccion)
-
-    bloque_por_dia = (schedule or {}).get(dia_key) or (schedule or {}).get(dia) or {}
-    bloque = {}
-    if isinstance(bloque_por_dia, dict):
-        bloque = bloque_por_dia.get(seccion_key) or bloque_por_dia.get(seccion)
-
-    if not bloque:
-        return None
-
-    start = str(bloque.get("start", "")).strip()
-    end = str(bloque.get("end", "")).strip()
-    if not (start and end):
-        return None
-
-    hora_actual = ahora.strftime("%H:%M")
-    if start <= hora_actual <= end:
-        return "entrada"
-    if hora_actual > end:
-        return "salida"
-    return None
-
-def registrar_acceso_via_api(id_employee, tipo, area="Sin área"):
-    ahora = datetime.now()
-    headers = {
-        "Authorization": f"Bearer {ACCESS_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "id_Employee": id_employee,
-        "date": ahora.strftime("%Y-%m-%d"),
-        "employeeArea": area
-    }
-    if tipo == "entrada":
-        data["entry_time"] = ahora.isoformat()
-        data["entry_result"] = "Reconocido"
-    elif tipo == "salida":
-        data["exit_time"] = ahora.isoformat()
-        data["exit_result"] = "Reconocido"
-    else:
-        return False
-
-    try:
-        response = requests.post(ACCESS_API_URL, json=data, headers=headers, timeout=5)
-        if response.status_code in (200, 201):
-            print(f"Acceso registrado para {id_employee} tipo {tipo}")
-            return True
-        else:
-            print(f"Error API acceso: {response.status_code} - {response.text}")
-            return False
-    except Exception as e:
-        print(f"Excepción al registrar acceso: {e}")
-        return False
-
+# ---------------- LOG ----------------
 def log():
     while True:
         time.sleep(2)
@@ -258,35 +196,15 @@ def generar_frames():
                 if matched_id:
                     face_doc = collection.find_one({"employee_code": matched_id})
                     if face_doc:
-                        schedule_id = face_doc.get("schedule_id")
-                        area = face_doc.get("area_id", "Sin área")
-
-                        schedule = None
-                        try:
-                            res = requests.get(SCHEDULES_URL, timeout=5)
-                            if res.status_code == 200:
-                                schedules = res.json()
-                                schedule = next((s for s in schedules if s.get("_id") == schedule_id), None)
-                        except Exception as e:
-                            print(f"Error obteniendo schedules: {e}")
-
-                        now = datetime.now()
                         ultimo_estado.update({
                             "rostros_detectados": True,
-                            "hora": now,
-                            "ultima_imagen": now,
+                            "hora": datetime.now(),
+                            "ultima_imagen": datetime.now(),
                             "id_employee": matched_id,
                             "name": face_doc.get("name"),
-                            "gender": face_doc.get("gender", "M")
+                            "gender": face_doc.get("gender", "M"),
+                            "tipo": None  # ya no se determina tipo ni registra acceso
                         })
-
-                        tipo = determinar_tipo_acceso(schedule, now) if schedule else None
-                        ultimo_estado["tipo"] = tipo
-
-                        if tipo:
-                            exito = registrar_acceso_via_api(matched_id, tipo, area)
-                            print(f"Registro acceso ({tipo}) para {matched_id}: {'Éxito' if exito else 'Falló'}")
-
                     color = (0, 255, 0)
                     label = matched_id
                 else:

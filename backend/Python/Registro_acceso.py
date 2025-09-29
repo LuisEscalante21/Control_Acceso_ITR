@@ -13,7 +13,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # 🔹 Configuración CORS
-CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app)
 
 # Configuración MongoDB y API Key
 MONGO_URI = os.getenv("DB_URI")
@@ -202,12 +202,12 @@ def crear_o_actualizar_acceso():
             user = collection.find_one({"numEmpleado": user_id})
             
         if user:
-            print(f"[DEBUG] ✓ Usuario encontrado en {tipo}: {user.get('names', 'N/A')}")
+            print(f"[DEBUG] Usuario encontrado en {tipo}: {user.get('names', 'N/A')}")
             user_type = tipo
             user_data = user
             break
         else:
-            print(f"[DEBUG] ✗ No encontrado en {tipo}")
+            print(f"[DEBUG] No encontrado en {tipo}")
     
     # Si no se encuentra en colecciones principales, buscar en la colección de caras
     if not user_type:
@@ -225,7 +225,7 @@ def crear_o_actualizar_acceso():
             }
             print(f"[DEBUG] Datos simulados del usuario: {user_data}")
         else:
-            print(f"[DEBUG] ✗ Usuario {user_id} NO encontrado en ningún lado")
+            print(f"[DEBUG] Usuario {user_id} NO encontrado en ningún lado")
     
     if not user_type:
         print(f"[DEBUG] === FIN: Usuario no encontrado ===")

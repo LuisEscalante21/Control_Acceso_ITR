@@ -27,7 +27,6 @@ const AbsencesEmployee = () => {
     }
   }
   const empleadoId = userInfo?._id || null;
-  const teamId = userInfo?.teamId || null;
 
   // Hooks
   const { absenceRecords, justificationMap, fetchAbsenceRecords, fetchJustifications } =
