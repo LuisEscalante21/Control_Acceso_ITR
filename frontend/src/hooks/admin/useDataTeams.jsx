@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
@@ -7,10 +7,14 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${BASE_URL}${PORT}/api`;
 
+// Cache global simple
+let cachedTeams = null;
+
 const useDataTeams = () => {
-  const [teams, setTeams] = useState([]);
+  const [teams, setTeams] = useState(cachedTeams || []);
   const [showForm, setShowForm] = useState(false);
   const [teamEdit, setTeamEdit] = useState(null);
+  const [loading, setLoading] = useState(!cachedTeams);
   const navigate = useNavigate();
 
   // Manejo de errores
@@ -25,16 +29,24 @@ const useDataTeams = () => {
     }
   };
 
-  // Obtener todos los equipos
-  const fetchTeams = async () => {
+  // Obtener equipos (usa cache si existe)
+  const fetchTeams = useCallback(async () => {
+    if (cachedTeams) return cachedTeams;
+
+    setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/teams`, { withCredentials: true });
+      cachedTeams = res.data;
       setTeams(res.data);
+      setLoading(false);
+      return res.data;
     } catch (error) {
+      setLoading(false);
       handleNetworkError(error);
       Swal.fire("Error", "No se pudo obtener la lista de equipos.", "error");
+      return [];
     }
-  };
+  }, []);
 
   // Guardar o actualizar equipo
   const saveTeam = async (teamData, idToUpdate = null) => {
@@ -52,6 +64,8 @@ const useDataTeams = () => {
         Swal.fire("¡Guardado!", "El equipo ha sido guardado.", "success");
       }
 
+      // Actualiza cache
+      cachedTeams = null;
       await fetchTeams();
       handleCloseForm();
     } catch (error) {
@@ -75,6 +89,7 @@ const useDataTeams = () => {
       try {
         await axios.delete(`${API_URL}/teams/${id}`, { withCredentials: true });
         Swal.fire("¡Eliminado!", "El equipo ha sido eliminado.", "success");
+        cachedTeams = null;
         await fetchTeams();
       } catch (error) {
         handleNetworkError(error);
@@ -83,18 +98,19 @@ const useDataTeams = () => {
     }
   };
 
-  // Cerrar formulario y limpiar estado
   const handleCloseForm = () => {
     setShowForm(false);
     setTeamEdit(null);
   };
 
+  // Inicialmente solo carga si no hay cache
   useEffect(() => {
-    fetchTeams();
-  }, []);
+    if (!cachedTeams) fetchTeams();
+  }, [fetchTeams]);
 
   return {
     teams,
+    loading,
     showForm,
     setShowForm,
     teamEdit,

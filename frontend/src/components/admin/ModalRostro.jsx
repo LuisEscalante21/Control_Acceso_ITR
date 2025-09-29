@@ -79,7 +79,11 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      return Swal.fire("Archivo inválido", "Selecciona una imagen válida.", "error");
+      return Swal.fire(
+        "Archivo inválido",
+        "Selecciona una imagen válida.",
+        "error"
+      );
     }
 
     setNewFile(file);
@@ -97,7 +101,9 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     setShowCamera(true);
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
@@ -144,60 +150,72 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   };
 
   const handleSave = async () => {
-    if (isSaving) return;
+  if (isSaving) return;
 
-    if (
-      !name.trim() ||
-      !employeeCode.trim() ||
-      !selectedScheduleId ||
-      !gender ||
-      !areaId ||
-      (mode === "add" && !newFile)
-    ) {
-      return Swal.fire("Campos incompletos", "Completa todos los campos requeridos.", "warning");
-    }
+  if (
+    (mode === "add" &&
+      (!name.trim() ||
+        !employeeCode.trim() ||
+        !selectedScheduleId ||
+        !gender ||
+        !areaId ||
+        !newFile))
+  ) {
+    return Swal.fire(
+      "Campos incompletos",
+      "Completa todos los campos requeridos.",
+      "warning"
+    );
+  }
 
-    setIsSaving(true);
+  setIsSaving(true);
 
-    const basePayload = {
-      name: name.trim(),
-      employee_code: employeeCode.trim(), // backend moderno
-      code: employeeCode.trim(),          // alias para backend antiguo
-      schedule_id: selectedScheduleId,
-      gender,
-      area_id: areaId,
-    };
+  const basePayload = {};
 
-    try {
-      if (mode === "edit") {
-        // COMPATIBILIDAD: en edición, SIEMPRE multipart/form-data
-        const data = new FormData();
-        Object.entries(basePayload).forEach(([k, v]) => data.append(k, v));
-        if (newFile) data.append("image", newFile);
-        await onSubmit(data, { asJson: false }); // onSubmit debe detectar FormData
-      } else {
-        // ADD siempre lleva imagen => multipart
-        const data = new FormData();
-        Object.entries(basePayload).forEach(([k, v]) => data.append(k, v));
-        if (newFile) data.append("image", newFile);
-        await onSubmit(data, { asJson: false });
-      }
-      handleClose();
-    } catch (err) {
-      console.error(err);
-      setIsSaving(false);
-      const msg =
-        (err && err.message) ||
-        (typeof err === "string" ? err : null) ||
-        "Ocurrió un error al guardar.";
-      Swal.fire("Error", msg, "error");
-    }
-  };
+  if (mode === "add" || name.trim() !== face.name) {
+    basePayload.name = name.trim();
+  }
+  if (mode === "add" || employeeCode.trim() !== face.employee_code) {
+    basePayload.employee_code = employeeCode.trim();
+    basePayload.code = employeeCode.trim();
+  }
+  if (mode === "add" || selectedScheduleId !== face.schedule_id) {
+    basePayload.schedule_id = selectedScheduleId;
+  }
+  if (mode === "add" || gender !== face.gender) {
+    basePayload.gender = gender;
+  }
+  if (mode === "add" || (areaId && areaId !== (face.area_id || face?.area?._id))) {
+    basePayload.area_id = areaId;
+  }
+
+  try {
+    const data = new FormData();
+    Object.entries(basePayload).forEach(([k, v]) => data.append(k, v));
+    if (newFile) data.append("image", newFile);
+
+    await onSubmit(data, { asJson: false });
+    handleClose();
+  } catch (err) {
+    console.error(err);
+    setIsSaving(false);
+    const msg =
+      (err && err.message) ||
+      (typeof err === "string" ? err : null) ||
+      "Ocurrió un error al guardar.";
+    Swal.fire("Error", msg, "error");
+  }
+};
+
 
   return (
     <div className="employee-modal-overlay active" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="close-button" onClick={handleClose} aria-label="Cerrar">
+        <button
+          className="close-button"
+          onClick={handleClose}
+          aria-label="Cerrar"
+        >
           &times;
         </button>
 
@@ -230,7 +248,10 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
         </select>
 
         <label>Horario asociado:</label>
-        <select value={selectedScheduleId} onChange={(e) => setSelectedScheduleId(e.target.value)}>
+        <select
+          value={selectedScheduleId}
+          onChange={(e) => setSelectedScheduleId(e.target.value)}
+        >
           <option value="">Selecciona un horario</option>
           {schedules.map((sch) => (
             <option key={sch._id} value={sch._id}>
@@ -240,8 +261,14 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
         </select>
 
         <label>Área:</label>
-        <select value={areaId} onChange={(e) => setAreaId(e.target.value)} disabled={loadingAreas}>
-          <option value="">{loadingAreas ? "Cargando áreas..." : "Seleccione un área"}</option>
+        <select
+          value={areaId}
+          onChange={(e) => setAreaId(e.target.value)}
+          disabled={loadingAreas}
+        >
+          <option value="">
+            {loadingAreas ? "Cargando áreas..." : "Seleccione un área"}
+          </option>
           {!loadingAreas &&
             teams.map((t) => (
               <option key={t._id} value={t._id}>
@@ -270,7 +297,11 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
               </p>
             )}
           </div>
-          <div className="option" onClick={handleOpenCamera} style={{ cursor: "pointer" }}>
+          <div
+            className="option"
+            onClick={handleOpenCamera}
+            style={{ cursor: "pointer" }}
+          >
             <img src={rostroImg2} alt="Abrir cámara" />
             <p>Abrir cámara</p>
           </div>
@@ -278,7 +309,12 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
 
         {showCamera && (
           <div className="camera-modal">
-            <video ref={videoRef} autoPlay playsInline style={{ width: "100%" }} />
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              style={{ width: "100%" }}
+            />
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <button onClick={handleTakePhoto}>Tomar foto</button>
               <button
@@ -294,7 +330,12 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           </div>
         )}
 
-        <button type="button" className="save-btn" onClick={handleSave} disabled={isSaving}>
+        <button
+          type="button"
+          className="save-btn"
+          onClick={handleSave}
+          disabled={isSaving}
+        >
           {isSaving
             ? mode === "edit"
               ? "Actualizando..."
