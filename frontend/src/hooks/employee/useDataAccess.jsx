@@ -29,7 +29,7 @@ const useDataAccess = () => {
   };
 
   const axiosConfigNode = {
-    withCredentials: true, // ✅ enviar cookies de sesión
+    withCredentials: true, // enviar cookies de sesión
     headers: {
       "Content-Type": "application/json",
     },

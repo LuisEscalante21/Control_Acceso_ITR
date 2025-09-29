@@ -13,7 +13,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # 🔹 Configuración CORS
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # Configuración MongoDB y API Key
 MONGO_URI = os.getenv("DB_URI")
@@ -162,80 +162,47 @@ def limpiar_registro(reg):
 @require_api_key
 def crear_o_actualizar_acceso():
     data = request.get_json() or {}
-    user_id = data.get("id_Employee")
+    user_id = data.get("id_Employee")  # Puede venir como _id o como numEmpleado
     date_str = data.get("date")
-    
-    print(f"[DEBUG] === INICIO REGISTRO ACCESO ===")
-    print(f"[DEBUG] Datos recibidos: {data}")
-    print(f"[DEBUG] user_id: {user_id}, date_str: {date_str}")
-    
     if not user_id or not date_str:
         return jsonify({"error": "Faltan datos: id_Employee o date"}), 400
-        
-    filter_query = {"id_Employee": user_id, "date": date_str}
-    print(f"[DEBUG] Filter query: {filter_query}")
-    
+
     update_data = {}
     tiene_entrada = False
     tiene_salida = False
-    
+
     user_collections = [
         ("Employee", db[EMPLOYEE_COLLECTION_NAME]),
         ("Coordinator", db[COORDINATOR_COLLECTION_NAME]),
         ("Administrator", db[ADMIN_COLLECTION_NAME]),
     ]
-    
+
     user_type = None
     user_data = None
-    
-    # Buscar en colecciones principales
+    user_mongo_id = None  # 🔹 aquí guardamos siempre el _id real del usuario
+
+    # Buscar usuario en todas las colecciones
     for tipo, collection in user_collections:
-        print(f"[DEBUG] Buscando en colección: {tipo}")
         user = None
-        
         if ObjectId.is_valid(user_id):
-            print(f"[DEBUG] {user_id} es ObjectId válido, buscando por _id")
             user = collection.find_one({"_id": ObjectId(user_id)})
-            
         if not user:
-            print(f"[DEBUG] Buscando por numEmpleado: {user_id}")
             user = collection.find_one({"numEmpleado": user_id})
-            
         if user:
-            print(f"[DEBUG] Usuario encontrado en {tipo}: {user.get('names', 'N/A')}")
             user_type = tipo
             user_data = user
+            user_mongo_id = str(user["_id"])  # Usamos siempre el _id de Mongo
             break
-        else:
-            print(f"[DEBUG] No encontrado en {tipo}")
-    
-    # Si no se encuentra en colecciones principales, buscar en la colección de caras
+
     if not user_type:
-        print(f"[DEBUG] Buscando en colección de caras...")
-        face_doc = db[DB_COLLECTION].find_one({"employee_code": user_id})
-        
-        if face_doc:
-            print(f"[DEBUG] ✓ Empleado encontrado en colección de caras: {face_doc.get('name')}")
-            # Simular datos de usuario desde la colección de caras
-            user_type = "Employee"
-            user_data = {
-                "names": face_doc.get("name", "").split()[0] if face_doc.get("name") else "Sin nombre",
-                "surnames": " ".join(face_doc.get("name", "").split()[1:]) if face_doc.get("name") else "",
-                "schedule": {}  # Horario vacío por ahora
-            }
-            print(f"[DEBUG] Datos simulados del usuario: {user_data}")
-        else:
-            print(f"[DEBUG] Usuario {user_id} NO encontrado en ningún lado")
-    
-    if not user_type:
-        print(f"[DEBUG] === FIN: Usuario no encontrado ===")
         return jsonify({"error": "Usuario no encontrado"}), 404
-    
-    print(f"[DEBUG] Usuario final: tipo={user_type}, datos={user_data.get('names', 'N/A')}")
-    
+
+    # Usamos el _id del usuario para relacionar accesos
+    filter_query = {"id_Employee": user_mongo_id, "date": date_str}
+    update_data["id_Employee"] = user_mongo_id
+
     horario = user_data.get("schedule", {}) if user_type != "Administrator" else {}
-    print(f"[DEBUG] Horario obtenido: {horario}")
-    
+
     # Procesar entrada
     if "entry_time" in data:
         try:
@@ -243,15 +210,12 @@ def crear_o_actualizar_acceso():
             update_data["entry_time"] = entry_time
             update_data["entry_result"] = validar_horario(horario, entry_time, "entrada")
             tiene_entrada = True
-            print(f"[DEBUG] Procesada entrada: {entry_time}, resultado: {update_data['entry_result']}")
-        except Exception as e:
-            print(f"[DEBUG] Error procesando entry_time: {e}")
+        except Exception:
             return jsonify({"error": "Formato inválido para entry_time"}), 400
-            
     if "entry_photo" in data:
         update_data["entry_photo"] = data["entry_photo"]
         tiene_entrada = True
-        
+
     # Procesar salida
     if "exit_time" in data:
         try:
@@ -259,23 +223,18 @@ def crear_o_actualizar_acceso():
             update_data["exit_time"] = exit_time
             update_data["exit_result"] = validar_horario(horario, exit_time, "salida")
             tiene_salida = True
-            print(f"[DEBUG] Procesada salida: {exit_time}, resultado: {update_data['exit_result']}")
-        except Exception as e:
-            print(f"[DEBUG] Error procesando exit_time: {e}")
+        except Exception:
             return jsonify({"error": "Formato inválido para exit_time"}), 400
-            
     if "exit_photo" in data:
         update_data["exit_photo"] = data["exit_photo"]
         tiene_salida = True
-        
+
     if not update_data:
-        print(f"[DEBUG] ERROR: No hay datos para actualizar")
         return jsonify({"error": "No se proporcionaron campos para actualizar"}), 400
-        
+
     update_data["date"] = date_str
     update_data["user_type"] = user_type
-    update_data["id_Employee"] = user_id  # Asegurar que se guarde el ID
-    
+
     if tiene_entrada and tiene_salida:
         update_data["tipo_registro"] = "entrada y salida"
     elif tiene_entrada:
@@ -284,40 +243,16 @@ def crear_o_actualizar_acceso():
         update_data["tipo_registro"] = "salida"
     else:
         update_data["tipo_registro"] = "desconocido"
-    
-    print(f"[DEBUG] Datos finales a insertar: {update_data}")
-    
-    try:
-        result = access_collection.update_one(filter_query, {"$set": update_data}, upsert=True)
-        print(f"[DEBUG] Resultado MongoDB:")
-        print(f"  - matched_count: {result.matched_count}")
-        print(f"  - modified_count: {result.modified_count}")
-        print(f"  - upserted_id: {result.upserted_id}")
-        
-        # Verificar si el registro existe
-        verificacion = access_collection.find_one(filter_query)
-        print(f"[DEBUG] Verificación - Registro existe: {verificacion is not None}")
-        
-        if verificacion:
-            print(f"[DEBUG] Registro encontrado: {verificacion}")
-        
-        print(f"[DEBUG] === FIN REGISTRO EXITOSO ===")
-        
-        return jsonify({
+
+    result = access_collection.update_one(filter_query, {"$set": update_data}, upsert=True)
+
+    return jsonify(
+        {
             "message": "Registro de acceso creado o actualizado exitosamente",
             "user_type": user_type,
-            "debug_info": {
-                "matched_count": result.matched_count,
-                "modified_count": result.modified_count,
-                "upserted_id": str(result.upserted_id) if result.upserted_id else None,
-                "record_exists": verificacion is not None,
-                "found_in": "face_collection" if not user_data.get("schedule") else "main_collections"
-            }
-        }), (201 if result.upserted_id or result.modified_count > 0 else 200)
-        
-    except Exception as e:
-        print(f"[DEBUG] ERROR en MongoDB: {e}")
-        return jsonify({"error": f"Error de base de datos: {str(e)}"}), 500
+        }
+    ), (201 if result.upserted_id or result.modified_count > 0 else 200)
+
 
 # Endpoint para obtener todos los registros de acceso (rol administrador)
 @app.route("/api/access", methods=["GET"])

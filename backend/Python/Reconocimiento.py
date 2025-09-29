@@ -5,11 +5,10 @@ import threading
 import dlib
 import face_recognition
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from pymongo import MongoClient
-from bson import ObjectId
 from dotenv import load_dotenv
 from functools import wraps
 from Health import health_bp
@@ -28,6 +27,9 @@ mongo_uri = os.getenv("DB_URI")
 port = int(os.getenv("PORT_RECONOCIMIENTO", 5000))
 db_name = os.getenv("DB_NAME", "PTC_2025")
 collection_name = os.getenv("DB_COLLECTION")
+SCHEDULES_URL = os.getenv("SCHEDULES_URL", "http://localhost:4000/api/schedules")
+ACCESS_API_URL = os.getenv("ACCESS_API_URL", "http://localhost:4800/api/access")
+ACCESS_API_KEY = os.getenv("API_ACCESS_KEY")
 
 # ---------------- DB ----------------
 mongo_client = MongoClient(mongo_uri)
@@ -104,139 +106,66 @@ def require_api_key(expected_key):
         return wrapper
     return decorator
 
-# ---------------- FUNCIONES PARA DETERMINACIÓN DE TIPO ----------------
-def _normalize_schedule_keys(schedule: dict) -> dict:
-    """Normaliza las llaves del horario (días y secciones)"""
-    if not isinstance(schedule, dict):
-        return {}
-    out = {}
-    for dia, bloques in schedule.items():
-        dia_k = _norm(dia)
-        out[dia_k] = {}
-        if isinstance(bloques, dict):
-            for sec, data in bloques.items():
-                out[dia_k][_norm(sec)] = data
-    return out
+def determinar_tipo_acceso(schedule, ahora):
+    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    dia = dias[ahora.weekday()]
+    seccion = "Matutino" if ahora.hour < 12 else "Vespertino"
 
+    dia_key = _norm(dia)
+    seccion_key = _norm(seccion)
 
-def parse_hora(hora_str):
-    """Parsea string de hora a objeto time"""
-    if not hora_str:
+    bloque_por_dia = (schedule or {}).get(dia_key) or (schedule or {}).get(dia) or {}
+    bloque = {}
+    if isinstance(bloque_por_dia, dict):
+        bloque = bloque_por_dia.get(seccion_key) or bloque_por_dia.get(seccion)
+
+    if not bloque:
         return None
-    hora_str = str(hora_str).strip().upper()
-    formatos = ["%H:%M", "%I:%M%p", "%I:%M %p"]
-    for fmt in formatos:
-        try:
-            return datetime.strptime(hora_str, fmt).time()
-        except ValueError:
-            continue
+
+    start = str(bloque.get("start", "")).strip()
+    end = str(bloque.get("end", "")).strip()
+    if not (start and end):
+        return None
+
+    hora_actual = ahora.strftime("%H:%M")
+    if start <= hora_actual <= end:
+        return "entrada"
+    if hora_actual > end:
+        return "salida"
     return None
 
+def registrar_acceso_via_api(id_employee, tipo, area="Sin área"):
+    ahora = datetime.now()
+    headers = {
+        "Authorization": f"Bearer {ACCESS_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "id_Employee": id_employee,
+        "date": ahora.strftime("%Y-%m-%d"),
+        "employeeArea": area
+    }
+    if tipo == "entrada":
+        data["entry_time"] = ahora.isoformat()
+        data["entry_result"] = "Reconocido"
+    elif tipo == "salida":
+        data["exit_time"] = ahora.isoformat()
+        data["exit_result"] = "Reconocido"
+    else:
+        return False
 
-def determinar_tipo_acceso(face_doc):
-    """
-    Determina si es entrada o salida basándose en el horario del empleado.
-    Busca el horario en las colecciones de empleados usando employee_code.
-    """
     try:
-        employee_code = face_doc.get("employee_code")
-        if not employee_code:
-            print("[TIPO] No hay employee_code en face_doc")
-            return None
-        
-        # Buscar en las 3 colecciones posibles
-        user_collections = [
-            db["employees"],
-            db["coordinators"],
-            db["administrators"]
-        ]
-        
-        user_data = None
-        for collection_ref in user_collections:
-            # Buscar por ObjectId
-            if ObjectId.is_valid(employee_code):
-                user_data = collection_ref.find_one({"_id": ObjectId(employee_code)})
-            # Buscar por numEmpleado
-            if not user_data:
-                user_data = collection_ref.find_one({"numEmpleado": employee_code})
-            if user_data:
-                break
-        
-        if not user_data:
-            print(f"[TIPO] No se encontró usuario para {employee_code}")
-            return None
-        
-        # Obtener horario
-        schedule = user_data.get("schedule", {})
-        if not schedule:
-            print(f"[TIPO] Usuario {employee_code} sin horario asignado")
-            # Fallback: usar hora del día
-            ahora = datetime.now()
-            return "entrada" if ahora.hour < 14 else "salida"
-        
-        # Determinar día y hora actual
-        ahora = datetime.now()
-        dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-        dia_actual = dias[ahora.weekday()]
-        hora_actual = ahora.time()
-        
-        # Normalizar horario
-        schedule_norm = _normalize_schedule_keys(schedule)
-        dia_norm = _norm(dia_actual)
-        
-        # Buscar en ambas secciones (Matutino y Vespertino)
-        for seccion in ["matutino", "vespertino"]:
-            bloque = schedule_norm.get(dia_norm, {}).get(seccion)
-            if not bloque:
-                continue
-            
-            try:
-                # Parsear horas de inicio y fin
-                hora_inicio_str = bloque.get("start")
-                hora_fin_str = bloque.get("end")
-                
-                if not hora_inicio_str or not hora_fin_str:
-                    continue
-                
-                hora_inicio = parse_hora(hora_inicio_str)
-                hora_fin = parse_hora(hora_fin_str)
-                
-                if not hora_inicio or not hora_fin:
-                    continue
-                
-                # Determinar si está en ventana de entrada o salida
-                # Ventana de entrada: desde 1 hora antes hasta 2 horas después del inicio
-                entrada_min = (datetime.combine(ahora.date(), hora_inicio) - timedelta(hours=1)).time()
-                entrada_max = (datetime.combine(ahora.date(), hora_inicio) + timedelta(hours=2)).time()
-                
-                # Ventana de salida: desde 1 hora antes hasta 2 horas después del fin
-                salida_min = (datetime.combine(ahora.date(), hora_fin) - timedelta(hours=1)).time()
-                salida_max = (datetime.combine(ahora.date(), hora_fin) + timedelta(hours=2)).time()
-                
-                if entrada_min <= hora_actual <= entrada_max:
-                    print(f"[TIPO] {employee_code} detectado en ventana de ENTRADA ({seccion})")
-                    return "entrada"
-                elif salida_min <= hora_actual <= salida_max:
-                    print(f"[TIPO] {employee_code} detectado en ventana de SALIDA ({seccion})")
-                    return "salida"
-                    
-            except Exception as e:
-                print(f"[TIPO] Error procesando horario: {e}")
-                continue
-        
-        # Si no está en ninguna ventana, usar lógica simple por hora del día
-        if hora_actual.hour < 14:
-            print(f"[TIPO] {employee_code} fuera de ventana, asumiendo ENTRADA (antes de 14h)")
-            return "entrada"
+        response = requests.post(ACCESS_API_URL, json=data, headers=headers, timeout=5)
+        if response.status_code in (200, 201):
+            print(f"Acceso registrado para {id_employee} tipo {tipo}")
+            return True
         else:
-            print(f"[TIPO] {employee_code} fuera de ventana, asumiendo SALIDA (después de 14h)")
-            return "salida"
-            
+            print(f"Error API acceso: {response.status_code} - {response.text}")
+            return False
     except Exception as e:
-        print(f"[TIPO] Error determinando tipo de acceso: {e}")
-        return None
+        print(f"Excepción al registrar acceso: {e}")
+        return False
 
-# ---------------- LOG ----------------
 def log():
     while True:
         time.sleep(2)
@@ -329,18 +258,35 @@ def generar_frames():
                 if matched_id:
                     face_doc = collection.find_one({"employee_code": matched_id})
                     if face_doc:
-                        # ✅ DETERMINAR TIPO AUTOMÁTICAMENTE
-                        tipo_acceso = determinar_tipo_acceso(face_doc)
-                        
+                        schedule_id = face_doc.get("schedule_id")
+                        area = face_doc.get("area_id", "Sin área")
+
+                        schedule = None
+                        try:
+                            res = requests.get(SCHEDULES_URL, timeout=5)
+                            if res.status_code == 200:
+                                schedules = res.json()
+                                schedule = next((s for s in schedules if s.get("_id") == schedule_id), None)
+                        except Exception as e:
+                            print(f"Error obteniendo schedules: {e}")
+
+                        now = datetime.now()
                         ultimo_estado.update({
                             "rostros_detectados": True,
-                            "hora": datetime.now(),
-                            "ultima_imagen": datetime.now(),
+                            "hora": now,
+                            "ultima_imagen": now,
                             "id_employee": matched_id,
                             "name": face_doc.get("name"),
-                            "gender": face_doc.get("gender", "M"),
-                            "tipo": tipo_acceso  # ✅ Ahora se determina automáticamente
+                            "gender": face_doc.get("gender", "M")
                         })
+
+                        tipo = determinar_tipo_acceso(schedule, now) if schedule else None
+                        ultimo_estado["tipo"] = tipo
+
+                        if tipo:
+                            exito = registrar_acceso_via_api(matched_id, tipo, area)
+                            print(f"Registro acceso ({tipo}) para {matched_id}: {'Éxito' if exito else 'Falló'}")
+
                     color = (0, 255, 0)
                     label = matched_id
                 else:
