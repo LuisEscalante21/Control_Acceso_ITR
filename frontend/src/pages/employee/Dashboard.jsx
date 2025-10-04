@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import SidebarEmployee from '../../components/employee/SidebarEmployee';
-import '../../styles/Admin/Dashboard.css';
+import '../../styles/employee/Dashboard.css';
 
 export default function Dashboard() {
   const location = useLocation();

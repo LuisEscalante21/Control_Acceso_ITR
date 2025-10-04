@@ -140,7 +140,6 @@ export default function VideoDashboard() {
           <div className="vd-main">
             <div className="vd-video-card">
               <img src="http://localhost:4600/videoCapture" alt="Streaming cámara" />
-              <span className="vd-fps">FPS: 29.92</span>
             </div>
             
             <div className="vd-widgets">

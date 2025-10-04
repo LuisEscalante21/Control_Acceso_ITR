@@ -3,6 +3,7 @@ from flask_cors import CORS
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
+import pytz
 import os
 from Config import PORT_ACCESO
 from dotenv import load_dotenv
@@ -14,6 +15,9 @@ app = Flask(__name__)
 
 # 🔹 Configuración CORS
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+
+# 🔹 Configuración de Zona Horaria de San Salvador
+SV_TZ = pytz.timezone('America/El_Salvador')
 
 # Configuración MongoDB y API Key
 MONGO_URI = os.getenv("DB_URI")
@@ -36,6 +40,23 @@ employee_collection = db[EMPLOYEE_COLLECTION_NAME]
 # ------------------------------
 # Utilidades
 # ------------------------------
+def get_sv_time():
+    """Obtiene la hora actual en zona horaria de San Salvador"""
+    return datetime.now(SV_TZ)
+
+
+def convert_to_sv_time(dt):
+    """Convierte un datetime a zona horaria de San Salvador"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        # Si no tiene zona horaria, asumir que es de San Salvador
+        return SV_TZ.localize(dt)
+    else:
+        # Si tiene zona horaria, convertir a San Salvador
+        return dt.astimezone(SV_TZ)
+
+
 def _norm(s: str) -> str:
     """Normaliza tildes y a minúsculas para comparar llaves ('Miércoles' -> 'miercoles')."""
     if not s:
@@ -47,6 +68,7 @@ def _norm(s: str) -> str:
            .replace("ó", "o")
            .replace("ú", "u"))
     return s
+
 
 def _normalize_schedule_keys(schedule: dict) -> dict:
     """
@@ -103,6 +125,9 @@ def validar_horario(schedule, ahora: datetime, tipo: str):
               Se normaliza internamente ('miercoles'/'vespertino').
     tipo: 'entrada' o 'salida'
     """
+    # Asegurar que ahora esté en zona horaria de San Salvador
+    ahora = convert_to_sv_time(ahora)
+    
     # weekday(): 0=Lunes ... 6=Domingo —> usamos el mismo orden
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     dia = dias[ahora.weekday()]
@@ -148,10 +173,13 @@ def limpiar_registro(reg):
     if "entry_time" in reg and reg["entry_time"]:
         # Puede venir ya como string si se serializó antes
         if isinstance(reg["entry_time"], datetime):
-            reg["entry_time"] = reg["entry_time"].isoformat()
+            # Convertir a zona horaria de San Salvador antes de serializar
+            entry_sv = convert_to_sv_time(reg["entry_time"])
+            reg["entry_time"] = entry_sv.isoformat()
     if "exit_time" in reg and reg["exit_time"]:
         if isinstance(reg["exit_time"], datetime):
-            reg["exit_time"] = reg["exit_time"].isoformat()
+            exit_sv = convert_to_sv_time(reg["exit_time"])
+            reg["exit_time"] = exit_sv.isoformat()
     return reg
 
 
@@ -207,11 +235,13 @@ def crear_o_actualizar_acceso():
     if "entry_time" in data:
         try:
             entry_time = datetime.fromisoformat(data["entry_time"])
+            # Convertir a zona horaria de San Salvador
+            entry_time = convert_to_sv_time(entry_time)
             update_data["entry_time"] = entry_time
             update_data["entry_result"] = validar_horario(horario, entry_time, "entrada")
             tiene_entrada = True
-        except Exception:
-            return jsonify({"error": "Formato inválido para entry_time"}), 400
+        except Exception as e:
+            return jsonify({"error": f"Formato inválido para entry_time: {str(e)}"}), 400
     if "entry_photo" in data:
         update_data["entry_photo"] = data["entry_photo"]
         tiene_entrada = True
@@ -220,11 +250,13 @@ def crear_o_actualizar_acceso():
     if "exit_time" in data:
         try:
             exit_time = datetime.fromisoformat(data["exit_time"])
+            # Convertir a zona horaria de San Salvador
+            exit_time = convert_to_sv_time(exit_time)
             update_data["exit_time"] = exit_time
             update_data["exit_result"] = validar_horario(horario, exit_time, "salida")
             tiene_salida = True
-        except Exception:
-            return jsonify({"error": "Formato inválido para exit_time"}), 400
+        except Exception as e:
+            return jsonify({"error": f"Formato inválido para exit_time: {str(e)}"}), 400
     if "exit_photo" in data:
         update_data["exit_photo"] = data["exit_photo"]
         tiene_salida = True
@@ -379,7 +411,9 @@ def editar_registro(id):
 
     if "entry_time" in data:
         try:
-            update_data["entry_time"] = datetime.fromisoformat(data["entry_time"])
+            entry_time = datetime.fromisoformat(data["entry_time"])
+            entry_time = convert_to_sv_time(entry_time)
+            update_data["entry_time"] = entry_time
         except Exception:
             return jsonify({"error": "Formato inválido para entry_time"}), 400
     if "entry_result" in data:
@@ -388,7 +422,9 @@ def editar_registro(id):
         update_data["entry_photo"] = data["entry_photo"]
     if "exit_time" in data:
         try:
-            update_data["exit_time"] = datetime.fromisoformat(data["exit_time"])
+            exit_time = datetime.fromisoformat(data["exit_time"])
+            exit_time = convert_to_sv_time(exit_time)
+            update_data["exit_time"] = exit_time
         except Exception:
             return jsonify({"error": "Formato inválido para exit_time"}), 400
     if "exit_result" in data:
@@ -422,10 +458,14 @@ def eliminar_registro(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+
 # Iniciar el script
 def iniciar_api_acceso():
     print("La API de registro de acceso ha iniciado.")
+    print(f"Zona horaria configurada: {SV_TZ}")
+    print(f"Hora actual en San Salvador: {get_sv_time()}")
     app.run(debug=True, use_reloader=False, host="0.0.0.0", port=PORT_ACCESO)
+
 
 if __name__ == "__main__":
     iniciar_api_acceso()

@@ -47,16 +47,12 @@ employeesController.getEmployee = async (req, res) => {
 
   try {
     const result = await employeesModel.find({ IdTeam: teamId }).populate("IdTeam");
-
-    if (!result || result.length === 0) {
-      return res.status(404).json({ message: "Empleado(s) no encontrado(s)" });
-    }
-
-    res.json(result);
+    return res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ message: "Error obteniendo empleado(s)", error });
   }
 };
+;
 
 
 // D E L E T E - Eliminar empleado por ID

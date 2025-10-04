@@ -91,7 +91,7 @@ const Absences = () => {
               onChange={(e) => setSelectedAreaFilter(e.target.value)}
               className="filter-dropdown"
             >
-              <option value="Todos">Todos (mi área)</option>
+              <option value="Todos">Todas</option>
               <option value="Mis inasistencias">Mis inasistencias</option>
             </select>
           </div>

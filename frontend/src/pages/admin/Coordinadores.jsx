@@ -48,24 +48,21 @@ const Coordinadores = () => {
 
   return (
     <>
-    <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+      <div className="encabezado">
         <h1 className="titulo">Gestión de Coordinadores</h1>
         <div className="busqueda-bar">
-          <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
+          <div className="buscador">
             <Search className="search-icon" />
             <input
               type="text"
               placeholder="Buscar por nombre o apellido"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="buscador-input-responsive"
-              style={{ flex: 1 }}
             />
           </div>
           <button
-            className="nuevo-empleado-btn-G responsive-btn"
+            className="nuevo-empleado-btn-G"
             onClick={() => setShowNewCoordinador(true)}
-            style={{ whiteSpace: "nowrap" }}
           >
             <CirclePlus size={20} />
             Nuevo Coordinador
@@ -74,22 +71,7 @@ const Coordinadores = () => {
       </div>
 
       <div className="gestion-de-coordinadores">
-        <div
-          className="coordinadores-list"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-            marginBottom: "10px",
-            justifyContent: "flex-start",
-            boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-            padding: "20px",
-            borderRadius: "10px",
-            maxHeight: "630px",
-            overflowY: "auto",
-            backgroundColor: "#ffffff",
-          }}
-        >
+        <div className="coordinadores-list">
           {filteredCoordinadores.length > 0 ? (
             filteredCoordinadores.map((coordinador) => (
               <div

@@ -56,47 +56,31 @@ const Rostros = () => {
 
   return (
     <>
-      <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-              <h1 className="titulo">Gestión de Rostros</h1>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between" }}>
-                <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
-                  <Search className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por nombre o apellido"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ flex: 1, minWidth: "440px" }}
-                  />
-                </div>
-      
-                <button
-                  className="nuevo-empleado-btn-G"
-                  onClick={() => handleAddFace(true)}
-                  style={{ whiteSpace: "nowrap" }}
-                >
-                  <CirclePlus size={20} />
-                  Nuevo Empleado
-                </button>
-              </div>
-            </div>
+      <div className="encabezado">
+        <h1 className="titulo">Gestión de Rostros</h1>
+        <div className="busqueda-bar-G">
+          <div className="buscador">
+            <Search className="search-icon" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o apellido"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <button
+            className="nuevo-empleado-btn-G"
+            onClick={handleAddFace}
+          >
+            <CirclePlus size={20} />
+            Nuevo Empleado
+          </button>
+        </div>
+      </div>
 
       <div className="gestion-de-rostros">
-        <div
-          className="rostros-list"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "18px",
-            justifyContent: "flex-start",
-            boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-            padding: "20px",
-            borderRadius: "10px",
-            maxHeight: "630px",
-            overflowY: "auto",
-            backgroundColor: "#ffffff",
-          }}
-        >
+        <div className="rostros-list">
           {filteredFaces.length > 0 ? (
             filteredFaces.map((face) => (
               <UserFaceCard

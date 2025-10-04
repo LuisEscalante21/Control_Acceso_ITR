@@ -35,11 +35,11 @@ def main():
     intentar_conectar("acceso", conectar_api_acceso)
     
     # Iniciar el scheduler de inasistencias
-    print("[INFO] Iniciando scheduler de verificación de inasistencias...")
+    print("[INFO] Iniciando scheduler de verificacion de inasistencias...")
     scheduler = iniciar_scheduler()
-    print("[INFO] Scheduler activo. Las inasistencias se verificarán automáticamente a las 00:00")
+    print("[INFO] Scheduler activo. Las inasistencias se verificaran automaticamente a las 00:00")
     
-    print("[INFO] Todas las APIs están en ejecución. Esperando que terminen...")
+    print("[INFO] Todas las APIs están en ejecucion. Esperando que terminen...")
     
     try:
         p1.join()

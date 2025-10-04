@@ -6,9 +6,7 @@ import { config } from "./src/config.js";
 
 // 2- Conecto la base de datos
 mongoose.connect(config.db.URI);
-
 // ------ Comprobar que todo funciona ------
-
 // 3- Creo una constante que es igual a la conexión
 const connection = mongoose.connection;
 

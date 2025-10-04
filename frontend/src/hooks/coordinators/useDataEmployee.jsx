@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
-const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY; // tu API Key
-const BASE_URL = "http://localhost:4000"; // o usa tu env VITE_BASE_URL
+const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
+const BASE_URL = "http://localhost:4000";
 
 const useDataEmployee = () => {
   const [employees, setEmployees] = useState([]);
@@ -12,13 +12,12 @@ const useDataEmployee = () => {
   const [employeesByTeam, setEmployeesByTeam] = useState([]);
   const navigate = useNavigate();
 
-  // Configuración común de Axios con API Key
   const axiosConfig = {
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_ACCESS_KEY}`, // ✅ aquí se envía la API Key
+      Authorization: `Bearer ${API_ACCESS_KEY}`,
     },
-    withCredentials: true, // si usas cookies de sesión
+    withCredentials: true,
   };
 
   const handleNetworkError = (err) => {
@@ -31,7 +30,6 @@ const useDataEmployee = () => {
     }
   };
 
-  // Obtener todos los empleados
   const fetchEmployees = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/api/employee`, axiosConfig);
@@ -42,40 +40,48 @@ const useDataEmployee = () => {
     }
   };
 
-  // Obtener empleados por equipo
   const fetchEmployeesByTeam = async (teamId) => {
     try {
       const res = await axios.get(`${BASE_URL}/api/employee/search`, {
         ...axiosConfig,
         params: { teamId },
       });
-      setEmployeesByTeam(res.data);
+
+      if (Array.isArray(res.data)) {
+        setEmployeesByTeam(res.data);
+      } else {
+        throw new Error("Respuesta inesperada del servidor.");
+      }
     } catch (error) {
       handleNetworkError(error);
-      Swal.fire(
-        "Error",
-        "No se pudieron cargar los empleados de esta coordinación.",
-        "error"
-      );
+      Swal.fire("Error", "No se pudieron cargar los empleados de esta coordinación.", "error");
     }
   };
 
-  // Guardar o actualizar empleado
   const saveEmployee = async (data, idToUpdate = null) => {
     try {
       if (idToUpdate) {
         if (data instanceof FormData) data.delete("IdTeam");
 
         await axios.put(`${BASE_URL}/api/employee/${idToUpdate}`, data, {
-          headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${API_ACCESS_KEY}` },
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${API_ACCESS_KEY}`,
+          },
         });
+
         Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
       } else {
         await axios.post(`${BASE_URL}/api/registerEmployees`, data, {
-          headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${API_ACCESS_KEY}` },
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${API_ACCESS_KEY}`,
+          },
         });
+
         Swal.fire("¡Guardado!", "El empleado ha sido creado.", "success");
       }
+
       await fetchEmployees();
       handleCloseForm();
     } catch (error) {
@@ -84,7 +90,6 @@ const useDataEmployee = () => {
     }
   };
 
-  // Eliminar empleado
   const deleteEmployee = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",

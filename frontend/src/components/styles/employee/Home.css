@@ -1,8 +1,7 @@
 /* Contenedor general */
 .dashboard-home-container {
-  padding: 2rem;
+  padding: 2rem 6%;
   background-color: #ffffff00;
-  min-height: 100vh;
   font-family: 'Segoe UI', sans-serif;
   color: #333;
 }
@@ -19,6 +18,8 @@
   gap: 1rem;
   justify-content: flex-start;
   flex-wrap: wrap;
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
 }
 
 /* Estilo base para cada widget */
@@ -107,4 +108,25 @@
   margin: 0;
   color: #000;
   font-weight: 600;
+}
+
+@media (max-width: 982px) {
+  .dashboard-home-container {
+    padding: 1.5rem 4%;
+  }
+
+  .dashboard-home-container h2 {
+    font-size: 1.5rem;
+  }
+
+  .dashboard-widgets {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .widget, .widget-progress {
+    max-width: 100%;
+    min-width: 100%;
+  }
 }

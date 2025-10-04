@@ -49,11 +49,8 @@ const Areas = () => {
         </div>
       </div>
 
-      <div className="gestion-de-empleadoss" style={{ padding: "4% 6% 5% 6%" }}>
-        <div
-          className="empleados-list"
-          style={{ minHeight: "200px", padding: "3% 6% 3% 5%" }}
-        >
+      <div className="gestion-de-empleadoss">
+        <div className="empleados-list">
           {teams.length > 0 ? (
             <div className="area-row">
               {teams.map((area) => (

@@ -36,6 +36,13 @@ mongo_client = MongoClient(mongo_uri)
 db = mongo_client[db_name]
 collection = db[collection_name]
 
+# Crear índice para optimizar búsquedas
+try:
+    collection.create_index("employee_code")
+    print("[MongoDB] indice creado para employee_code")
+except Exception as e:
+    print(f"[MongoDB] indice ya existe o error: {e}")
+
 # ---------------- BLUEPRINT HEALTH ----------------
 app.register_blueprint(health_bp)
 
@@ -66,20 +73,13 @@ ultimo_estado = {
 
 # ---------------- FAISS ----------------
 faiss_index = FaissFaceIndex(collection)
-faiss_reload_lock = threading.Lock()  # Protección de concurrencia
+faiss_reload_lock = threading.Lock()
 
-# Recarga automática del índice FAISS cada 10 segundos
-def recargar_faiss_periodicamente(intervalo=10):
-    while True:
-        time.sleep(intervalo)
-        try:
-            with faiss_reload_lock:
-                faiss_index.load_encodings()
-            print("[FAISS] Índice recargado automáticamente.")
-        except Exception as e:
-            print("[FAISS] Error al recargar automáticamente:", e)
-
-threading.Thread(target=recargar_faiss_periodicamente, daemon=True).start()
+# ========================================
+# ELIMINADO: Recarga periódica cada 10 segundos
+# Ahora el índice solo se recarga cuando el servicio
+# de mapeo detecta cambios y llama a /reload-faiss
+# ========================================
 
 # ---------------- UTILS ----------------
 def _norm(s: str) -> str:
@@ -157,13 +157,13 @@ def registrar_acceso_via_api(id_employee, tipo, area="Sin área"):
     try:
         response = requests.post(ACCESS_API_URL, json=data, headers=headers, timeout=5)
         if response.status_code in (200, 201):
-            print(f"Acceso registrado para {id_employee} tipo {tipo}")
+            print(f"[ACCESO] Registrado para {id_employee} tipo {tipo}")
             return True
         else:
-            print(f"Error API acceso: {response.status_code} - {response.text}")
+            print(f"[ACCESO] Error API: {response.status_code} - {response.text}")
             return False
     except Exception as e:
-        print(f"Excepción al registrar acceso: {e}")
+        print(f"[ACCESO] Excepción: {e}")
         return False
 
 def log():
@@ -188,6 +188,7 @@ def log():
             hora_str = ultimo_estado['hora'].strftime("%Y-%m-%d %H:%M:%S") if ultimo_estado['hora'] else "Nunca"
             estado_str = 'Rostros detectados' if rostros_detectados else 'No se detectaron rostros'
             print(f"[{hora_str}] {estado_str}.")
+
 threading.Thread(target=log, daemon=True).start()
 
 # ---------------- ENDPOINTS ----------------
@@ -217,16 +218,18 @@ def generar_frames():
     global webcam_en_uso
     with webcam_lock:
         if webcam_en_uso:
-            print("Camara ya en uso. Abortando streaming.")
+            print("[CAMARA] Ya en uso. Abortando streaming.")
             return empty_gen()
         webcam_en_uso = True
 
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap.set(cv2.CAP_PROP_FPS, 20)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     if not cap.isOpened():
-        print("Error: no se pudo abrir la cámara")
+        print("[CAMARA] Error: no se pudo abrir la cámara")
         webcam_en_uso = False
         return empty_gen()
 
@@ -235,40 +238,69 @@ def generar_frames():
         frame_count = 0
         start_time = time.time()
         frame_index = 0
-        process_every_n_frames = 10
+        process_every_n_frames = 15
 
         face_locations = []
         face_encodings = []
+        
+        ultimo_reconocimiento_cache = {}
+        CACHE_DURATION = 3
+        
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
 
         while True:
             ret, frame = cap.read()
             if not ret:
-                print("Error: no se pudo leer frame de la cámara")
+                print("[CAMARA] Error: no se pudo leer frame")
                 break
 
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
             if frame_index % process_every_n_frames == 0:
-                face_locations = face_recognition.face_locations(rgb_frame)
-                face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+                small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+                rgb_small = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+                
+                face_locations = face_recognition.face_locations(rgb_small, model='hog')
+                face_encodings = face_recognition.face_encodings(rgb_small, face_locations)
+                
+                face_locations = [(top*2, right*2, bottom*2, left*2) 
+                                 for (top, right, bottom, left) in face_locations]
 
+            ahora_ts = time.time()
+            
             for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
                 matched_id, distance = faiss_index.search_face(face_encoding)
 
                 if matched_id:
-                    face_doc = collection.find_one({"employee_code": matched_id})
+                    cache_key = f"{matched_id}"
+                    
+                    if cache_key in ultimo_reconocimiento_cache:
+                        ultimo_ts = ultimo_reconocimiento_cache[cache_key]
+                        if ahora_ts - ultimo_ts < CACHE_DURATION:
+                            color = (0, 255, 0)
+                            label = matched_id
+                            cv2.rectangle(frame, (left, top), (right, bottom), color, 1)
+                            cv2.putText(frame, label, (left, top - 10), 
+                                      cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+                            continue
+                    
+                    ultimo_reconocimiento_cache[cache_key] = ahora_ts
+                    
+                    face_doc = collection.find_one(
+                        {"employee_code": matched_id},
+                        {"schedule_id": 1, "area_id": 1, "name": 1, "gender": 1}
+                    )
+                    
                     if face_doc:
                         schedule_id = face_doc.get("schedule_id")
                         area = face_doc.get("area_id", "Sin área")
 
                         schedule = None
                         try:
-                            res = requests.get(SCHEDULES_URL, timeout=5)
+                            res = requests.get(SCHEDULES_URL, timeout=2)
                             if res.status_code == 200:
                                 schedules = res.json()
                                 schedule = next((s for s in schedules if s.get("_id") == schedule_id), None)
                         except Exception as e:
-                            print(f"Error obteniendo schedules: {e}")
+                            print(f"[SCHEDULES] Error: {e}")
 
                         now = datetime.now()
                         ultimo_estado.update({
@@ -284,8 +316,11 @@ def generar_frames():
                         ultimo_estado["tipo"] = tipo
 
                         if tipo:
-                            exito = registrar_acceso_via_api(matched_id, tipo, area)
-                            print(f"Registro acceso ({tipo}) para {matched_id}: {'Éxito' if exito else 'Falló'}")
+                            threading.Thread(
+                                target=registrar_acceso_via_api,
+                                args=(matched_id, tipo, area),
+                                daemon=True
+                            ).start()
 
                     color = (0, 255, 0)
                     label = matched_id
@@ -294,7 +329,8 @@ def generar_frames():
                     label = "Desconocido"
 
                 cv2.rectangle(frame, (left, top), (right, bottom), color, 1)
-                cv2.putText(frame, label, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+                cv2.putText(frame, label, (left, top - 10), 
+                          cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
 
             frame_index += 1
             frame_count += 1
@@ -305,14 +341,16 @@ def generar_frames():
                 start_time = time.time()
 
             cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 2)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 2)
 
-            _, buffer = cv2.imencode('.jpg', frame)
+            _, buffer = cv2.imencode('.jpg', frame, encode_param)
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                   
     finally:
         cap.release()
         webcam_en_uso = False
+        print("[CAMARA] Liberada correctamente")
 
 def empty_gen():
     while True:
@@ -323,24 +361,58 @@ def empty_gen():
 @app.route('/reload-faiss', methods=['POST'])
 @require_api_key(RECONOCIMIENTO_API_KEY)
 def reload_faiss():
+    """
+    Endpoint llamado por el servicio de MAPEO cuando hay cambios (ADD/UPDATE/DELETE).
+    Recarga el índice FAISS desde MongoDB de forma thread-safe.
+    """
     try:
         with faiss_reload_lock:
+            print("[FAISS] Iniciando recarga desde servicio de mapeo...")
             faiss_index.load_encodings()
-        return jsonify({'status': 'success', 'message': 'FAISS recargado correctamente'}), 200
+            total = faiss_index.index.ntotal
+            print(f"[FAISS] Recarga completada. Total rostros indexados: {total}")
+        return jsonify({
+            'status': 'success', 
+            'message': 'FAISS recargado correctamente',
+            'total_indexed': total
+        }), 200
     except Exception as e:
+        print(f"[FAISS] Error en recarga: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/faiss-status', methods=['GET'])
 @require_api_key(RECONOCIMIENTO_API_KEY)
 def faiss_status():
-    cantidad = faiss_index.index.ntotal if hasattr(faiss_index, "index") else 0
-    return jsonify({'status': 'ok', 'total_faces_indexed': cantidad})
+    """
+    Devuelve el estado actual del índice FAISS.
+    """
+    try:
+        cantidad = faiss_index.index.ntotal if hasattr(faiss_index, "index") else 0
+        return jsonify({
+            'status': 'ok', 
+            'total_faces_indexed': cantidad,
+            'threshold': faiss_index.threshold,
+            'min_diff': faiss_index.min_diff,
+            'topk': faiss_index.topk
+        }), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # ---------------- MAIN ----------------
 def iniciar_api_reconocimiento():
+    print("[RECONOCIMIENTO] ========================================")
+    print("[RECONOCIMIENTO] Inicializando servicio...")
+    print("[RECONOCIMIENTO] Cargando índice FAISS inicial desde MongoDB...")
+    
     with faiss_reload_lock:
         faiss_index.load_encodings()
-    print("La API de reconocimiento facial con FAISS está activa.")
+    
+    total = faiss_index.index.ntotal
+    print(f"[RECONOCIMIENTO] Índice FAISS cargado: {total} rostros")
+    print("[RECONOCIMIENTO] Modo ON-DEMAND activado (sin recarga periódica)")
+    print("[RECONOCIMIENTO] Esperando notificaciones del servicio de mapeo...")
+    print("[RECONOCIMIENTO] ========================================")
+    
     app.run(debug=True, use_reloader=False, host='0.0.0.0', port=port)
 
 if __name__ == '__main__':

@@ -19,9 +19,9 @@ def job_verificar_inasistencias():
 
 def iniciar_scheduler():
     """Inicia el scheduler en segundo plano"""
-    scheduler = BackgroundScheduler(timezone='America/Mexico_City')
+    scheduler = BackgroundScheduler(timezone='America/El_Salvador')
     
-    # Ejecutar todos los días a las 00:00
+    # Ejecutar todos los días a las 00:00 (medianoche) hora de San Salvador
     scheduler.add_job(
         job_verificar_inasistencias,
         trigger='cron',
@@ -32,7 +32,7 @@ def iniciar_scheduler():
     )
     
     scheduler.start()
-    logger.info("Scheduler iniciado. Verificación programada para las 00:00 diariamente")
+    logger.info("Scheduler iniciado. Verificación programada para las 00:00 diariamente (hora de San Salvador)")
     
     return scheduler
 

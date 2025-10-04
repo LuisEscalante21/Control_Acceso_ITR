@@ -204,11 +204,11 @@ def check_absences(target_date: datetime):
         
         if permission_check["has_permission"]:
             total_with_permission += 1
-            print(f"✓ {full_name} ({emp_id})")
+            print(f" {full_name} ({emp_id})")
             print(f"  └─ Tiene permiso aprobado: {permission_check['permission_type']}")
             print(f"     Motivo: {permission_check['reason']}")
             print(f"     {permission_check['details']}")
-            print(f"     ➜ NO se marca como inasistencia\n")
+            print(f"     NO se marca como inasistencia\n")
             continue  # Saltar, no marcar inasistencia
 
         # Buscar el registro de acceso
@@ -276,9 +276,9 @@ def register_absence_via_api(payload: dict):
     try:
         response = requests.post(API_URL, json=payload, headers=headers)
         response.raise_for_status()
-        print(f"   ✓ Registro API exitoso. Status: {response.status_code}")
+        print(f" Registro API exitoso. Status: {response.status_code}")
     except requests.exceptions.RequestException as e:
-        print(f"   ✗ ERROR al registrar inasistencia via API: {e}")
+        print(f" ERROR al registrar inasistencia via API: {e}")
         try:
             print(f"      Respuesta del servidor: {response.text}")
         except:

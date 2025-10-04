@@ -111,10 +111,19 @@ const useDataAccess = () => {
 
   // ------------------------------
   // Obtener registros de acceso (Flask)
+  // 🔹 SOLO TRAE ACCESOS DEL ÁREA DEL COORDINADOR
   // ------------------------------
   const fetchAccessRecords = async () => {
     try {
-      const url = userTeamId ? `/access?teamId=${userTeamId}` : "/access";
+      // 🔹 Validar que exista el teamId del coordinador
+      if (!userTeamId) {
+        console.warn("⚠️ No hay teamId disponible, no se cargarán accesos");
+        setAccessRecords([]);
+        return;
+      }
+
+      // 🔹 SIEMPRE filtrar por el área (teamId) del coordinador que inició sesión
+      const url = `/access?teamId=${userTeamId}`;
       const res = await axiosFlask.get(url);
       const registros = res.data;
 

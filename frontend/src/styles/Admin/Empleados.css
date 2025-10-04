@@ -2,7 +2,7 @@
   background-color: rgba(255, 255, 255, 0);
   width: 100%;
   max-width: 1000px;
-  padding: 0 6% 0 6%;
+  padding: 0 6%;
   text-align: start;
   margin-bottom: 20px;
 }
@@ -18,8 +18,9 @@
 .busqueda-bar-G {
   display: flex;
   gap: 16px;
-  width: 80%;
-  align-items: flex-start;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .buscador,
@@ -27,7 +28,7 @@
   flex-grow: 1;
   display: flex;
   position: relative;
-  align-items: flex-start;
+  align-items: center;
   max-width: 500px;
   width: 100%;
 }
@@ -58,7 +59,7 @@
 .nuevo-empleado-btn-G {
   flex-shrink: 0;
   display: flex;
-  align-items: start;
+  align-items: center;
   gap: 8px;
   padding: 8px 16px;
   border-radius: 30px;
@@ -76,30 +77,6 @@
 .nuevo-empleado-btn-G:hover {
   background-color: #f4f4f4;
 }
-
-/* ========== Responsive Styles ONLY for buscador y botón ========== */
-@media (max-width: 992px) {
-  .busqueda-bar,
-  .busqueda-bar-G {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .buscador,
-  .buscador-G {
-    width: 60%;
-    min-width: 300px;
-  }
-
-  .nuevo-empleado-btn,
-  .nuevo-empleado-btn-G {
-    width: 60%;
-    min-width: 200px;
-    justify-content: flex-start;
-  }
-}
-
-/* ============================= */
 
 select {
   padding: 10px 15px;
@@ -129,24 +106,23 @@ select:focus {
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  padding: 5% 6% 0px 6%;
+  padding: 3% 6% 0px 6%;
   box-sizing: border-box;
 }
 
 .empleados-lists {
-  width: 100%;
-  max-width: 1500px;
+  width: 90%;
+  max-width: 1450px;
   background-color: #ffffff;
   box-sizing: border-box;
-  padding: 30px;
-  max-height: 630px;
+  padding: 20px;
+  max-height: calc(100vh - 320px);
   overflow-y: auto;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  margin-top: 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .empleados-lists::-webkit-scrollbar {
@@ -188,7 +164,7 @@ select:focus {
 
 .modal-content {
   background: #fff;
-  padding: 30px 30px;
+  padding: 30px;
   border-radius: 16px;
   position: relative;
   min-width: 320px;
@@ -216,20 +192,6 @@ select:focus {
 
 .close-employee-modal:hover {
   color: #222;
-}
-
-@media (max-width: 600px) {
-  .modal-content {
-    min-width: unset;
-    max-width: 98vw;
-    padding: 18px 8px;
-  }
-
-  .close-employee-modal {
-    top: 10px;
-    right: 10px;
-    font-size: 24px;
-  }
 }
 
 /* Imagen de perfil en formularios de empleados */
@@ -295,9 +257,9 @@ select:focus {
 
 /* ==== BOTÓN PARA GENERAR REPORTE ==== */
 .btn-reporte {
-  padding: 6px 12px;       /* Menos espacio arriba/abajo y a los lados */
-  font-size: 12px;         /* Texto un poco más pequeño */
-  border-radius: 20px;     /* Más pequeño y más delgado que antes */
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 20px;
   background-color: #4a90e2;
   color: white;
   border: none;
@@ -327,45 +289,52 @@ select:focus {
   cursor: not-allowed;
   color: #e2e8f0;
 }
-<<<<<<< HEAD
-=======
-.image-placeholder {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: #e0e0e0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #888;
-  font-size: 13px;
-  border: 2px dashed #bfc2cc;
-}
 
-.buscador-input-responsive {
-  width: 100%;
-  min-width: 200px;
-  max-width: 600px;
-  padding: 8px 12px;
-  font-size: 1rem;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
-}
+/* ========== Responsive Styles ========== */
+@media (max-width: 992px) {
+  .titulo {
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
 
-@media (max-width: 900px) {
-  .buscador-input-responsive {
-    min-width: 120px;
+  .encabezado {
+    padding: 0 4%;
+  }
+
+  .busqueda-bar,
+  .busqueda-bar-G {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .buscador,
+  .buscador-G {
+    width: 100%;
     max-width: 100%;
-    font-size: 0.95rem;
+  }
+
+  .nuevo-empleado-btn,
+  .nuevo-empleado-btn-G {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .empleados-lists {
+    padding: 15px;
+    width: 100%;
   }
 }
 
 @media (max-width: 600px) {
-  .buscador-input-responsive {
-    min-width: 80px;
-    font-size: 0.9rem;
-    padding: 6px 8px;
+  .modal-content {
+    min-width: unset;
+    max-width: 98vw;
+    padding: 18px 8px;
+  }
+
+  .close-employee-modal {
+    top: 10px;
+    right: 10px;
+    font-size: 24px;
   }
 }
->>>>>>> 434a910c072e4a5017fa4dc0ae934faafbfa2982

@@ -51,8 +51,8 @@ coleccion_de_caras = db[DB_COLLECTION]
 # FAISS
 faiss_index = FaissFaceIndex(coleccion_de_caras)
 
-# Lock para recarga FAISS
-faiss_reload_lock = threading.Lock()
+# Lock para sincronización FAISS
+faiss_lock = threading.Lock()
 
 # Flask App
 app = Flask(__name__)
@@ -63,11 +63,11 @@ app.register_blueprint(health_bp)
 # ============================
 # Parámetros de calidad / FR
 # ============================
-UPSAMPLE = 1          # más sensible a caras pequeñas / baja luz
-NUM_JITTERS = 1       # estabilidad del encoding (1 para velocidad)
-MIN_FACE_SIZE = 80    # píxeles mínimos (lado menor del bbox)
-LAP_VAR_THR = 90.0    # varianza Laplaciana mínima (enfoque)
-MIN_BRIGHTNESS = 50.0 # brillo medio mínimo (0-255)
+UPSAMPLE = 1
+NUM_JITTERS = 1
+MIN_FACE_SIZE = 80
+LAP_VAR_THR = 90.0
+MIN_BRIGHTNESS = 50.0
 
 # ============================
 # Utilidades
@@ -104,20 +104,58 @@ def require_api_key(expected_key):
     return decorator
 
 def notificar_reload_faiss():
-    """Notifica al servicio de reconocimiento que recargue su índice FAISS (bloqueado por lock)."""
-    with faiss_reload_lock:
+    """
+    Notifica al servicio de reconocimiento que recargue su índice FAISS.
+    Se ejecuta SOLO cuando hay cambios (ADD/UPDATE/DELETE).
+    """
+    try:
+        response = requests.post(
+            "http://localhost:4600/reload-faiss",
+            headers={"Authorization": f"Bearer {RECONOCIMIENTO_API_KEY}"},
+            timeout=5
+        )
+        if response.status_code == 200:
+            print("[MAPEO] FAISS recargado exitosamente en servicio de reconocimiento.")
+        else:
+            print(f"[MAPEO] Falló recarga de FAISS: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"[MAPEO] No se pudo notificar a reconocimiento: {e}")
+
+def actualizar_faiss_local_y_notificar(operacion, employee_code=None, encoding=None, gender=None, area_id=None):
+    """
+    Actualiza el índice FAISS LOCAL de forma thread-safe y notifica al servicio de reconocimiento.
+    
+    Args:
+        operacion: 'add', 'update', 'delete'
+        employee_code: código del empleado
+        encoding: vector del rostro (numpy array o list)
+        gender: género del empleado
+        area_id: área del empleado
+    """
+    with faiss_lock:
         try:
-            response = requests.post(
-                "http://localhost:4600/reload-faiss",
-                headers={"Authorization": f"Bearer {RECONOCIMIENTO_API_KEY}"},
-                timeout=3
-            )
-            if response.status_code == 200:
-                print("[MAPEO] FAISS recargado exitosamente en reconocimiento.")
-            else:
-                print(f"[MAPEO] Falló recarga de FAISS: {response.status_code} - {response.text}")
+            if operacion == 'add':
+                print(f"[MAPEO-FAISS] Agregando rostro: {employee_code}")
+                faiss_index.add_face(encoding, employee_code, gender, area_id)
+                
+            elif operacion == 'update':
+                print(f"[MAPEO-FAISS] Actualizando rostro: {employee_code}")
+                # Primero eliminar la entrada antigua
+                faiss_index.remove_face(employee_code)
+                # Luego agregar la nueva
+                if encoding is not None:
+                    faiss_index.add_face(encoding, employee_code, gender, area_id)
+                    
+            elif operacion == 'delete':
+                print(f"[MAPEO-FAISS] Eliminando rostro: {employee_code}")
+                faiss_index.remove_face(employee_code)
+            
+            # Notificar al servicio de reconocimiento en un thread separado
+            threading.Thread(target=notificar_reload_faiss, daemon=True).start()
+            print(f"[MAPEO-FAISS] Operación '{operacion}' completada para {employee_code}")
+            
         except Exception as e:
-            print("[MAPEO] No se pudo notificar a reconocimiento:", e)
+            print(f"[MAPEO-FAISS] Error en operación '{operacion}': {e}")
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -135,36 +173,21 @@ def _auto_gamma_from_mean(y_float, target_mean=0.5):
     return float(np.clip(gamma, 0.6, 2.0))
 
 def preprocess_rgb(rgb_np):
-    """
-    Recibe imagen RGB (numpy), devuelve RGB preprocesado:
-    - Gamma adaptativa + CLAHE (en Y/luma)
-    - Bilateral para reducir ruido manteniendo bordes
-    """
-    # Pasar a BGR para usar OpenCV cómodamente
     bgr = cv2.cvtColor(rgb_np, cv2.COLOR_RGB2BGR)
-
-    # YCrCb para tocar solo la luminancia
     ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
     y, cr, cb = cv2.split(ycrcb)
 
-    # Gamma adaptativa sobre Y
     y_float = y.astype(np.float32) / 255.0
     gamma = _auto_gamma_from_mean(y_float, target_mean=0.5)
     y_corr = np.power(y_float, gamma)
 
-    # CLAHE suave
     y_u8 = np.clip(y_corr * 255.0, 0, 255).astype(np.uint8)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     y_eq = clahe.apply(y_u8)
 
-    # Combinar y volver a BGR
     ycrcb_eq = cv2.merge([y_eq, cr, cb])
     bgr_eq = cv2.cvtColor(ycrcb_eq, cv2.COLOR_YCrCb2BGR)
-
-    # Filtro bilateral para bajar ruido en baja luz
     bgr_filt = cv2.bilateralFilter(bgr_eq, d=7, sigmaColor=50, sigmaSpace=50)
-
-    # Retornar como RGB
     rgb_out = cv2.cvtColor(bgr_filt, cv2.COLOR_BGR2RGB)
     return rgb_out
 
@@ -176,10 +199,6 @@ def brightness_score(gray_u8):
     return float(gray_u8.mean())
 
 def face_quality_ok(rgb_np, top, right, bottom, left):
-    """
-    Evalúa calidad en el bbox. Retorna (ok: bool, info: dict).
-    """
-    # recortar bbox en RGB -> BGR para métricas
     face_rgb = rgb_np[top:bottom, left:right]
     if face_rgb.size == 0:
         return False, {"reason": "empty_roi"}
@@ -202,40 +221,30 @@ def face_quality_ok(rgb_np, top, right, bottom, left):
     return True, {"lap_var": float(fm), "brightness": float(b)}
 
 def load_rgb_image(path):
-    """Carga desde disco como RGB numpy, aplicando autorotate EXIF si existe."""
     with Image.open(path) as img:
-        img = ImageOps.exif_transpose(img)  # respetar orientación EXIF
+        img = ImageOps.exif_transpose(img)
         rgb = np.array(img.convert('RGB'))
     return rgb
 
 def Mapeo_cara(ruta_imagen):
-    """
-    Devuelve (encoding: np.ndarray, info_calidad: dict) o (None, motivo_dict).
-    Aplica preprocesado y filtro de calidad en el rostro detectado.
-    """
     try:
         rgb = load_rgb_image(ruta_imagen)
-        # Preprocesado para poca luz
         rgb_proc = preprocess_rgb(rgb)
 
-        # Detección de rostros (RGB)
         ubicaciones = fr.face_locations(rgb_proc, number_of_times_to_upsample=UPSAMPLE, model="hog")
         if not ubicaciones:
             return None, {"reason": "no_face"}
 
-        # Elegimos la cara más grande si hay varias
         def _area(loc):
             top, right, bottom, left = loc
             return (bottom - top) * (right - left)
         ubicaciones.sort(key=_area, reverse=True)
         top, right, bottom, left = ubicaciones[0]
 
-        # Calidad del rostro
         ok, qinfo = face_quality_ok(rgb_proc, top, right, bottom, left)
         if not ok:
             return None, {"reason": "low_quality", **qinfo}
 
-        # Encoding
         encs = fr.face_encodings(rgb_proc, [ubicaciones[0]], num_jitters=NUM_JITTERS)
         if not encs:
             return None, {"reason": "encode_failed"}
@@ -246,16 +255,9 @@ def Mapeo_cara(ruta_imagen):
         return None, {"reason": "exception", "detail": str(e)}
 
 # ============================
-# Endpoints
+# Validación de empleados
 # ============================
-
-# Validar que el empleado exista en alguna colección
 def validar_empleado_existe(employee_code):
-    """
-    Valida que el employee_code exista en alguna de las colecciones de empleados.
-    Retorna (existe: bool, user_type: str, user_data: dict)
-    """
-    # Conectar a las colecciones de empleados
     employee_collection = db["employees"]
     coordinator_collection = db["coordinators"] 
     admin_collection = db["administrators"]
@@ -267,12 +269,10 @@ def validar_empleado_existe(employee_code):
     ]
     
     for user_type, collection in collections_to_check:
-        # Buscar por _id si es un ObjectId válido
         user = None
         if ObjectId.is_valid(employee_code):
             user = collection.find_one({"_id": ObjectId(employee_code)})
         
-        # Si no se encontró por _id, buscar por numEmpleado
         if not user:
             user = collection.find_one({"numEmpleado": employee_code})
             
@@ -281,7 +281,10 @@ def validar_empleado_existe(employee_code):
             
     return False, None, None
 
-# Registrar nuevo rostro
+# ============================
+# Endpoints
+# ============================
+
 @app.route('/mapeo', methods=['POST'])
 @require_api_key(MAPEO_API_KEY)
 def mapeo():
@@ -300,20 +303,19 @@ def mapeo():
     if image.filename == '' or not allowed_file(image.filename):
         return jsonify({'status': 'error', 'message': 'Imagen no válida'}), 400
 
-    # NUEVA VALIDACIÓN: Verificar que el empleado exista
+    # Validar que el empleado exista
     empleado_existe, user_type, user_data = validar_empleado_existe(employee_code)
     if not empleado_existe:
         return jsonify({
             'status': 'error', 
-            'message': f'El código de empleado "{employee_code}" no existe en el sistema. Debe registrar al empleado antes de mapear su rostro.'
+            'message': f'El código de empleado "{employee_code}" no existe en el sistema.'
         }), 404
 
-    # Validación de duplicado en la colección de caras
+    # Validación de duplicado
     if coleccion_de_caras.find_one({'employee_code': employee_code}):
         return jsonify({'status': 'duplicate', 'message': 'Este empleado ya tiene un rostro registrado'}), 409
 
-    # Log para debug
-    print(f"[MAPEO] Empleado validado: {employee_code} - Tipo: {user_type} - Nombre: {user_data.get('names', 'N/A')}")
+    print(f"[MAPEO] Empleado validado: {employee_code} - Tipo: {user_type}")
 
     # Subir a Cloudinary
     try:
@@ -337,6 +339,7 @@ def mapeo():
         motivo = info.get("reason", "unknown")
         return jsonify({'status': 'error', 'message': f'No se pudo mapear rostro ({motivo})', 'detail': info}), 400
 
+    # Guardar en MongoDB
     documento = {
         'image_url': image_url,
         'encoding': encoding.tolist(),
@@ -345,13 +348,14 @@ def mapeo():
         'schedule_id': schedule_id,
         'gender': gender,
         'area_id': area_id,
-        'user_type': user_type,  # Agregar el tipo de usuario
-        'validated_at': datetime.now()  # Timestamp de validación
+        'user_type': user_type,
+        'validated_at': datetime.now()
     }
 
     coleccion_de_caras.insert_one(documento)
-    faiss_index.add_face(encoding, employee_code, gender, area_id)
-    notificar_reload_faiss()
+    
+    # ACTUALIZACIÓN CRÍTICA: Sincronizar FAISS solo cuando hay cambio
+    actualizar_faiss_local_y_notificar('add', employee_code, encoding, gender, area_id)
 
     return jsonify({
         'status': 'success',
@@ -359,19 +363,15 @@ def mapeo():
         'employee_validated': True,
         'user_type': user_type,
         'image_url': image_url,
-        'encoding': encoding.tolist(),
         'quality_info': info.get("quality", {})
     }), 200
 
-# Actualizar rostro
 @app.route('/faces/<id>', methods=['PUT'])
 @require_api_key(MAPEO_API_KEY)
 def actualizar_face(id):
-    # Soportar JSON o multipart/form-data
     is_multipart = bool(request.files) or bool(request.form)
     data = request.form if is_multipart else (request.get_json(silent=True) or {})
 
-    # Normaliza nombres de campos (aceptamos 'code' por compatibilidad)
     name = data.get('name')
     employee_code_new = data.get('employee_code') or data.get('code')
     schedule_id = data.get('schedule_id')
@@ -398,19 +398,20 @@ def actualizar_face(id):
     if gender: campos_a_actualizar['gender'] = gender
     if area_id: campos_a_actualizar['area_id'] = area_id
 
-    # Si solicitó cambiar el código, validamos duplicado
+    # Validar cambio de código
     if employee_code_new and employee_code_new != codigo_anterior:
         existente = coleccion_de_caras.find_one({'employee_code': employee_code_new})
         if existente:
             return jsonify({'status': 'duplicate', 'message': 'employee_code ya existe'}), 409
         campos_a_actualizar['employee_code'] = employee_code_new
 
-    # Si llegó imagen, la procesamos y recalculamos encoding
+    # Procesar nueva imagen si existe
     nuevo_encoding = None
     quality_info = None
     if image and image.filename != '':
         if not allowed_file(image.filename):
             return jsonify({'status': 'error', 'message': 'Imagen no válida'}), 400
+        
         try:
             upload_result = upload(image, folder="rostros")
             image_url = upload_result.get("secure_url")
@@ -426,6 +427,7 @@ def actualizar_face(id):
 
         nuevo_encoding, info = Mapeo_cara(temp_path)
         os.remove(temp_path)
+        
         if nuevo_encoding is None:
             motivo = info.get("reason", "unknown")
             return jsonify({'status': 'error', 'message': f'No se pudo mapear rostro ({motivo})', 'detail': info}), 400
@@ -437,7 +439,7 @@ def actualizar_face(id):
     if not campos_a_actualizar:
         return jsonify({'status': 'error', 'message': 'Sin cambios'}), 400
 
-    # Ejecutar update en Mongo
+    # Actualizar en MongoDB
     try:
         resultado = coleccion_de_caras.update_one(
             {'_id': ObjectId(id)},
@@ -453,41 +455,34 @@ def actualizar_face(id):
     if resultado.matched_count != 1:
         return jsonify({'status': 'error', 'message': 'No encontrado'}), 404
 
-    # --- Sincronizar FAISS ---
+    # ACTUALIZACIÓN CRÍTICA: Sincronizar FAISS solo cuando hay cambio
     codigo_final = campos_a_actualizar.get('employee_code', codigo_anterior)
     gender_final = campos_a_actualizar.get('gender', documento_anterior.get('gender'))
     area_final = campos_a_actualizar.get('area_id', documento_anterior.get('area_id'))
-
-    def _update_faiss():
-        try:
-            if (employee_code_new and employee_code_new != codigo_anterior) or (nuevo_encoding is not None) \
-               or ('gender' in campos_a_actualizar) or ('area_id' in campos_a_actualizar):
-                # Eliminamos entrada anterior (si existía)
-                if codigo_anterior:
-                    faiss_index.remove_face(codigo_anterior)
-
-                # Encoding a usar: el nuevo si hubo imagen; si no, el anterior desde DB
-                encoding_np = None
-                if nuevo_encoding is not None:
-                    encoding_np = nuevo_encoding
-                else:
-                    enc_list = campos_a_actualizar.get('encoding') or documento_anterior.get('encoding')
-                    if enc_list:
-                        encoding_np = np.array(enc_list, dtype=np.float32)
-
-                if encoding_np is not None:
-                    faiss_index.add_face(
-                        encoding_np,
-                        codigo_final,
-                        gender=gender_final,
-                        area_id=area_final
-                    )
-                # Avisar al otro servicio que recargue
-                threading.Thread(target=notificar_reload_faiss, daemon=True).start()
-        except Exception as fe:
-            print("[MAPEO] Error actualizando FAISS:", fe)
-
-    _update_faiss()
+    
+    # Determinar el encoding a usar
+    encoding_final = None
+    if nuevo_encoding is not None:
+        encoding_final = nuevo_encoding
+    elif 'encoding' not in campos_a_actualizar:
+        # Si no hay nuevo encoding, usar el anterior de la DB
+        enc_list = documento_anterior.get('encoding')
+        if enc_list:
+            encoding_final = np.array(enc_list, dtype=np.float32)
+    
+    # Solo actualizar FAISS si hubo cambios relevantes
+    if (employee_code_new and employee_code_new != codigo_anterior) or \
+       nuevo_encoding is not None or \
+       'gender' in campos_a_actualizar or \
+       'area_id' in campos_a_actualizar:
+        
+        actualizar_faiss_local_y_notificar(
+            'update', 
+            codigo_anterior,  # Usar el código anterior para eliminar
+            encoding_final,
+            gender_final,
+            area_final
+        )
 
     return jsonify({
         'status': 'success',
@@ -495,7 +490,6 @@ def actualizar_face(id):
         'quality_info': quality_info or {}
     }), 200
 
-# Listar rostros
 @app.route('/faces', methods=['GET'])
 @require_api_key(MAPEO_API_KEY)
 def listar_faces():
@@ -504,31 +498,63 @@ def listar_faces():
         face['_id'] = str(face['_id'])
     return jsonify({'status': 'success', 'faces': faces}), 200
 
-# Eliminar rostro
 @app.route('/faces/<id>', methods=['DELETE'])
 @require_api_key(MAPEO_API_KEY)
 def eliminar_face(id):
-    documento = coleccion_de_caras.find_one({'_id': ObjectId(id)})
-    employee_code = documento.get("employee_code") if documento else None
+    try:
+        documento = coleccion_de_caras.find_one({'_id': ObjectId(id)})
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'ID inválido'}), 400
+        
+    if not documento:
+        return jsonify({'status': 'error', 'message': 'No encontrado'}), 404
 
+    employee_code = documento.get("employee_code")
+    
     resultado = coleccion_de_caras.delete_one({'_id': ObjectId(id)})
 
     if resultado.deleted_count == 1:
+        # ACTUALIZACIÓN CRÍTICA: Sincronizar FAISS solo cuando hay cambio
         if employee_code:
-            faiss_index.remove_face(employee_code)
-        response = jsonify({'status': 'success', 'message': 'Eliminado'})
-        threading.Thread(target=notificar_reload_faiss, daemon=True).start()
-        return response, 200
+            actualizar_faiss_local_y_notificar('delete', employee_code)
+        
+        return jsonify({'status': 'success', 'message': 'Eliminado'}), 200
     else:
         return jsonify({'status': 'error', 'message': 'No encontrado'}), 404
+
+# ============================
+# Endpoint para recargar FAISS manualmente (útil para debug)
+# ============================
+@app.route('/reload-faiss-local', methods=['POST'])
+@require_api_key(MAPEO_API_KEY)
+def reload_faiss_local():
+    """Endpoint para forzar recarga completa del índice FAISS local"""
+    with faiss_lock:
+        try:
+            print("[MAPEO] Recargando índice FAISS completo desde MongoDB...")
+            faiss_index.load_encodings()
+            return jsonify({
+                'status': 'success',
+                'message': 'Índice FAISS recargado',
+                'total_indexed': faiss_index.index.ntotal
+            }), 200
+        except Exception as e:
+            print(f"[MAPEO] Error recargando FAISS: {e}")
+            return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # ============================
 # Inicialización
 # ============================
 def iniciar_api_mapeo():
-    print("[MAPEO] Cargando FAISS desde Mongo...")
-    faiss_index.load_encodings()  # Carga inicial
-    port = int(os.getenv('PORT_MAPEO', 5001))
+    print("[MAPEO] ========================================")
+    print("[MAPEO] Inicializando servicio de mapeo...")
+    print("[MAPEO] Cargando índice FAISS desde MongoDB...")
+    faiss_index.load_encodings()
+    print(f"[MAPEO] Índice FAISS cargado: {faiss_index.index.ntotal} rostros")
+    print("[MAPEO] Sistema listo - Actualizaciones ON-DEMAND activadas")
+    print("[MAPEO] ========================================")
+    
+    port = int(os.getenv('PORT_MAPEO'))
     app.run(debug=True, use_reloader=False, host='0.0.0.0', port=port)
 
 if __name__ == '__main__':

@@ -2,9 +2,10 @@
   background-color: rgba(255, 255, 255, 0);
   width: 100%;
   max-width: 1000px;
-  padding: 0 6% 0 6%;
+  padding: 0 6%;
   text-align: start;
   align-items: flex-start;
+  margin-bottom: 20px;
 }
 
 .titulo {
@@ -14,7 +15,13 @@
   margin-bottom: 20px;
 }
 
-
+.busqueda-bar {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+}
 
 .buscador {
   position: relative;
@@ -45,7 +52,26 @@
   pointer-events: none;
 }
 
+.nuevo-empleado-btn-G {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 30px;
+  background-color: #ffffff;
+  border: 1px solid #2a2f4330;
+  box-shadow: 0px 4px 4px #57575740;
+  font-size: 14px;
+  color: #0000009e;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s ease;
+}
 
+.nuevo-empleado-btn-G:hover {
+  background-color: #f4f4f4;
+}
 
 .gestion-de-coordinadores {
   background-color: #ffffff00;
@@ -53,25 +79,23 @@
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  min-height: 100vh;
-  padding: 5% 6% 0px 6%;
+  padding: 3% 6% 0px 6%;
   box-sizing: border-box;
 }
 
 .coordinadores-list {
-  width: 100%;
-  max-width: 1500px;
+  width: 90%;
+  max-width: 1450px;
   background-color: #ffffff;
   box-sizing: border-box;
-  padding: 30px;
-  max-height: 630px;
+  padding: 20px;
+  max-height: calc(100vh - 320px);
   overflow-y: auto;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  margin-top: 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .coordinadores-list::-webkit-scrollbar {
@@ -96,16 +120,24 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.5); 
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .modal-content {
   background: #fff;
-  padding: 30px 30px 30px 30px;
+  padding: 30px;
   border-radius: 16px;
   position: relative;
   min-width: 320px;
@@ -140,34 +172,39 @@
     font-size: 28px;
     margin-bottom: 16px;
   }
-
+  
   .encabezado {
-    padding: 0 4% 0 4%;
+    padding: 0 4%;
   }
-
-
-
-  .nuevo-coordinador-btn {
-    width: 60%;
-    justify-content: flex-start;
+  
+  .busqueda-bar {
+    flex-direction: column;
+    align-items: stretch;
   }
-
+  
   .buscador {
     width: 100%;
+    max-width: 100%;
   }
-
+  
+  .nuevo-empleado-btn-G {
+    width: 100%;
+    justify-content: center;
+  }
+  
   .coordinadores-list {
     padding: 15px;
+    width: 100%;
   }
-
 }
 
 @media (max-width: 600px) {
   .modal-content {
     min-width: unset;
     max-width: 98vw;
-    padding: 18px 8px 18px 8px;
+    padding: 18px 8px;
   }
+  
   .close-modal {
     top: 10px;
     right: 10px;

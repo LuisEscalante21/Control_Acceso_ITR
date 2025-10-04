@@ -71,15 +71,30 @@
 .nuevo-horario-btn:hover {
   background-color: #f4f4f4;
 }
-.gestion-de-coordinadoress{
+
+.gestion-de-coordinadoress {
   background-color: #ffffff00;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  min-height: 100vh;
   padding: 3% 6% 0px 6%;
   box-sizing: border-box;
+}
+
+.coordinadores-list {
+  width: 90%;
+  max-width: 1450px;
+  background-color: #ffffff;
+  padding: 20px;
+  padding-bottom: 60px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+  max-height: calc(100vh - 320px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 992px) {
@@ -87,11 +102,11 @@
     flex-direction: column;
     align-items: stretch;
   }
-
+  
   .buscadora {
     width: 60%;
   }
-
+  
   .nuevo-horario-btn {
     width: 60%;
     justify-content: center;

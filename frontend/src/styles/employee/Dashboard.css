@@ -1,7 +1,19 @@
+.admin-dashboard-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #f7f2f0;
+}
+
+.admin-main-content {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f7f2f0;
+}
+
 .dashboard-employee-container {
-  padding: 2rem;
+  padding: 2rem 6%;
   background-color: #f0f2f5;
-  min-height: 100vh;
   font-family: 'Segoe UI', sans-serif;
   color: #222;
 }
@@ -16,6 +28,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
 }
 
 .widget {
@@ -71,4 +85,18 @@
 .widget-tasks li {
   margin-bottom: 0.5rem;
   line-height: 1.3;
+}
+
+@media (max-width: 982px) {
+  .dashboard-employee-container {
+    padding: 1.5rem 4%;
+  }
+
+  .dashboard-employee-container h2 {
+    font-size: 1.5rem;
+  }
+
+  .dashboard-employee-widgets {
+    grid-template-columns: 1fr;
+  }
 }

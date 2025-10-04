@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 
 const BASE = import.meta.env.VITE_BASE_URL;
 const API_URL = `${BASE}4000/api`;
+const USERS_API_URL = `${BASE}4000/api/users`; // ⭐ Endpoint de usuarios
 
 const useDataAbsences = (userId = null) => {
   const [absenceRecords, setAbsenceRecords] = useState([]);
@@ -31,6 +32,26 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
+  // ⭐ Obtener usuario por ID (igual que en useDataAccess)
+  const fetchUserById = async (id) => {
+    try {
+      const res = await axios.get(`${USERS_API_URL}/${id}`, axiosConfig);
+      const user = res.data;
+
+      let userType = "Sin definir";
+      if (user?.collectionName) {
+        if (user.collectionName === "employees") userType = "Empleado";
+        if (user.collectionName === "coordinators") userType = "Coordinador";
+        if (user.collectionName === "administrators") userType = "Administrador";
+      }
+
+      return { ...user, userType };
+    } catch (error) {
+      console.error("🔴 Error fetchUserById:", error);
+      return null;
+    }
+  };
+
   // Obtener justificaciones
   const fetchJustifications = async () => {
     try {
@@ -48,8 +69,9 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // ⭐ Obtener registros de inasistencias con filtro de área
+  // ⭐ Obtener registros de inasistencias (con datos de usuario desde endpoint de users)
   const fetchAbsenceRecords = async (options = {}) => {
+    console.log("🚀 Iniciando fetchAbsenceRecords con opciones:", options);
     setLoading(true);
     try {
       const params = {};
@@ -59,27 +81,68 @@ const useDataAbsences = (userId = null) => {
         params.onlyEmployeeId = userId;
       }
       
-      // ⭐ Filtro por área/equipo
+      // Filtro por área/equipo
       if (options.idTeam && options.idTeam !== 'Todas') {
         params.idTeam = options.idTeam;
       }
 
+      console.log("📡 Llamando API con URL:", `${API_URL}/absences`, "Params:", params);
       const res = await axios.get(`${API_URL}/absences`, { ...axiosConfig, params });
       const records = res.data;
 
-      // ⭐ Mapear los datos con información del área
-      const mappedRecords = records.map((rec) => ({
-        ...rec,
-        _id: rec._id,
-        employeeName: `${rec.names || ''} ${rec.surnames || ''}`.trim(),
-        employeeType: rec.employee_type,
-        employeeAvatar: rec.avatar || null,
-        date: rec.date,
-        areaName: rec.idTeam?.name || 'Sin área',
-        idTeam: rec.idTeam?._id || null,
-        isJustified: !!justificationMap[rec._id],
-        justification: justificationMap[rec._id] || null,
-      }));
+      console.log("📊 Registros de inasistencias recibidos:", records);
+      console.log("📊 Cantidad de registros:", records?.length);
+
+      // ⭐ Obtener IDs únicos de empleados (puede venir como idEmployee, id_employee, o employeeId)
+      const uniqueUserIds = [...new Set(records.map((rec) => rec.idEmployee || rec.id_employee || rec.employeeId).filter(Boolean))];
+      console.log("👥 IDs únicos de usuarios a buscar:", uniqueUserIds);
+      
+      const usersMap = {};
+
+      // ⭐ Traer datos de usuarios involucrados desde el endpoint de users
+      await Promise.all(
+        uniqueUserIds.map(async (id) => {
+          if (id) {
+            const user = await fetchUserById(id);
+            if (user) {
+              usersMap[id] = user;
+              console.log(`✅ Usuario obtenido para ID ${id}:`, user);
+            } else {
+              console.warn(`⚠️ No se pudo obtener usuario para ID ${id}`);
+            }
+          }
+        })
+      );
+
+      console.log("🗺️ Mapa de usuarios:", usersMap);
+
+      // ⭐ Mapear los datos con información del usuario y área
+      const mappedRecords = records.map((rec) => {
+        const employeeId = rec.idEmployee || rec.id_employee || rec.employeeId;
+        const user = usersMap[employeeId];
+        
+        const mappedRecord = {
+          ...rec,
+          _id: rec._id,
+          employeeName: user ? `${user.names} ${user.surnames}` : (rec.names && rec.surnames ? `${rec.names} ${rec.surnames}` : "Usuario no encontrado"),
+          employeeType: user?.userType || rec.employee_type || "Sin definir",
+          employeeAvatar: user?.photo || rec.avatar || null,
+          date: rec.date,
+          areaName: rec.idTeam?.name || 'Sin área',
+          idTeam: rec.idTeam?._id || null,
+          isJustified: !!justificationMap[rec._id],
+          justification: justificationMap[rec._id] || null,
+        };
+
+        console.log("📝 Registro mapeado:", {
+          employeeId,
+          employeeName: mappedRecord.employeeName,
+          employeeAvatar: mappedRecord.employeeAvatar,
+          employeeType: mappedRecord.employeeType
+        });
+
+        return mappedRecord;
+      });
 
       setAbsenceRecords(mappedRecords);
       return mappedRecords;

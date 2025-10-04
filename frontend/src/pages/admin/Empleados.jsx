@@ -15,7 +15,7 @@ const Empleados = () => {
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
 
   const { employees, fetchEmployees, saveEmployee, deleteEmployee } = useEmployees();
-  const { teams, fetchTeams } = useDataTeams(); // <-- Hook de equipos
+  const { teams, fetchTeams } = useDataTeams();
 
   // Traer empleados y equipos al cargar
   useEffect(() => {
@@ -68,24 +68,21 @@ const Empleados = () => {
 
   return (
     <>
-      <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+      <div className="encabezado">
         <h1 className="titulo">Gestión de Empleados</h1>
         <div className="busqueda-bar">
-          <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
+          <div className="buscador">
             <Search className="search-icon" />
             <input
               type="text"
               placeholder="Buscar por nombre o apellido"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="buscador-input-responsive"
-              style={{ flex: 1 }}
             />
           </div>
           <button
-            className="nuevo-empleado-btn-G responsive-btn"
+            className="nuevo-empleado-btn-G"
             onClick={() => setShowNewEmpleado(true)}
-            style={{ whiteSpace: "nowrap" }}
           >
             <CirclePlus size={20} />
             Nuevo Empleado
