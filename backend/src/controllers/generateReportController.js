@@ -4,7 +4,7 @@ import JustificationLateArrival from "../models/Justifications.js";
 import Permissions from "../models/Permissions.js";
 import Team from "../models/Teams.js";
 import Access from "../models/registrationAccess.js";
-import Absence from "../models/Absences.js"; // ✅ Importar inasistencias
+import Absence from "../models/Absences.js";
 import { Types } from "mongoose";
 import path from "path";
 import fs from "fs";
@@ -33,8 +33,6 @@ generateReportController.generateUserReport = async (req, res) => {
     const justifications = await JustificationLateArrival.find({ userId });
     const permissions = await Permissions.find({ idUser: userId });
     const accessRecords = await Access.find({ id_Employee: userId }).sort({ date: 1 });
-
-    // ✅ Obtener inasistencias del usuario
     const absences = await Absence.find({ id_Employee: userId }).sort({ date: -1 });
 
     const doc = new PDFDocument({ margin: 50 });
@@ -43,9 +41,16 @@ generateReportController.generateUserReport = async (req, res) => {
     doc.font("Roboto");
 
     const logoPath = path.resolve("../../../frontend/src/img/logo_redondo.png");
+
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=reporte_${userId}.pdf`);
+
     doc.pipe(res);
+
+    doc.on("error", (err) => {
+      console.error("Error en PDFDocument:", err);
+      if (!res.headersSent) res.end();
+    });
 
     if (fs.existsSync(logoPath)) {
       doc.image(logoPath, 450, 40, { width: 80 });
@@ -80,7 +85,9 @@ generateReportController.generateUserReport = async (req, res) => {
           const imageBuffer = Buffer.from(user.photo, "base64");
           doc.image(imageBuffer, 460, startY, { width: 100, height: 100, fit: [100, 100] });
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error("Error cargando imagen:", err.message);
+      }
     }
 
     doc.moveDown(1.5);
@@ -99,20 +106,26 @@ generateReportController.generateUserReport = async (req, res) => {
         doc.text(`     Tipo: ${perm.permissionType}`);
         doc.text(`     Estado: ${perm.status}`);
         doc.text(`     Motivo: ${perm.reason || "No especificado"}`);
+
+        const formatDate = (d) => d ? new Date(d).toISOString().split("T")[0] : "N/A";
+
         if (perm.permissionType === "minor") {
-          doc.text(`     Fecha: ${perm.permissionDate?.toISOString().split("T")[0] || "N/A"}`);
+          doc.text(`     Fecha: ${formatDate(perm.permissionDate)}`);
           doc.text(`     Desde: ${perm.startTime || "N/A"} hasta ${perm.endTime || "N/A"}`);
         }
+
         if (perm.permissionType === "major") {
-          doc.text(`     Desde: ${perm.permissionDateFrom?.toISOString().split("T")[0] || "N/A"}`);
-          doc.text(`     Hasta: ${perm.permissionDateTo?.toISOString().split("T")[0] || "N/A"}`);
+          doc.text(`     Desde: ${formatDate(perm.permissionDateFrom)}`);
+          doc.text(`     Hasta: ${formatDate(perm.permissionDateTo)}`);
         }
+
         if (perm.permissionType === "incapacity") {
-          doc.text(`     Desde: ${perm.sickLeaveDateFrom?.toISOString().split("T")[0] || "N/A"}`);
-          doc.text(`     Hasta: ${perm.sickLeaveDateTo?.toISOString().split("T")[0] || "N/A"}`);
+          doc.text(`     Desde: ${formatDate(perm.sickLeaveDateFrom)}`);
+          doc.text(`     Hasta: ${formatDate(perm.sickLeaveDateTo)}`);
           doc.text(`     Tipo de incapacidad: ${perm.incapacityType || "No definido"}`);
           doc.text(`     Tipo de enfermedad: ${perm.illnessType || "No definido"}`);
         }
+
         doc.text(`     ¿Con descuento? ${perm.Discount ? "Sí" : "No"}`);
         doc.text(`     Descuento estimado: ${perm.quantityDiscount || 0}`);
         doc.text(`     Documento de soporte: ${perm.supportingDocument || "No cargado"}`);
@@ -129,12 +142,16 @@ generateReportController.generateUserReport = async (req, res) => {
     doc.addPage();
     doc.fontSize(16).fillColor("#34495e").text("Inasistencias registradas", { underline: true });
     doc.moveDown(0.5);
+
     if (absences.length === 0) {
       doc.fontSize(12).fillColor("#7f8c8d").text("No se encontraron inasistencias.");
     } else {
       absences.forEach((absence, idx) => {
+        const dateStr = absence.date && !isNaN(new Date(absence.date)) ?
+          new Date(absence.date).toISOString().split("T")[0] : "Fecha inválida";
+
         doc.fontSize(12).fillColor("#000");
-        doc.text(`🔹 #${idx + 1} - Fecha: ${absence.date.toISOString().split("T")[0]}`);
+        doc.text(`🔹 #${idx + 1} - Fecha: ${dateStr}`);
         doc.text(`     Motivo: ${absence.reason || "No especificado"}`);
         doc.text(`     Tipo de empleado: ${absence.employee_type || "No definido"}`);
         doc.moveDown(0.5);
@@ -144,6 +161,8 @@ generateReportController.generateUserReport = async (req, res) => {
     // -----------------------------
     // Accesos
     // -----------------------------
+    const formatDate = (d) => d && !isNaN(new Date(d)) ? new Date(d).toISOString().split("T")[0] : "Fecha inválida";
+
     doc.moveDown(1);
     doc.fontSize(16).fillColor("#34495e").text("Comparativo de Entradas", { underline: true });
     doc.moveDown(0.5);
@@ -156,13 +175,13 @@ generateReportController.generateUserReport = async (req, res) => {
       doc.moveTo(50, doc.y + 5).lineTo(550, doc.y + 5).strokeColor("#3498db").stroke();
       doc.moveDown(0.5);
       accessRecords.forEach(rec => {
-        const dateStr = rec.date.toISOString().split("T")[0];
-        let eTime = rec.entry_time ? new Date(rec.entry_time).toTimeString().split(" ")[0] : "N/A";
-        const res = rec.entry_result || "Sin registro";
+        const dateStr = formatDate(rec.date);
+        const eTime = rec.entry_time ? new Date(rec.entry_time).toTimeString().split(" ")[0] : "N/A";
+        const resEntry = rec.entry_result || "Sin registro";
         doc.fontSize(11).fillColor("#000");
         doc.text(dateStr, dateX);
         doc.text(eTime, timeX);
-        doc.text(res, resultX);
+        doc.text(resEntry, resultX);
         doc.moveDown(0.5);
       });
     }
@@ -179,13 +198,13 @@ generateReportController.generateUserReport = async (req, res) => {
       doc.moveTo(50, doc.y + 5).lineTo(550, doc.y + 5).strokeColor("#3498db").stroke();
       doc.moveDown(0.5);
       accessRecords.forEach(rec => {
-        const dateStr = rec.date.toISOString().split("T")[0];
-        let exTime = rec.exit_time ? new Date(rec.exit_time).toTimeString().split(" ")[0] : "N/A";
-        const res = rec.exit_result || "Sin registro";
+        const dateStr = formatDate(rec.date);
+        const exTime = rec.exit_time ? new Date(rec.exit_time).toTimeString().split(" ")[0] : "N/A";
+        const resExit = rec.exit_result || "Sin registro";
         doc.fontSize(11).fillColor("#000");
         doc.text(dateStr, dateX);
         doc.text(exTime, timeX);
-        doc.text(res, resultX);
+        doc.text(resExit, resultX);
         doc.moveDown(0.5);
       });
     }
@@ -200,8 +219,9 @@ generateReportController.generateUserReport = async (req, res) => {
       doc.fontSize(12).fillColor("#7f8c8d").text("No se encontraron justificaciones.");
     } else {
       justifications.forEach((just, idx) => {
+        const dateStr = formatDate(just.date);
         doc.fontSize(12).fillColor("#000");
-        doc.text(`🔹 #${idx + 1} - Fecha: ${just.date.toISOString().split("T")[0]}`);
+        doc.text(`🔹 #${idx + 1} - Fecha: ${dateStr}`);
         doc.text(`     Hora de llegada: ${just.arrivalTime}`);
         doc.text(`     Motivo: ${just.reason}`);
         doc.text(`     Tipo de usuario: ${just.userType}`);
@@ -218,10 +238,12 @@ generateReportController.generateUserReport = async (req, res) => {
     );
 
     doc.end();
-
   } catch (error) {
     console.error("Error generando reporte:", error);
-    res.status(500).json({ message: "Error generando reporte", error: error.message });
+    // No hacer res.json si ya se usó pipe/res.end
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Error generando reporte", error: error.message });
+    }
   }
 };
 

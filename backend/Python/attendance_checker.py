@@ -166,7 +166,8 @@ def check_absences(target_date: datetime):
             "names": user.get("names", "N/A"),
             "surnames": user.get("surnames", "N/A"),
             "schedule": user.get("schedule", {}),
-            "employee_type": "Employee"
+            "employee_type": "Employee",
+            "idTeam": user.get("id_team", None)  # Lee id_team de MongoDB
         })
         
     # Coordinadores
@@ -176,7 +177,8 @@ def check_absences(target_date: datetime):
             "names": user.get("names", "N/A"),
             "surnames": user.get("surnames", "N/A"),
             "schedule": user.get("schedule", {}),
-            "employee_type": "Coordinator"
+            "employee_type": "Coordinator",
+            "idTeam": user.get("id_team", None)  # Lee id_team de MongoDB
         })
 
     print(f"Total de usuarios con horario a verificar: {len(user_data)}\n")
@@ -204,11 +206,11 @@ def check_absences(target_date: datetime):
         
         if permission_check["has_permission"]:
             total_with_permission += 1
-            print(f" {full_name} ({emp_id})")
-            print(f"  └─ Tiene permiso aprobado: {permission_check['permission_type']}")
-            print(f"     Motivo: {permission_check['reason']}")
-            print(f"     {permission_check['details']}")
-            print(f"     NO se marca como inasistencia\n")
+            print(f"{full_name} ({emp_id})")
+            print(f"Tiene permiso aprobado: {permission_check['permission_type']}")
+            print(f"Motivo: {permission_check['reason']}")
+            print(f"{permission_check['details']}")
+            print(f"NO se marca como inasistencia\n")
             continue  # Saltar, no marcar inasistencia
 
         # Buscar el registro de acceso
@@ -238,10 +240,11 @@ def check_absences(target_date: datetime):
         # Registrar la inasistencia si aplica
         if reason:
             total_absences += 1
-            print(f"🚨 INASISTENCIA: {full_name}")
-            print(f"   Tipo: {reason}")
-            print(f"   Fecha: {target_date_str}")
-            print(f"   Horario esperado: {expected_schedule}\n")
+            print(f"INASISTENCIA: {full_name}")
+            print(f"Tipo: {reason}")
+            print(f"Fecha: {target_date_str}")
+            print(f"Equipo: {user.get('idTeam') or 'No asignado'}")
+            print(f"Horario esperado: {expected_schedule}\n")
             
             absence_payload = {
                 "id_Employee": emp_id,
@@ -251,6 +254,7 @@ def check_absences(target_date: datetime):
                 "names": user["names"],
                 "surnames": user["surnames"],
                 "employee_type": user["employee_type"],
+                "idTeam": user.get("idTeam")  # Envía idTeam al API
             }
             
             register_absence_via_api(absence_payload)
@@ -276,9 +280,9 @@ def register_absence_via_api(payload: dict):
     try:
         response = requests.post(API_URL, json=payload, headers=headers)
         response.raise_for_status()
-        print(f" Registro API exitoso. Status: {response.status_code}")
+        print(f"Registro API exitoso. Status: {response.status_code}")
     except requests.exceptions.RequestException as e:
-        print(f" ERROR al registrar inasistencia via API: {e}")
+        print(f"ERROR al registrar inasistencia via API: {e}")
         try:
             print(f"      Respuesta del servidor: {response.text}")
         except:
@@ -294,4 +298,4 @@ if __name__ == "__main__":
     
     check_absences(target_date)
     
-    print(" Proceso de verificación de inasistencias finalizado.")
+    print("Proceso de verificación de inasistencias finalizado.")

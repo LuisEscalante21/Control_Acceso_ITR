@@ -1,20 +1,23 @@
+
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import CryptoJS from "crypto-js";
 
 const BASE = import.meta.env.VITE_BASE_URL;
 const API_URL = `${BASE}4000/api`;
-const USERS_API_URL = `${BASE}4000/api/users`; // ⭐ Endpoint de usuarios
+const USERS_API_URL = `${BASE}4000/api/users`;
+const JWT_SECRET = import.meta.env.VITE_JWT_SECRET;
 
-const useDataAbsences = (userId = null) => {
+const useDataAbsences = () => {
   const [absenceRecords, setAbsenceRecords] = useState([]);
   const [justificationMap, setJustificationMap] = useState({});
   const [loading, setLoading] = useState(false);
-  const [userTeamId, setUserTeamId] = useState(null); // ⭐ Estado para el teamId del usuario
+  const [userId, setUserId] = useState(null);
+  const [userTeamId, setUserTeamId] = useState(null);
   const navigate = useNavigate();
-
-  console.log("🎯 Hook inicializado con userId:", userId);
+  const userCache = useRef({}); // Cache de usuarios
 
   // Configuración Axios
   const axiosConfig = {
@@ -35,31 +38,34 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // ⭐ Obtener el área del usuario logueado (coordinador)
-  const fetchCurrentUserTeam = async () => {
-    if (!userId) {
-      console.log("⚠️ No hay userId, no se puede obtener el área");
-      return null;
+  // Leer y descifrar cookie
+  useEffect(() => {
+    const userInfoCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("userInfo="));
+
+    if (userInfoCookie && JWT_SECRET) {
+      try {
+        const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
+        const bytes = CryptoJS.AES.decrypt(encrypted, JWT_SECRET);
+        const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+        if (!decryptedStr) throw new Error("No se pudo descifrar correctamente.");
+        const userInfo = JSON.parse(decryptedStr);
+        setUserId(userInfo._id || null);
+        setUserTeamId(userInfo.teamId || null);
+      } catch (err) {
+        console.error("🔴 Error al descifrar userInfo:", err);
+        setUserId(null);
+        setUserTeamId(null);
+      }
     }
+  }, []);
 
-    try {
-      console.log("🔍 Obteniendo área del coordinador:", userId);
-      const res = await axios.get(`${USERS_API_URL}/${userId}`, axiosConfig);
-      const user = res.data;
-
-      const teamId = user?.idTeam?._id || user?.idTeam || user?.id_Team || null;
-      console.log("✅ Área del coordinador obtenida:", teamId);
-
-      setUserTeamId(teamId);
-      return teamId;
-    } catch (error) {
-      console.error("🔴 Error al obtener área del coordinador:", error);
-      return null;
-    }
-  };
-
-  // ⭐ Obtener usuario por ID (igual que en useDataAccess)
+  // Obtener usuario por ID con cache
   const fetchUserById = async (id) => {
+    if (!id) return null;
+    if (userCache.current[id]) return userCache.current[id];
+
     try {
       const res = await axios.get(`${USERS_API_URL}/${id}`, axiosConfig);
       const user = res.data;
@@ -71,9 +77,11 @@ const useDataAbsences = (userId = null) => {
         if (user.collectionName === "administrators") userType = "Administrador";
       }
 
-      return { ...user, userType };
+      userCache.current[id] = { ...user, userType };
+      return userCache.current[id];
     } catch (error) {
       console.error("🔴 Error fetchUserById:", error);
+      userCache.current[id] = null;
       return null;
     }
   };
@@ -95,65 +103,50 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // ⭐ Obtener registros de inasistencias (con datos de usuario desde endpoint de users)
-  const fetchAbsenceRecords = async (options = {}) => {
-    console.log("🚀 Iniciando fetchAbsenceRecords con opciones:", options);
+  // Obtener registros de inasistencias
+  // 🔹 SOLO TRAE INASISTENCIAS DEL ÁREA DEL COORDINADOR
+  const fetchAbsenceRecords = async () => {
     setLoading(true);
     try {
-      const params = {};
-
-      // Filtro por empleado específico
-      if (options.onlyMine && userId) {
-        params.onlyEmployeeId = userId;
+      // 🔹 Validar que exista el teamId del coordinador
+      if (!userTeamId) {
+        setAbsenceRecords([]);
+        setLoading(false);
+        return;
       }
 
-      // ⭐ Filtro por área/equipo del coordinador (prioridad)
-      const teamIdToFilter = options.idTeam || userTeamId;
-      if (teamIdToFilter && teamIdToFilter !== "Todas") {
-        params.idTeam = teamIdToFilter;
-        console.log("🔍 Filtrando por área/equipo:", teamIdToFilter);
-      }
-
-      console.log("📡 Llamando API con URL:", `${API_URL}/absences`, "Params:", params);
-      const res = await axios.get(`${API_URL}/absences`, { ...axiosConfig, params });
+      // 🔹 SIEMPRE filtrar por el área (teamId) del coordinador
+      const url = `${API_URL}/absences?idTeam=${userTeamId}`;
+      
+      const res = await axios.get(url, axiosConfig);
       const records = res.data;
 
-      console.log("📊 Registros de inasistencias recibidos:", records);
-      console.log("📊 Cantidad de registros:", records?.length);
-
-      // ⭐ Obtener IDs únicos de empleados
+      // Obtener IDs únicos de empleados
       const uniqueUserIds = [...new Set(
         records
           .map((rec) => rec.id_Employee || rec.idEmployee || rec.id_employee || rec.employeeId)
           .filter(Boolean)
       )];
-      console.log("👥 IDs únicos de usuarios a buscar:", uniqueUserIds);
 
+      // Traer datos de usuarios con cache
       const usersMap = {};
-
-      // ⭐ Traer datos de usuarios involucrados desde el endpoint de users
       await Promise.all(
         uniqueUserIds.map(async (id) => {
           if (id) {
             const user = await fetchUserById(id);
             if (user) {
               usersMap[id] = user;
-              console.log(`✅ Usuario obtenido para ID ${id}:`, user);
-            } else {
-              console.warn(`⚠️ No se pudo obtener usuario para ID ${id}`);
             }
           }
         })
       );
 
-      console.log("🗺️ Mapa de usuarios:", usersMap);
-
-      // ⭐ Mapear los datos con información del usuario y área
+      // Mapear los datos con información del usuario
       const mappedRecords = records.map((rec) => {
         const employeeId = rec.id_Employee || rec.idEmployee || rec.id_employee || rec.employeeId;
         const user = usersMap[employeeId];
 
-        const mappedRecord = {
+        return {
           ...rec,
           _id: rec._id,
           employeeName: user
@@ -165,21 +158,10 @@ const useDataAbsences = (userId = null) => {
           employeeAvatar: user?.photo || rec.avatar || null,
           date: rec.date,
           areaName: rec.idTeam?.name || "Sin área",
-          idTeam: rec.idTeam?._id || null,
+          idTeam: rec.idTeam?._id || rec.idTeam || null,
           isJustified: !!justificationMap[rec._id],
           justification: justificationMap[rec._id] || null,
         };
-
-        console.log("📝 Registro mapeado:", {
-          _id: rec._id,
-          employeeId,
-          employeeName: mappedRecord.employeeName,
-          employeeAvatar: mappedRecord.employeeAvatar,
-          employeeType: mappedRecord.employeeType,
-          date: mappedRecord.date,
-        });
-
-        return mappedRecord;
       });
 
       setAbsenceRecords(mappedRecords);
@@ -233,25 +215,13 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // Cargar datos al montar el hook
+  // Cargar datos cuando userId y userTeamId estén disponibles
   useEffect(() => {
-    console.log("🔄 useEffect ejecutándose - userId:", userId);
-
-    const initializeData = async () => {
-      await fetchCurrentUserTeam();
-      await fetchJustifications();
-    };
-
-    initializeData();
-  }, [userId]);
-
-  // Ejecutar al obtener el área del usuario
-  useEffect(() => {
-    if (userTeamId !== null) {
-      console.log("🔄 Obteniendo inasistencias para el área:", userTeamId);
+    if (userId && userTeamId) {
       fetchAbsenceRecords();
+      fetchJustifications();
     }
-  }, [userTeamId]);
+  }, [userId, userTeamId]);
 
   return {
     absenceRecords,
@@ -261,6 +231,8 @@ const useDataAbsences = (userId = null) => {
     fetchJustifications,
     saveAbsence,
     deleteAbsence,
+    userId,
+    userTeamId,
   };
 };
 

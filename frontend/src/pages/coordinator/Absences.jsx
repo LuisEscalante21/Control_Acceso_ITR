@@ -7,16 +7,25 @@ import useDataAbsences from "../../hooks/coordinators/useDataAbsences.jsx";
 import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
+// Opciones de filtros
+const MainFilterOptions = [
+  { value: "todos", label: "Todas" },
+  { value: "mios", label: "Mis Inasistencias" },
+];
+
+const JustificationFilterOptions = ["Todas", "Justificadas", "Sin justificar"];
+
 const Absences = () => {
-  const [selectedAreaFilter, setSelectedAreaFilter] = useState("Todos");
+  const [mainFilter, setMainFilter] = useState("todos");
   const [selectedJustify, setSelectedJustify] = useState("Todas");
   const [searchText, setSearchText] = useState("");
   const [viewJustify, setViewJustify] = useState(null);
 
-  // 🔹 Leer info del usuario desde cookie cifrada
+  // Leer y descifrar info del usuario desde cookie cifrada
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
   const encryptedUserInfo = Cookies.get("userInfo");
+  
   if (encryptedUserInfo && secretKey) {
     try {
       const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
@@ -27,51 +36,64 @@ const Absences = () => {
       userInfo = null;
     }
   }
-  const empleadoId = userInfo?._id || null;
-  const teamId = userInfo?.teamId || null;
 
-  // 🔹 Hook de datos
+  const empleadoId = userInfo?._id || null;
+
+  // Hook de datos - Ya filtra automáticamente por área del coordinador
   const {
     absenceRecords,
     justificationMap,
     fetchAbsenceRecords,
     fetchJustifications,
+    userTeamId, // El área del coordinador
   } = useDataAbsences(empleadoId);
 
-  // 🔹 Cargar registros cuando cambian los filtros
-  useEffect(() => {
-    const loadAbsences = async () => {
-      if (selectedAreaFilter === "Mis inasistencias") {
-        await fetchAbsenceRecords({ onlyMine: true });
-      } else {
-        await fetchAbsenceRecords({ idTeam: teamId });
-      }
-      await fetchJustifications();
-    };
-    loadAbsences();
-  }, [selectedAreaFilter, teamId]);
+  // Refrescar datos al montar el componente
+  const refreshAbsenceData = async () => {
+    await fetchAbsenceRecords();
+    await fetchJustifications();
+  };
 
-  // 🔹 Filtro extra (justificación + búsqueda) en frontend
-  const filteredAbsences = absenceRecords
+  useEffect(() => {
+    if (empleadoId) {
+      refreshAbsenceData();
+    }
+  }, [empleadoId]);
+
+  // Filtrar inasistencias en el frontend
+  const filteredAbsences = (absenceRecords || [])
     .filter((absence) => {
-      if (selectedJustify === "Justificadas")
-        return !!justificationMap?.[absence._id];
-      if (selectedJustify === "Sin justificar")
-        return !justificationMap?.[absence._id];
+      // Filtro principal: Todas vs Mis Inasistencias
+      if (mainFilter === "mios") {
+        return absence.id_Employee === empleadoId;
+      }
+      // "todos" ya viene filtrado por área desde el backend
       return true;
     })
     .filter((absence) => {
+      // Filtro por justificación
+      if (selectedJustify === "Justificadas") {
+        return !!justificationMap?.[absence._id];
+      }
+      if (selectedJustify === "Sin justificar") {
+        return !justificationMap?.[absence._id];
+      }
+      return true;
+    })
+    .filter((absence) => {
+      // Filtro por búsqueda de texto
       if (!searchText.trim()) return true;
-      return absence.employeeName
-        ?.toLowerCase()
-        .includes(searchText.toLowerCase());
+      const nombre = absence.employeeName?.toLowerCase() || "";
+      return nombre.includes(searchText.toLowerCase());
     });
 
   return (
     <div className="absence-history-container">
-      {/* Encabezado y buscador */}
+      {/* Encabezado */}
       <div className="encabezado-inasistencias">
         <h1 className="titulo">Historial de inasistencias</h1>
+
+        {/* Buscador */}
         <div className="buscador">
           <Search className="search-icon" />
           <input
@@ -84,30 +106,32 @@ const Absences = () => {
 
         {/* Filtros */}
         <div className="filters">
-          {/* Área */}
-          <div className="area-filters">
-            <select
-              value={selectedAreaFilter}
-              onChange={(e) => setSelectedAreaFilter(e.target.value)}
-              className="filter-dropdown"
-            >
-              <option value="Todos">Todas</option>
-              <option value="Mis inasistencias">Mis inasistencias</option>
-            </select>
-          </div>
+          {/* Filtro principal: Todas vs Mis Inasistencias */}
+          <select
+            value={mainFilter}
+            onChange={(e) => setMainFilter(e.target.value)}
+            className="filter-dropdown"
+            style={{ marginRight: "10px" }}
+          >
+            {MainFilterOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
 
-          {/* Justificación */}
-          <div className="justify-filters">
-            <select
-              value={selectedJustify}
-              onChange={(e) => setSelectedJustify(e.target.value)}
-              className="filter-dropdown"
-            >
-              <option value="Todas">Todas</option>
-              <option value="Justificadas">Justificadas</option>
-              <option value="Sin justificar">Sin justificar</option>
-            </select>
-          </div>
+          {/* Filtro por justificación */}
+          <select
+            value={selectedJustify}
+            onChange={(e) => setSelectedJustify(e.target.value)}
+            className="filter-dropdown"
+          >
+            {JustificationFilterOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -135,7 +159,7 @@ const Absences = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal de visualización de justificación */}
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}

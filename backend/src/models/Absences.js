@@ -47,7 +47,7 @@ const absencesSchema = new Schema(
     // 🔹 Relación con un equipo (si aplica)
     idTeam: { 
       type: Schema.Types.ObjectId, 
-      ref: "Team",
+      ref: "Teams",
       required: false,
     },
   },
