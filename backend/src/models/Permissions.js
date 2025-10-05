@@ -19,12 +19,6 @@ const permissionsSchema = new Schema(
       maxLength: 100,
       trim: true,
     },
-    department: {
-      type: String,
-      required: true,
-      maxLength: 100,
-      trim: true,
-    },
     idTeam: {
       type: Schema.Types.ObjectId,
       ref: "Teams",
@@ -66,11 +60,6 @@ const permissionsSchema = new Schema(
       type: Boolean,
       default: false,
       required: true,
-    },
-    quantityDiscount: {
-      type: Number,
-      default: 0,
-      min: 0,
     },
 
     //================================[ Permiso menor (por solo 1 día o menos) ]================================

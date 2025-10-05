@@ -1,7 +1,9 @@
 // src/controllers/permissionsController.js
 import PermissionsModel from "../models/Permissions.js";
+import CoordinatorsModel from "../models/Coordinators.js";
 import cloudinary from "../lib/cloudinary.js";
 import fs from "fs/promises";
+import nodemailer from "nodemailer";
 
 const allowedTypes = [
   "application/pdf",
@@ -15,22 +17,35 @@ const allowedTypes = [
 ];
 const isValidFileType = (t) => allowedTypes.includes(t);
 
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: (process.env.EMAIL_PASS || "").replace(/\s+/g, ""),
+    },
+  });
+}
+
 const permissionsController = {};
 
 // Crear nuevo permiso
 permissionsController.InsertPermission = async (req, res) => {
   try {
     const user = req.user;
-    if (!user) return res.status(401).json({ message: "No autorizado. Inicia sesión." });
+    if (!user)
+      return res.status(401).json({ message: "No autorizado. Inicia sesión." });
 
     const { permissionType } = req.body;
-    if (!req.body.applicationDay?.trim() || !req.body.department?.trim()) {
-      return res.status(400).json({ message: "Faltan campos obligatorios" });
+    if (!req.body.applicationDay?.trim()) {
+      return res
+        .status(400)
+        .json({ message: "Faltan campos obligatorios (applicationDay)." });
     }
 
     const files = req.files || (req.file && [req.file]);
 
-    // Metadatos del documento (solo 1 archivo soportado ahora; si quieres varios, cambia a arrays)
+    // Metadatos del documento (solo 1 archivo soportado)
     let supportingDocument = "";
     let supportingPublicId = null;
     let supportingResourceType = null;
@@ -60,16 +75,15 @@ permissionsController.InsertPermission = async (req, res) => {
             access_mode: "public",   // público
             use_filename: true,
             unique_filename: false,
-            // NO fuerces "format": Cloudinary ya preserva la extensión correcta
           });
 
-          supportingDocument     = result.secure_url;   // URL lista para abrir
+          supportingDocument     = result.secure_url;
           supportingPublicId     = result.public_id;
-          supportingResourceType = result.resource_type; // "raw" si es PDF
-          supportingFormat       = result.format;        // "pdf", "jpg", etc.
+          supportingResourceType = result.resource_type;
+          supportingFormat       = result.format;
           supportingVersion      = result.version;
-          supportingType         = result.type;          // "upload"
-          supportingAccessMode   = result.access_mode;   // "public"
+          supportingType         = result.type;
+          supportingAccessMode   = result.access_mode;
 
           await fs.unlink(file.path).catch(() => {});
         } catch (err) {
@@ -79,16 +93,15 @@ permissionsController.InsertPermission = async (req, res) => {
       }
     }
 
+    // Datos del permiso
     const permissionData = {
       ...req.body,
       idUser: String(user._id),
       employeeNumber: user.numEmpleado,
       employeeName: (`${user.names ?? ""} ${user.surnames ?? ""}`).trim() || user.fullName,
-      department: req.body.department || user.department,
       idTeam: user.idTeam ?? user.IdTeam,
       createdBy: user._id,
       Discount: req.body.Discount === "true" || req.body.Discount === true,
-      quantityDiscount: Number(req.body.quantityDiscount || 0),
 
       supportingDocument,
       supportingPublicId,
@@ -140,21 +153,94 @@ permissionsController.InsertPermission = async (req, res) => {
       }
     }
 
+    // Guardar permiso en BD
     const newPermission = new PermissionsModel(permissionData);
     await newPermission.save();
 
+    // ==========================================================
+    // 🔔 Enviar correo a coordinadores del mismo IdTeam
+    // ==========================================================
+    try {
+      const CoordinatorsModel = (await import("../models/Coordinators.js")).default;
+
+      const coordinators = await CoordinatorsModel.find({
+        $or: [
+          { IdTeam: user.idTeam ?? user.IdTeam },
+          { idTeam: user.idTeam ?? user.IdTeam },
+        ],
+        status: true,
+        email: { $exists: true, $ne: "" },
+      }).lean();
+
+      if (coordinators.length > 0) {
+        const nodemailer = (await import("nodemailer")).default;
+
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: (process.env.EMAIL_PASS || "").replace(/\s+/g, ""),
+          },
+        });
+
+        await transporter.verify();
+
+        const htmlBody = `
+          <div style="font-family:Arial, sans-serif; background:#f6f7fb; padding:20px;">
+            <table style="max-width:560px; margin:auto; background:white; border-radius:10px; overflow:hidden;">
+              <tr>
+                <td style="background:#bf0e28; color:white; padding:14px 20px; font-size:18px; font-weight:bold;">
+                  Nuevo permiso pendiente
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:20px;">
+                  <p>Hola,</p>
+                  <p>El empleado <b>${permissionData.employeeName}</b> (N° ${permissionData.employeeNumber}) ha creado un nuevo permiso.</p>
+                  <ul style="list-style:none; padding:0;">
+                    <li><b>Tipo:</b> ${permissionData.permissionType}</li>
+                    <li><b>Fecha de solicitud:</b> ${permissionData.applicationDay}</li>
+                  </ul>
+                  <p>Por favor revisa el sistema para aprobar o rechazar esta solicitud.</p>
+                </td>
+              </tr>
+            </table>
+          </div>`;
+
+        for (const c of coordinators) {
+          await transporter.sendMail({
+            from: `"Sistema PTC" <${process.env.EMAIL_USER}>`,
+            to: c.email,
+            subject: "Nuevo permiso de un empleado de tu equipo",
+            html: htmlBody,
+          });
+        }
+
+        console.log(`📧 Notificación enviada a ${coordinators.length} coordinador(es).`);
+      } else {
+        console.log("⚠️ No se encontraron coordinadores con el mismo IdTeam.");
+      }
+    } catch (mailErr) {
+      console.error("Error enviando correo a coordinadores:", mailErr);
+    }
+
+    // ==========================================================
+    // ✅ Respuesta al frontend
+    // ==========================================================
     return res.status(201).json({
-      message: "Permiso creado exitosamente",
+      message: "Permiso creado exitosamente y notificación enviada.",
       id: newPermission._id,
       data: newPermission,
     });
   } catch (error) {
     console.error("Error backend:", error);
-    return res.status(500).json({ message: "Error creando permiso", error: error.message });
+    return res.status(500).json({
+      message: "Error creando permiso",
+      error: error.message,
+    });
   }
 };
 
-// controllers/permissionsController.js  (acción getDocument)
 
 permissionsController.getDocument = async (req, res) => {
   try {
@@ -162,7 +248,6 @@ permissionsController.getDocument = async (req, res) => {
     const perm = await PermissionsModel.findById(id).lean();
     if (!perm) return res.status(404).send("Permiso no encontrado");
 
-    // Si hay URL completa y el asset es público, redirige tal cual
     if (
       perm.supportingDocument &&
       /^https?:\/\//i.test(perm.supportingDocument) &&
@@ -171,14 +256,13 @@ permissionsController.getDocument = async (req, res) => {
       return res.redirect(302, perm.supportingDocument);
     }
 
-    // Si no, construimos (y firmamos si es authenticated)
     const publicId = perm.supportingPublicId;
     if (!publicId) return res.status(404).send("No hay documento");
 
     const resourceType = perm.supportingResourceType || "raw";
-    const type = perm.supportingType || "upload";           // upload o authenticated
+    const type = perm.supportingType || "upload";
     const format = perm.supportingFormat || "pdf";
-    const sign = type === "authenticated";                  // firma si está protegido
+    const sign = type === "authenticated";
 
     const viewUrl = cloudinary.url(publicId, {
       secure: true,
@@ -195,16 +279,12 @@ permissionsController.getDocument = async (req, res) => {
   }
 };
 
-
-//Mis permisos (filtra por id de usuario)
 permissionsController.getMyPermissions = async (req, res) => {
   try {
     const userId = String(req.user._id);
-
-    const permissions = await PermissionsModel.find({
-      idUser: userId,
-    }).sort({ createdAt: -1 });
-
+    const permissions = await PermissionsModel.find({ idUser: userId }).sort({
+      createdAt: -1,
+    });
     res.json({ data: permissions });
   } catch (error) {
     console.error(error);
@@ -212,14 +292,13 @@ permissionsController.getMyPermissions = async (req, res) => {
   }
 };
 
-//Permisos del equipo ( vista de rol coordinador)
 permissionsController.getTeamPermissions = async (req, res) => {
   try {
     const user = req.user;
     if (user.userType !== "Coordinator") {
       return res
         .status(403)
-        .json({ message: "Solo administradores registrados pueden gestionar permisos." });
+        .json({ message: "Solo coordinadores pueden gestionar permisos." });
     }
 
     const teamPermissions = await PermissionsModel.find({
@@ -234,13 +313,12 @@ permissionsController.getTeamPermissions = async (req, res) => {
   }
 };
 
-//Todos los permisos (vista de rol Admin)
 permissionsController.getAllPermissions = async (req, res) => {
   try {
     const user = req.user;
     if (user.userType !== "Admin") {
       return res.status(403).json({
-        message: "Solo administradores registrados pueden gestionar permisos.",
+        message: "Solo administradores pueden gestionar permisos.",
       });
     }
 
@@ -254,7 +332,6 @@ permissionsController.getAllPermissions = async (req, res) => {
   }
 };
 
-//Obtener UNO (ver detalle)
 permissionsController.getOne = async (req, res) => {
   try {
     const { id } = req.params;
@@ -268,14 +345,12 @@ permissionsController.getOne = async (req, res) => {
   }
 };
 
-//Actualizar estado (ya sea del rol Admin o Coordinador)
 permissionsController.updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    let { status, supervisorComments, Discount, quantityDiscount } = req.body;
+    let { status, supervisorComments, Discount } = req.body;
     const user = req.user;
 
-    // Admin read-only no puede gestionar
     if (user.userType === "Admin" && user.isReadOnly) {
       return res.status(403).json({
         message: "Solo administradores registrados pueden gestionar permisos.",
@@ -289,11 +364,6 @@ permissionsController.updateStatus = async (req, res) => {
 
     if (typeof Discount === "string") Discount = Discount === "true";
     else Discount = !!Discount;
-
-    quantityDiscount = Number(quantityDiscount || 0);
-    if (Number.isNaN(quantityDiscount) || quantityDiscount < 0) {
-      return res.status(400).json({ message: "Cantidad de descuento inválida." });
-    }
 
     const permission = await PermissionsModel.findById(id);
     if (!permission)
@@ -311,17 +381,16 @@ permissionsController.updateStatus = async (req, res) => {
         (user.idTeam ?? user.IdTeam)?.toString();
       const isOwn = String(permission.idUser) === String(user._id);
       if (!sameTeam || isOwn) {
-        return res
-          .status(403)
-          .json({ message: "Solo administradores registrados pueden gestionar permisos." });
+        return res.status(403).json({
+          message:
+            "Solo administradores registrados pueden gestionar permisos.",
+        });
       }
     } else if (user.userType !== "Admin") {
-      return res
-        .status(403)
-        .json({ message: "Solo administradores registrados pueden gestionar permisos." });
+      return res.status(403).json({
+        message: "Solo administradores registrados pueden gestionar permisos.",
+      });
     }
-
-    if (!Discount) quantityDiscount = 0;
 
     const updated = await PermissionsModel.findByIdAndUpdate(
       id,
@@ -330,7 +399,6 @@ permissionsController.updateStatus = async (req, res) => {
         supervisorComments,
         actionBy: user.fullName,
         Discount,
-        quantityDiscount,
       },
       { new: true }
     );
@@ -345,13 +413,11 @@ permissionsController.updateStatus = async (req, res) => {
   }
 };
 
-//Borrar UNO
 permissionsController.deleteOne = async (req, res) => {
   try {
     const { id } = req.params;
     const user = req.user;
 
-    // Admin read-only no puede eliminar
     if (user.userType === "Admin" && user.isReadOnly) {
       return res.status(403).json({
         message: "Solo administradores registrados pueden gestionar permisos.",
@@ -368,7 +434,6 @@ permissionsController.deleteOne = async (req, res) => {
         .json({ message: "Solo puedes eliminar permisos pendientes" });
     }
 
-    // Borrar archivo en Cloudinary si existe
     try {
       if (perm.supportingPublicId) {
         await cloudinary.uploader.destroy(perm.supportingPublicId, {
@@ -406,6 +471,5 @@ permissionsController.deleteOne = async (req, res) => {
     res.status(500).json({ message: "Error interno al eliminar permiso" });
   }
 };
-
 
 export default permissionsController;

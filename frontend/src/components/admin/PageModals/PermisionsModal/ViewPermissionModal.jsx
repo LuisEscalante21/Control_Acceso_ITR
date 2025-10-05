@@ -45,22 +45,17 @@ export default function AdminViewPermissionModal({
     createdAt,
     updatedAt,
     Discount: savedDiscount,
-    quantityDiscount: savedQty,
   } = permission;
 
   const [action, setAction] = useState("approved");
   const [supervisorComments, setSupervisorComments] = useState("");
   const [applyDiscount, setApplyDiscount] = useState(!!savedDiscount);
-  const [quantityDiscount, setQuantityDiscount] = useState(
-    typeof savedQty === "number" ? String(savedQty) : ""
-  );
 
   useEffect(() => {
     setAction("approved");
     setSupervisorComments("");
     setApplyDiscount(!!savedDiscount);
-    setQuantityDiscount(typeof savedQty === "number" ? String(savedQty) : "");
-  }, [permission?._id, savedDiscount, savedQty]);
+  }, [permission?._id, savedDiscount]);
 
   const docUrl = normalizeCloudinaryUrl(supportingDocument);
   const isPending = (status || "").toLowerCase() === "pending";
@@ -84,59 +79,42 @@ export default function AdminViewPermissionModal({
     }
   };
 
-const handleSave = async () => {
-  try {
-    if (action === "approved") {
-      if (
-        quantityDiscount === "" ||
-        isNaN(Number(quantityDiscount)) ||
-        Number(quantityDiscount) < 0
-      ) {
-        return Swal.fire(
-          "Dato inválido",
-          "El descuento debe ser un número mayor o igual a 0.",
-          "warning"
-        );
+  const handleSave = async () => {
+    try {
+      Swal.fire({
+        title: "Guardando...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      const payload = {
+        status: action,
+        supervisorComments,
+      };
+
+      // ✅ Solo se envía descuento si APRUEBA
+      if (action === "approved") {
+        payload.Discount = applyDiscount;
+      } else {
+        payload.Discount = false;
       }
+
+      const res = await updatePermissionStatus(_id, payload);
+      Swal.close();
+
+      if (!res.ok) {
+        const msg = await res.json().catch(() => ({}));
+        return Swal.fire("Error", msg?.message || `HTTP ${res.status}`, "error");
+      }
+
+      await Swal.fire("Listo", "Permiso actualizado correctamente.", "success");
+      onChanged?.();
+      onClose?.();
+    } catch (err) {
+      Swal.close();
+      Swal.fire("Error", err.message || "No se pudo actualizar.", "error");
     }
-
-    Swal.fire({
-      title: "Guardando...",
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading(),
-    });
-
-    const payload = {
-      status: action,
-      supervisorComments,
-    };
-
-    if (action === "approved") {
-      const num = Number(quantityDiscount) || 0;
-      payload.Discount = num > 0;      // true si > 0
-      payload.quantityDiscount = num;  // valor real
-    } else {
-      payload.Discount = false;
-      payload.quantityDiscount = 0;
-    }
-
-    const res = await updatePermissionStatus(_id, payload);
-    Swal.close();
-
-    if (!res.ok) {
-      const msg = await res.json().catch(() => ({}));
-      return Swal.fire("Error", msg?.message || `HTTP ${res.status}`, "error");
-    }
-
-    await Swal.fire("Listo", "Permiso actualizado.", "success");
-    onChanged?.();
-    onClose?.();
-  } catch (err) {
-    Swal.close();
-    Swal.fire("Error", err.message || "No se pudo actualizar.", "error");
-  }
-};
-
+  };
 
   const handleDeleteOne = async () => {
     if (!isPending) return;
@@ -216,15 +194,12 @@ const handleSave = async () => {
               <div>{employeeNumber || "-"}</div>
             </div>
             <div className="vp2-field">
-              <label>Departamento</label>
-              <div>{department || "-"}</div>
-            </div>
-            <div className="vp2-field">
               <label>Fecha de solicitud</label>
               <div>{applicationDay || "-"}</div>
             </div>
           </div>
 
+          {/* Detalle por tipo */}
           {permissionType === "minor" && (
             <>
               <h4 className="vp2-subtitle">Detalle permiso menor</h4>
@@ -314,21 +289,19 @@ const handleSave = async () => {
                   </select>
                 </div>
 
-                <div className="vp2-field">
-  <label>Aplicar descuento</label>
-  <div className="">
-    <input
-      type="number"
-      min="0"
-      step="0.5"
-      value={quantityDiscount}
-      onChange={(e) => setQuantityDiscount(e.target.value)}
-      placeholder="Cantidad"
-      disabled={action !== "approved"}
-    />
-  </div>
-</div>
-
+                {/* 🔸 Solo mostrar si aprueba */}
+                {action === "approved" && (
+                  <div className="vp2-field">
+                    <label>¿Aplica descuento?</label>
+                    <select
+                      value={applyDiscount ? "yes" : "no"}
+                      onChange={(e) => setApplyDiscount(e.target.value === "yes")}
+                    >
+                      <option value="no">No</option>
+                      <option value="yes">Sí</option>
+                    </select>
+                  </div>
+                )}
 
                 <div className="vp2-field" style={{ gridColumn: "1 / -1" }}>
                   <label>Comentario del supervisor</label>

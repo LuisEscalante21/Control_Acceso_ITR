@@ -1,4 +1,3 @@
-// src/components/employee/PageModals/ViewPermissionModal.jsx
 import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
@@ -45,7 +44,6 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
     updatedAt,
     // descuento
     Discount,
-    quantityDiscount,
   } = permission;
 
   const isPending = (status || "").toLowerCase() === "pending";
@@ -160,7 +158,6 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
           <div className="vp2-grid">
             <div className="vp2-field"><label>Colaborador</label><div>{employeeName || "-"}</div></div>
             <div className="vp2-field"><label>Código</label><div>{employeeNumber || "-"}</div></div>
-            <div className="vp2-field"><label>Departamento</label><div>{department || "-"}</div></div>
             <div className="vp2-field"><label>Fecha de solicitud</label><div>{applicationDay || "-"}</div></div>
           </div>
 
@@ -197,13 +194,15 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
             </>
           )}
 
-          {/* Resumen de descuento */}
-          {(typeof Discount !== "undefined") && (
+          {/* ✅ Solo mostrar si aplica descuento */}
+          {typeof Discount !== "undefined" && (
             <>
               <h4 className="vp2-subtitle">Resumen de descuento</h4>
               <div className="vp2-grid">
-                <div className="vp2-field"><label>¿Aplica descuento?</label><div>{Discount ? "Sí" : "No"}</div></div>
-                <div className="vp2-field"><label>Cantidad descontada</label><div>{Number(quantityDiscount || 0)}</div></div>
+                <div className="vp2-field">
+                  <label>¿Aplica descuento?</label>
+                  <div>{Discount ? "Sí" : "No"}</div>
+                </div>
               </div>
             </>
           )}
