@@ -1,4 +1,3 @@
-
 import axios from "axios";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +16,7 @@ const useDataAbsences = () => {
   const [userId, setUserId] = useState(null);
   const [userTeamId, setUserTeamId] = useState(null);
   const navigate = useNavigate();
-  const userCache = useRef({}); // Cache de usuarios
+  const userCache = useRef({});
 
   // Configuración Axios
   const axiosConfig = {
@@ -34,7 +33,29 @@ const useDataAbsences = () => {
       Swal.fire("Error", "No autorizado. Inicia sesión nuevamente.", "error");
       navigate("/login");
     } else {
-      console.error("🔴 Error:", err);
+      console.error("Error:", err);
+    }
+  };
+
+  // Obtener teamId del usuario desde el servidor (fallback)
+  const fetchUserTeamFromServer = async (userId) => {
+    try {
+      console.log("Obteniendo teamId desde servidor para userId:", userId);
+      const res = await axios.get(`${USERS_API_URL}/${userId}`, axiosConfig);
+      const user = res.data;
+      
+      console.log("Respuesta del servidor:", user);
+      
+      const teamId = user?.idTeam?._id || user?.idTeam || user?.id_team || null;
+      console.log("teamId obtenido del servidor:", teamId);
+      
+      if (teamId) {
+        setUserTeamId(teamId);
+      } else {
+        console.error("No se encontró teamId en el servidor");
+      }
+    } catch (error) {
+      console.error("Error al obtener teamId del servidor:", error);
     }
   };
 
@@ -51,10 +72,29 @@ const useDataAbsences = () => {
         const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
         if (!decryptedStr) throw new Error("No se pudo descifrar correctamente.");
         const userInfo = JSON.parse(decryptedStr);
-        setUserId(userInfo._id || null);
-        setUserTeamId(userInfo.teamId || null);
+        
+        console.log("Cookie completa:", userInfo);
+        console.log("userId:", userInfo._id);
+        console.log("teamId buscando:", userInfo.teamId);
+        console.log("idTeam buscando:", userInfo.idTeam);
+        console.log("id_team buscando:", userInfo.id_team);
+        
+        const userId = userInfo._id || null;
+        const teamId = userInfo.teamId || userInfo.idTeam || userInfo.id_team || null;
+        
+        console.log("userId final:", userId);
+        console.log("teamId final:", teamId);
+        
+        setUserId(userId);
+        setUserTeamId(teamId);
+        
+        // Si no hay teamId en la cookie, buscarlo en el servidor
+        if (userId && !teamId) {
+          console.warn("No hay teamId en cookie, buscando en servidor...");
+          fetchUserTeamFromServer(userId);
+        }
       } catch (err) {
-        console.error("🔴 Error al descifrar userInfo:", err);
+        console.error("Error al descifrar userInfo:", err);
         setUserId(null);
         setUserTeamId(null);
       }
@@ -80,7 +120,7 @@ const useDataAbsences = () => {
       userCache.current[id] = { ...user, userType };
       return userCache.current[id];
     } catch (error) {
-      console.error("🔴 Error fetchUserById:", error);
+      console.error("Error fetchUserById:", error);
       userCache.current[id] = null;
       return null;
     }
@@ -104,22 +144,30 @@ const useDataAbsences = () => {
   };
 
   // Obtener registros de inasistencias
-  // 🔹 SOLO TRAE INASISTENCIAS DEL ÁREA DEL COORDINADOR
+  // SOLO TRAE INASISTENCIAS DEL ÁREA DEL COORDINADOR
   const fetchAbsenceRecords = async () => {
+    console.log("Iniciando fetchAbsenceRecords");
+    console.log("userTeamId actual:", userTeamId);
+    
     setLoading(true);
     try {
-      // 🔹 Validar que exista el teamId del coordinador
+      // Validar que exista el teamId del coordinador
       if (!userTeamId) {
+        console.warn("No hay userTeamId disponible, no se cargarán inasistencias");
         setAbsenceRecords([]);
         setLoading(false);
         return;
       }
 
-      // 🔹 SIEMPRE filtrar por el área (teamId) del coordinador
+      // SIEMPRE filtrar por el área (teamId) del coordinador
       const url = `${API_URL}/absences?idTeam=${userTeamId}`;
+      console.log("URL de petición:", url);
       
       const res = await axios.get(url, axiosConfig);
       const records = res.data;
+      
+      console.log("Registros recibidos del servidor:", records.length);
+      console.log("Primer registro:", records[0]);
 
       // Obtener IDs únicos de empleados
       const uniqueUserIds = [...new Set(
@@ -149,6 +197,7 @@ const useDataAbsences = () => {
         return {
           ...rec,
           _id: rec._id,
+          id_Employee: employeeId,
           employeeName: user
             ? `${user.names} ${user.surnames}`
             : rec.names && rec.surnames
@@ -180,10 +229,10 @@ const useDataAbsences = () => {
     try {
       if (absenceId) {
         await axios.put(`${API_URL}/absences/${absenceId}`, data, axiosConfig);
-        Swal.fire("¡Actualizado!", "Registro de inasistencia actualizado.", "success");
+        Swal.fire("Actualizado", "Registro de inasistencia actualizado.", "success");
       } else {
         await axios.post(`${API_URL}/absences`, data, axiosConfig);
-        Swal.fire("¡Guardado!", "Registro de inasistencia creado.", "success");
+        Swal.fire("Guardado", "Registro de inasistencia creado.", "success");
       }
       await fetchAbsenceRecords();
     } catch (error) {
@@ -207,7 +256,7 @@ const useDataAbsences = () => {
 
     try {
       await axios.delete(`${API_URL}/absences/${id}`, axiosConfig);
-      Swal.fire("¡Eliminado!", "Registro de inasistencia eliminado.", "success");
+      Swal.fire("Eliminado", "Registro de inasistencia eliminado.", "success");
       await fetchAbsenceRecords();
     } catch (error) {
       handleNetworkError(error);
@@ -218,6 +267,7 @@ const useDataAbsences = () => {
   // Cargar datos cuando userId y userTeamId estén disponibles
   useEffect(() => {
     if (userId && userTeamId) {
+      console.log("Cargando datos con userId:", userId, "y teamId:", userTeamId);
       fetchAbsenceRecords();
       fetchJustifications();
     }

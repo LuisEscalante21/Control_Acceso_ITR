@@ -19,17 +19,17 @@ CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 # 🔹 Configuración de Zona Horaria de San Salvador
 SV_TZ = pytz.timezone('America/El_Salvador')
 
-# Configuración MongoDB y API Key
+# 🔹 Configuración MongoDB y API Key
 MONGO_URI = os.getenv("DB_URI")
 DB_NAME = os.getenv("DB_NAME")
+API_ACCESS_KEY = os.getenv("API_ACCESS_KEY")
+
 ACCESS_COLLECTION_NAME = "registrationAccess"
 EMPLOYEE_COLLECTION_NAME = "employees"
 ADMIN_COLLECTION_NAME = "administrators"
 COORDINATOR_COLLECTION_NAME = "coordinators"
 
-API_ACCESS_KEY = os.getenv("API_ACCESS_KEY")
-
-# Conexión a MongoDB
+# 🔹 Conexión a MongoDB
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 
@@ -38,43 +38,29 @@ employee_collection = db[EMPLOYEE_COLLECTION_NAME]
 
 
 # ------------------------------
-# Utilidades
+# Funciones Utilitarias
 # ------------------------------
+
 def get_sv_time():
-    """Obtiene la hora actual en zona horaria de San Salvador"""
     return datetime.now(SV_TZ)
 
 
 def convert_to_sv_time(dt):
-    """Convierte un datetime a zona horaria de San Salvador"""
     if dt is None:
         return None
-    if dt.tzinfo is None:
-        # Si no tiene zona horaria, asumir que es de San Salvador
-        return SV_TZ.localize(dt)
-    else:
-        # Si tiene zona horaria, convertir a San Salvador
-        return dt.astimezone(SV_TZ)
+    return SV_TZ.localize(dt) if dt.tzinfo is None else dt.astimezone(SV_TZ)
 
 
 def _norm(s: str) -> str:
-    """Normaliza tildes y a minúsculas para comparar llaves ('Miércoles' -> 'miercoles')."""
     if not s:
         return ""
     s = s.lower()
-    s = (s.replace("á", "a")
-           .replace("é", "e")
-           .replace("í", "i")
-           .replace("ó", "o")
-           .replace("ú", "u"))
+    s = s.replace("á", "a").replace("é", "e").replace("í", "i") \
+         .replace("ó", "o").replace("ú", "u")
     return s
 
 
 def _normalize_schedule_keys(schedule: dict) -> dict:
-    """
-    Devuelve una copia del schedule con todas las llaves de nivel 1 (días)
-    y nivel 2 (Matutino/Vespertino) normalizadas (sin tildes y minúsculas).
-    """
     if not isinstance(schedule, dict):
         return {}
     out = {}
@@ -87,10 +73,8 @@ def _normalize_schedule_keys(schedule: dict) -> dict:
     return out
 
 
-# Decorador para validar API Key
 def require_api_key(f):
     from functools import wraps
-
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.headers.get("Authorization", None)
@@ -100,16 +84,14 @@ def require_api_key(f):
         if token != API_ACCESS_KEY:
             return jsonify({"error": "API Key inválida"}), 403
         return f(*args, **kwargs)
-
     return decorated
 
 
-# Función para parsear horas en 24h o 12h AM/PM
 def parse_hora(hora_str):
     if not hora_str:
         return None
     hora_str = str(hora_str).strip().upper()
-    formatos = ["%H:%M", "%I:%M%p"]  # 24h y 12h AM/PM
+    formatos = ["%H:%M", "%I:%M%p"]
     for fmt in formatos:
         try:
             return datetime.strptime(hora_str, fmt).time()
@@ -118,17 +100,8 @@ def parse_hora(hora_str):
     raise ValueError(f"Formato de hora inválido: {hora_str}")
 
 
-# Función para validar horario (A tiempo / Tarde / Salió antes / Sin horario asignado)
 def validar_horario(schedule, ahora: datetime, tipo: str):
-    """
-    schedule: dict con llaves por día y secciones.
-              Se normaliza internamente ('miercoles'/'vespertino').
-    tipo: 'entrada' o 'salida'
-    """
-    # Asegurar que ahora esté en zona horaria de San Salvador
     ahora = convert_to_sv_time(ahora)
-    
-    # weekday(): 0=Lunes ... 6=Domingo —> usamos el mismo orden
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     dia = dias[ahora.weekday()]
     seccion = "Matutino" if ahora.hour < 12 else "Vespertino"
@@ -155,7 +128,6 @@ def validar_horario(schedule, ahora: datetime, tipo: str):
     return "A tiempo"
 
 
-# Función recursiva para convertir ObjectId a string
 def convert_objectid(obj):
     if isinstance(obj, dict):
         return {k: convert_objectid(v) for k, v in obj.items()}
@@ -163,41 +135,33 @@ def convert_objectid(obj):
         return [convert_objectid(i) for i in obj]
     elif isinstance(obj, ObjectId):
         return str(obj)
-    else:
-        return obj
+    return obj
 
 
-# Limpiar documento para JSON
 def limpiar_registro(reg):
     reg = convert_objectid(reg)
-    if "entry_time" in reg and reg["entry_time"]:
-        # Puede venir ya como string si se serializó antes
-        if isinstance(reg["entry_time"], datetime):
-            # Convertir a zona horaria de San Salvador antes de serializar
-            entry_sv = convert_to_sv_time(reg["entry_time"])
-            reg["entry_time"] = entry_sv.isoformat()
-    if "exit_time" in reg and reg["exit_time"]:
-        if isinstance(reg["exit_time"], datetime):
-            exit_sv = convert_to_sv_time(reg["exit_time"])
-            reg["exit_time"] = exit_sv.isoformat()
+    if "entry_time" in reg and isinstance(reg["entry_time"], datetime):
+        reg["entry_time"] = convert_to_sv_time(reg["entry_time"]).isoformat()
+    if "exit_time" in reg and isinstance(reg["exit_time"], datetime):
+        reg["exit_time"] = convert_to_sv_time(reg["exit_time"]).isoformat()
     return reg
 
 
-# ==========================================================
-# Crear o actualizar registro de acceso
-# ==========================================================
+# ------------------------------
+# Rutas de API
+# ------------------------------
+
 @app.route("/api/access", methods=["POST"])
 @require_api_key
 def crear_o_actualizar_acceso():
     data = request.get_json() or {}
-    user_id = data.get("id_Employee")  # Puede venir como _id o como numEmpleado
+    user_id = data.get("id_Employee")
     date_str = data.get("date")
     if not user_id or not date_str:
         return jsonify({"error": "Faltan datos: id_Employee o date"}), 400
 
     update_data = {}
-    tiene_entrada = False
-    tiene_salida = False
+    tiene_entrada = tiene_salida = False
 
     user_collections = [
         ("Employee", db[EMPLOYEE_COLLECTION_NAME]),
@@ -205,64 +169,50 @@ def crear_o_actualizar_acceso():
         ("Administrator", db[ADMIN_COLLECTION_NAME]),
     ]
 
-    user_type = None
-    user_data = None
-    user_mongo_id = None  # 🔹 aquí guardamos siempre el _id real del usuario
+    user_type = user_data = user_mongo_id = None
 
-    # Buscar usuario en todas las colecciones
     for tipo, collection in user_collections:
-        user = None
-        if ObjectId.is_valid(user_id):
-            user = collection.find_one({"_id": ObjectId(user_id)})
-        if not user:
-            user = collection.find_one({"numEmpleado": user_id})
+        user = collection.find_one({"_id": ObjectId(user_id)}) if ObjectId.is_valid(user_id) else None
+        user = user or collection.find_one({"numEmpleado": user_id})
         if user:
             user_type = tipo
             user_data = user
-            user_mongo_id = str(user["_id"])  # Usamos siempre el _id de Mongo
+            user_mongo_id = str(user["_id"])
             break
 
     if not user_type:
         return jsonify({"error": "Usuario no encontrado"}), 404
 
-    # Usamos el _id del usuario para relacionar accesos
     filter_query = {"id_Employee": user_mongo_id, "date": date_str}
     update_data["id_Employee"] = user_mongo_id
 
     horario = user_data.get("schedule", {}) if user_type != "Administrator" else {}
 
-    # Procesar entrada
     if "entry_time" in data:
         try:
-            entry_time = datetime.fromisoformat(data["entry_time"])
-            # Convertir a zona horaria de San Salvador
-            entry_time = convert_to_sv_time(entry_time)
+            entry_time = convert_to_sv_time(datetime.fromisoformat(data["entry_time"]))
             update_data["entry_time"] = entry_time
             update_data["entry_result"] = validar_horario(horario, entry_time, "entrada")
             tiene_entrada = True
         except Exception as e:
             return jsonify({"error": f"Formato inválido para entry_time: {str(e)}"}), 400
+
     if "entry_photo" in data:
         update_data["entry_photo"] = data["entry_photo"]
         tiene_entrada = True
 
-    # Procesar salida
     if "exit_time" in data:
         try:
-            exit_time = datetime.fromisoformat(data["exit_time"])
-            # Convertir a zona horaria de San Salvador
-            exit_time = convert_to_sv_time(exit_time)
+            exit_time = convert_to_sv_time(datetime.fromisoformat(data["exit_time"]))
             update_data["exit_time"] = exit_time
             update_data["exit_result"] = validar_horario(horario, exit_time, "salida")
             tiene_salida = True
         except Exception as e:
             return jsonify({"error": f"Formato inválido para exit_time: {str(e)}"}), 400
+
     if "exit_photo" in data:
         update_data["exit_photo"] = data["exit_photo"]
         tiene_salida = True
-
-    if not update_data:
-        return jsonify({"error": "No se proporcionaron campos para actualizar"}), 400
 
     update_data["date"] = date_str
     update_data["user_type"] = user_type
@@ -278,15 +228,12 @@ def crear_o_actualizar_acceso():
 
     result = access_collection.update_one(filter_query, {"$set": update_data}, upsert=True)
 
-    return jsonify(
-        {
-            "message": "Registro de acceso creado o actualizado exitosamente",
-            "user_type": user_type,
-        }
-    ), (201 if result.upserted_id or result.modified_count > 0 else 200)
+    return jsonify({
+        "message": "Registro de acceso creado o actualizado exitosamente",
+        "user_type": user_type,
+    }), (201 if result.upserted_id or result.modified_count > 0 else 200)
 
 
-# Endpoint para obtener todos los registros de acceso (rol administrador)
 @app.route("/api/access", methods=["GET"])
 @require_api_key
 def obtener_todos_registros():
@@ -296,39 +243,32 @@ def obtener_todos_registros():
         only_employee_id = request.args.get("onlyEmployeeId")
 
         pipeline = []
-
-        # --- Filtros iniciales sobre el campo string id_Employee ---
         pre_match = {}
-        if only_employee_id:
-            # Si es Admin → no filtramos, devuelve todo
-            if only_employee_id != "Admin":
-                pre_match["id_Employee"] = only_employee_id
+
+        if only_employee_id and only_employee_id != "Admin":
+            pre_match["id_Employee"] = only_employee_id
         if exclude_employee_id:
             pre_match["id_Employee"] = {"$ne": exclude_employee_id}
         if pre_match:
             pipeline.append({"$match": pre_match})
 
-        # 🔹 AddFields seguro para evitar error con "Admin"
-        pipeline.append(
-            {
-                "$addFields": {
-                    "idEmpObj": {
-                        "$cond": {
-                            "if": {
-                                "$regexMatch": {
-                                    "input": "$id_Employee",
-                                    "regex": "^[a-fA-F0-9]{24}$",
-                                }
-                            },
-                            "then": {"$toObjectId": "$id_Employee"},
-                            "else": None,
-                        }
+        pipeline.append({
+            "$addFields": {
+                "idEmpObj": {
+                    "$cond": {
+                        "if": {
+                            "$regexMatch": {
+                                "input": "$id_Employee",
+                                "regex": "^[a-fA-F0-9]{24}$",
+                            }
+                        },
+                        "then": {"$toObjectId": "$id_Employee"},
+                        "else": None,
                     }
                 }
             }
-        )
+        })
 
-        # --- Filtro por área: employees con IdTeam._id === teamId ---
         if team_id:
             try:
                 team_object_id = ObjectId(team_id)
@@ -336,15 +276,16 @@ def obtener_todos_registros():
                 return jsonify({"error": "teamId inválido"}), 400
 
             empleados_cursor = employee_collection.find(
-                {"IdTeam._id": team_object_id}, {"_id": 1}
+                {"id_team": team_object_id},
+                {"_id": 1}
             )
             emp_ids = [e["_id"] for e in empleados_cursor]
+
             if not emp_ids:
-                return jsonify([])  # no hay empleados en esa área
+                return jsonify([])
 
             pipeline.append({"$match": {"idEmpObj": {"$in": emp_ids}}})
 
-        # --- Lookup para traer datos del empleado
         pipeline += [
             {
                 "$lookup": {
@@ -383,13 +324,12 @@ def obtener_todos_registros():
 
         cursor = access_collection.aggregate(pipeline)
         registros = [limpiar_registro(reg) for reg in cursor]
-
         return jsonify(registros)
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-# Endpoint para obtener un registro por id (rol empleado)
 @app.route("/api/access/<id>", methods=["GET"])
 @require_api_key
 def obtener_registro_por_id(id):
@@ -402,7 +342,6 @@ def obtener_registro_por_id(id):
         return jsonify({"error": str(e)}), 400
 
 
-# Endpoint para editar un registro de acceso específico
 @app.route("/api/access/<id>", methods=["PATCH"])
 @require_api_key
 def editar_registro(id):
@@ -411,20 +350,17 @@ def editar_registro(id):
 
     if "entry_time" in data:
         try:
-            entry_time = datetime.fromisoformat(data["entry_time"])
-            entry_time = convert_to_sv_time(entry_time)
-            update_data["entry_time"] = entry_time
+            update_data["entry_time"] = convert_to_sv_time(datetime.fromisoformat(data["entry_time"]))
         except Exception:
             return jsonify({"error": "Formato inválido para entry_time"}), 400
+
     if "entry_result" in data:
         update_data["entry_result"] = data["entry_result"]
     if "entry_photo" in data:
         update_data["entry_photo"] = data["entry_photo"]
     if "exit_time" in data:
         try:
-            exit_time = datetime.fromisoformat(data["exit_time"])
-            exit_time = convert_to_sv_time(exit_time)
-            update_data["exit_time"] = exit_time
+            update_data["exit_time"] = convert_to_sv_time(datetime.fromisoformat(data["exit_time"]))
         except Exception:
             return jsonify({"error": "Formato inválido para exit_time"}), 400
     if "exit_result" in data:
@@ -446,7 +382,6 @@ def editar_registro(id):
         return jsonify({"error": str(e)}), 400
 
 
-# Endpoint para eliminar un registro de acceso específico
 @app.route("/api/access/<id>", methods=["DELETE"])
 @require_api_key
 def eliminar_registro(id):
@@ -459,7 +394,10 @@ def eliminar_registro(id):
         return jsonify({"error": str(e)}), 400
 
 
-# Iniciar el script
+# ------------------------------
+# Iniciar aplicación
+# ------------------------------
+
 def iniciar_api_acceso():
     print("La API de registro de acceso ha iniciado.")
     print(f"Zona horaria configurada: {SV_TZ}")
