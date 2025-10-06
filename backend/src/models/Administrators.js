@@ -74,6 +74,11 @@ const AdministratorSchema = new Schema(
       type: Date,
       default: null,
     },
+    // Booleano para bloquear la solicitud de restablecimiento de contraseña despues de 1 dia 
+    lockRecoveryPassTime: {
+      type: Date,
+      default: null,
+    }
     }
 );
 

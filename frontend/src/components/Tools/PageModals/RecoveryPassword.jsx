@@ -1,166 +1,159 @@
-// src/components/Tools/PageModals/RecoveryPassword.jsx
-import { X } from "lucide-react";
-import Swal from "sweetalert2";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import useDataRecoveryPass from "../../../hooks/Global/useDataRecovery";
-import "../PageModalStyles/RecoveryPassword.css";
+import "../PageModalStyles/NewPass.css";
+import Swal from "sweetalert2";
 
-const domainRegex = /^[a-zA-Z0-9._%+-]+@ricaldone\.edu\.sv$/;
-const empCodeRegex = /^[A-Za-z0-9-_]+$/; // ajusta si tu código acepta otros símbolos
-
-export default function RecoveryPasswordModal({ open, onClose }) {
-  const { loading, submitRecovery } = useDataRecoveryPass();
+export default function RecoveryPasswordModal({ open, onClose, onVerified }) {
+  const { loading, requestCode, verifyCode } = useDataRecoveryPass();
+  const [step, setStep] = useState(1);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-  } = useForm({
-    defaultValues: { email: "", numEmpleado: "" },
-    mode: "onTouched",
-  });
+  } = useForm({ mode: "onTouched" });
 
-  const onSubmit = async (values) => {
-    const email = values.email.trim();
-    const numEmpleado = values.numEmpleado.trim();
-    if (!email || !numEmpleado) return; // guardia extra
+  if (!open) return null;
 
-    // 1) cerramos el modal inmediato
-    onClose?.();
-
-    // 2) pequeña espera para que React desmonte el modal antes de mostrar el loader
-    await new Promise((r) => setTimeout(r, 50));
-
-    // 3) modal de espera
-    Swal.fire({
-      title: "Enviando solicitud…",
-      html: "Por favor, espera un momento.",
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      didOpen: () => Swal.showLoading(),
-    });
-
-    try {
-      const result = await submitRecovery({ email, numEmpleado });
-
-      // 4) cerramos loader y mostramos resultado
-      Swal.close();
-
-      if (result.ok) {
-        await Swal.fire({
-          icon: "success",
-          title: "Solicitud enviada",
-          text:
-            "Si los datos coinciden, recibirás una contraseña temporal por correo.",
-          confirmButtonText: "Entendido",
-        });
-        reset();
-      } else {
-        await Swal.fire({
-          icon: "error",
-          title: "No se pudo enviar",
-          text: result.error || "Intenta de nuevo más tarde.",
-          confirmButtonText: "Ok",
-        });
-      }
-    } catch (e) {
-      Swal.close();
-      await Swal.fire({
+  const handleRequest = async ({ email }) => {
+    const res = await requestCode({ email }); // 👈 ahora por correo
+    if (res.ok) {
+      Swal.fire({
+        icon: "success",
+        title: "Código enviado",
+        text: "Revisa tu correo para continuar.",
+        timer: 1800,
+        showConfirmButton: false,
+      });
+      setStep(2);
+      reset();
+    } else {
+      Swal.fire({
         icon: "error",
-        title: "Error inesperado",
-        text: e?.message || "Intenta más tarde.",
-        confirmButtonText: "Ok",
+        title: "No se pudo enviar",
+        text: res.error || "Inténtalo nuevamente.",
       });
     }
   };
 
-  if (!open) return null;
+  const handleVerify = async ({ code }) => {
+    const res = await verifyCode({ code });
+    if (res.ok) {
+      Swal.fire({
+        icon: "success",
+        title: "Código verificado",
+        timer: 1200,
+        showConfirmButton: false,
+      });
+      onVerified?.(); // abre el modal NewPass en el padre
+      onClose?.();
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Código inválido",
+        text: res.error || "Verifica el código ingresado.",
+      });
+    }
+  };
 
   return (
-    <div className="rp-overlay rp-fade-in">{/* No cierra al click fuera */}
-      <div className="rp-card rp-scale-in">
-        {/* Botón X */}
-        <button
-          onClick={() => !loading && onClose?.()}
-          disabled={loading}
-          aria-label="Cerrar"
-          className="rp-close"
-          type="button"
-        >
-          <X size={20} />
-        </button>
+    <div className="np-overlay np-fade-in">
+      <div className="np-card np-scale-in">
+        {step === 1 && (
+          <>
+            <h2 className="np-title">Recuperar contraseña</h2>
+            <p className="np-subtitle">Ingresa tu correo institucional</p>
 
-        <h2 className="rp-title">Recuperar contraseña</h2>
-        <p className="rp-subtitle">
-          Ingresa tu <b>correo institucional</b> y tu <b>código de empleado</b>.
-        </p>
+            <form onSubmit={handleSubmit(handleRequest)}>
+              <div className="input-group" style={{ marginTop: 12 }}>
+                <label className="input-label">Correo electrónico</label>
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="tucorreo@ejemplo.com"
+                  autoComplete="email"
+                  {...register("email", {
+                    required: "Requerido",
+                    pattern: {
+                      value:
+                        // RFC 5322 simplificado
+                        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: "Formato inválido",
+                    },
+                  })}
+                />
+                {errors.email && (
+                  <span className="np-error">{errors.email.message}</span>
+                )}
+              </div>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          {/* Email (obligatorio) */}
-          <div className="input-group" style={{ marginTop: 12 }}>
-            <label htmlFor="recovery-email" className="input-label">
-              Correo institucional
-            </label>
-            <input
-              id="recovery-email"
-              type="email"
-              placeholder="tu@ricaldone.edu.sv"
-              className="input-field"
-              disabled={loading || isSubmitting}
-              {...register("email", {
-                required: "El correo es requerido",
-                pattern: {
-                  value: domainRegex,
-                  message: "Usa tu correo institucional @ricaldone.edu.sv",
-                },
-              })}
-            />
-            {errors.email && (
-              <span className="rp-error">{errors.email.message}</span>
-            )}
-          </div>
+              <div className="np-actions">
+                <button
+                  type="submit"
+                  className="login-button"
+                  disabled={loading || isSubmitting}
+                  style={{ flex: 1 }}
+                >
+                  {loading || isSubmitting ? "Enviando..." : <b>Enviar código</b>}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="link-button"
+                  style={{ marginLeft: 8 }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </>
+        )}
 
-          {/* Código de empleado (obligatorio) */}
-          <div className="input-group" style={{ marginTop: 12 }}>
-            <label htmlFor="recovery-numEmpleado" className="input-label">
-              Código de empleado
-            </label>
-            <input
-              id="recovery-numEmpleado"
-              type="text"
-              placeholder="Ej: RL01"
-              className="input-field"
-              disabled={loading || isSubmitting}
-              {...register("numEmpleado", {
-                required: "El código de empleado es requerido",
-                minLength: { value: 3, message: "Mínimo 3 caracteres" },
-                pattern: {
-                  value: empCodeRegex,
-                  message: "Solo letras, números, '-' o '_'",
-                },
-              })}
-            />
-            {errors.numEmpleado && (
-              <span className="rp-error">{errors.numEmpleado.message}</span>
-            )}
-          </div>
+        {step === 2 && (
+          <>
+            <h2 className="np-title">Verificar código</h2>
+            <p className="np-subtitle">Ingresa el código que recibiste en tu correo</p>
 
-          <div className="rp-actions">
-            <button
-              type="submit"
-              className="login-button"
-              disabled={loading || isSubmitting}
-              style={{ flex: 1 }}
-            >
-              {loading || isSubmitting ? "Enviando..." : <b>Enviar</b>}
-            </button>
-          </div>
-        </form>
+            <form onSubmit={handleSubmit(handleVerify)}>
+              <div className="input-group" style={{ marginTop: 12 }}>
+                <label className="input-label">Código</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Ej. 123456"
+                  {...register("code", {
+                    required: "Requerido",
+                    minLength: { value: 4, message: "Mínimo 4 dígitos" },
+                  })}
+                />
+                {errors.code && (
+                  <span className="np-error">{errors.code.message}</span>
+                )}
+              </div>
 
-        <p className="rp-hint">
-          Verifica que tu <b>correo</b> y <b>código</b> estén escritos tal cual en el sistema.
-        </p>
+              <div className="np-actions">
+                <button
+                  type="submit"
+                  className="login-button"
+                  disabled={loading || isSubmitting}
+                  style={{ flex: 1 }}
+                >
+                  {loading || isSubmitting ? "Verificando..." : <b>Verificar</b>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="link-button"
+                  style={{ marginLeft: 8 }}
+                >
+                  Volver
+                </button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

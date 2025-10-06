@@ -19,7 +19,6 @@ const LoginPage = () => {
   // Modales
   const [showRecovery, setShowRecovery] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
-  const [pendingRoute, setPendingRoute] = useState(null);
 
   const navigate = useNavigate();
 
@@ -102,19 +101,6 @@ const LoginPage = () => {
             ? "/coordinator-dashboard"
             : "/employee-dashboard";
 
-        // ¿Debe forzar cambio de contraseña?
-        const requires =
-          data.requiresPasswordUpdate === true ||
-          data.requiresPasswordUpdate === "true";
-
-        if (requires) {
-          // No navegamos aún; abrimos modal bloqueante
-          setPendingRoute(nextRoute);
-          setShowNewPass(true);
-          return;
-        }
-
-        // Sin forzar cambio -> flujo normal
         Swal.fire({
           icon: "success",
           title: "¡Inicio de sesión exitoso!",
@@ -197,8 +183,8 @@ const LoginPage = () => {
             {loading ? "Cargando..." : <b>Iniciar sesión</b>}
           </button>
         </form>
-        
-        {/* 🔗 Enlace para recuperar contraseña (abre el modal de RECOVERY) */}
+
+        {/* 🔗 Enlace para recuperar contraseña */}
         <div style={{ marginTop: 12 }}>
           <button
             type="button"
@@ -237,13 +223,14 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/*Modal Recuperación */}
+      {/* Modal Recuperación */}
       <RecoveryPasswordModal
         open={showRecovery}
         onClose={() => setShowRecovery(false)}
+        onVerified={() => setShowNewPass(true)} // 👉 al verificar código abre NewPass
       />
 
-      {/*Modal Nueva Contraseña (BLOQUEANTE, solo se cierra en éxito) */}
+      {/* Modal Nueva Contraseña */}
       <NewPass
         open={showNewPass}
         onSuccess={async () => {
@@ -256,8 +243,6 @@ const LoginPage = () => {
             timer: 2200,
             showConfirmButton: false,
           });
-          // Navega a la ruta pendiente
-          if (pendingRoute) navigate(pendingRoute);
         }}
       />
     </div>

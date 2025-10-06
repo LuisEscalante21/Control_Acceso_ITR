@@ -1,12 +1,15 @@
-import { Router } from "express";
-import { recoveryPasswordController } from "../controllers/recoveryPasswordController.js";
+import express from "express";
+import passwordRecoveryController from "../controllers/recoveryPasswordController.js";
 
-const router = Router();
+const router = express.Router();
 
-// POST /api/recoveryPassword
-router.post("/", (req, res, next) => {
-  console.log("[API] POST /api/recoveryPassword", req.body);
-  next();
-}, recoveryPasswordController);
+// 1 Solicitar código de verificación
+router.route("/requestCode").post(passwordRecoveryController.requestCode);
+
+// 2 Verificar código
+router.route("/verifyCode").post(passwordRecoveryController.verifyCode);
+
+// 3 Establecer nueva contraseña
+router.route("/newPassword").post(passwordRecoveryController.newPassword);
 
 export default router;
