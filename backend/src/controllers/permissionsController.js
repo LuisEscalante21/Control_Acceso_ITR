@@ -338,9 +338,11 @@ permissionsController.getOne = async (req, res) => {
     const perm = await PermissionsModel.findById(id);
     if (!perm)
       return res.status(404).json({ message: "Permiso no encontrado" });
+
+    // 📤 Al tener actionBy como array en el schema, aquí ya regresa con todo el historial
     res.json({ data: perm });
   } catch (error) {
-    console.error(error);
+    console.error("Error al obtener permiso:", error);
     res.status(500).json({ message: "Error al obtener permiso" });
   }
 };
@@ -351,6 +353,7 @@ permissionsController.updateStatus = async (req, res) => {
     let { status, supervisorComments, Discount } = req.body;
     const user = req.user;
 
+    // 🔐 Validación de permisos
     if (user.userType === "Admin" && user.isReadOnly) {
       return res.status(403).json({
         message: "Solo administradores registrados pueden gestionar permisos.",
@@ -375,6 +378,7 @@ permissionsController.updateStatus = async (req, res) => {
         .json({ message: "Este permiso ya fue gestionado" });
     }
 
+    // 🧑 Validación de rol
     if (user.userType === "Coordinator") {
       const sameTeam =
         permission.idTeam?.toString() ===
@@ -392,19 +396,33 @@ permissionsController.updateStatus = async (req, res) => {
       });
     }
 
+    // 🕒 Datos para historial de acción
+    const now = new Date();
+    const actionData = {
+      user: user.fullName,
+      day: now.getDate(),
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      hour: now.getHours(),
+      min: now.getMinutes(),
+    };
+
+    // 📝 Actualizamos el permiso: estado, comentarios y registramos acción en historial
     const updated = await PermissionsModel.findByIdAndUpdate(
       id,
       {
-        status: statusNorm,
-        supervisorComments,
-        actionBy: user.fullName,
-        Discount,
+        $set: {
+          status: statusNorm,
+          supervisorComments,
+          Discount,
+        },
+        $push: { actionBy: actionData },
       },
       { new: true }
     );
 
     return res.json({
-      message: "Estado del permiso actualizado",
+      message: "Estado del permiso actualizado ✅",
       data: updated,
     });
   } catch (error) {

@@ -1,6 +1,38 @@
 import { Schema, model } from "mongoose";
 
-// Esquema principal de permisos
+// 📌 Subesquema para cada acción realizada
+const actionBySchema = new Schema(
+  {
+    user: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    day: {
+      type: Number,
+      required: true,
+    },
+    month: {
+      type: Number,
+      required: true,
+    },
+    year: {
+      type: Number,
+      required: true,
+    },
+    hour: {
+      type: Number,
+      required: true,
+    },
+    min: {
+      type: Number,
+      required: true,
+    },
+  },
+  { _id: true } // Genera automáticamente un ObjectId
+);
+
+// 🧭 Esquema principal de permisos
 const permissionsSchema = new Schema(
   {
     idUser: {
@@ -26,12 +58,12 @@ const permissionsSchema = new Schema(
       trim: true,
     },
 
-    // Quién aprobó o rechazó el permiso
+    // 📌 Ahora `actionBy` es un array de objetos (historial de acciones)
     actionBy: {
-      type: String,
-      default: null,
-      trim: true,
-    },
+      type: [actionBySchema],
+      default: [],
+    }
+    ,
 
     // Tipo de permiso para solicitar
     permissionType: {
@@ -85,7 +117,7 @@ const permissionsSchema = new Schema(
       default: null,
     },
     supportingDocument: {
-      type: String, // Ruta o URL del documento (común para todos los tipos)
+      type: String,
       trim: true,
       default: null,
     },
@@ -112,17 +144,17 @@ const permissionsSchema = new Schema(
       default: null,
     },
     incapacityType: {
-    type: String,
-    enum: ["Initial", "Extension"],
-    required: false,       // ⬅️ opcional
-    default: undefined,    // ⬅️ NO null
-},
+      type: String,
+      enum: ["Initial", "Extension"],
+      required: false,
+      default: undefined,
+    },
     illnessType: {
-    type: String,
-    enum: ["Common illness", "Work accident"],
-    required: false,       // ⬅️ opcional
-    default: undefined,    // ⬅️ NO null
-},
+      type: String,
+      enum: ["Common illness", "Work accident"],
+      required: false,
+      default: undefined,
+    },
 
     //================================[ Comentarios y sistema ]================================
 

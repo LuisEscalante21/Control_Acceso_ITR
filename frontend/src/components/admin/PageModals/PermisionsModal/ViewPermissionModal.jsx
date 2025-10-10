@@ -12,6 +12,26 @@ const normalizeCloudinaryUrl = (url) => {
   return url;
 };
 
+// 🕒 Genera la acción con usuario, hora y tipo de acción
+const getActionData = (type) => {
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const fullName =
+    storedUser.fullName ||
+    `${storedUser.names ?? ""} ${storedUser.surnames ?? ""}`.trim() ||
+    "Usuario desconocido";
+
+  const now = new Date();
+  return {
+    user: fullName,
+    day: now.getDate(),
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+    hour: now.getHours(),
+    min: now.getMinutes(),
+    type,
+  };
+};
+
 export default function AdminViewPermissionModal({
   isOpen,
   onClose,
@@ -28,7 +48,6 @@ export default function AdminViewPermissionModal({
     status,
     employeeName,
     employeeNumber,
-    department,
     applicationDay,
     reason,
     supportingDocument,
@@ -45,6 +64,7 @@ export default function AdminViewPermissionModal({
     createdAt,
     updatedAt,
     Discount: savedDiscount,
+    actionBy,
   } = permission;
 
   const [action, setAction] = useState("approved");
@@ -61,8 +81,8 @@ export default function AdminViewPermissionModal({
   const isPending = (status || "").toLowerCase() === "pending";
 
   const labelStatus = useMemo(() => {
-    if (permissionType === "incapacity" && isPending) return "🚨 Urgente";
     const s = (status || "").toLowerCase();
+    if (permissionType === "incapacity" && isPending) return "! Urgente";
     if (s === "pending") return "Pendiente";
     if (s === "approved") return "Aprobado";
     if (s === "rejected") return "Rechazado";
@@ -79,6 +99,9 @@ export default function AdminViewPermissionModal({
     }
   };
 
+  const fmtTime = (hour, min) =>
+    `${hour?.toString().padStart(2, "0")}:${min?.toString().padStart(2, "0")}`;
+
   const handleSave = async () => {
     try {
       Swal.fire({
@@ -90,14 +113,9 @@ export default function AdminViewPermissionModal({
       const payload = {
         status: action,
         supervisorComments,
+        actionBy: getActionData(action),
       };
-
-      // ✅ Solo se envía descuento si APRUEBA
-      if (action === "approved") {
-        payload.Discount = applyDiscount;
-      } else {
-        payload.Discount = false;
-      }
+      payload.Discount = action === "approved" ? applyDiscount : false;
 
       const res = await updatePermissionStatus(_id, payload);
       Swal.close();
@@ -146,6 +164,7 @@ export default function AdminViewPermissionModal({
   return createPortal(
     <div className="vp2-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="vp2-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
         <div className="vp2-header">
           <h3 className="vp2-title">
             {permissionType === "minor"
@@ -159,7 +178,9 @@ export default function AdminViewPermissionModal({
           </button>
         </div>
 
+        {/* Body */}
         <div className="vp2-body">
+          {/* Estado y acciones */}
           <div className="vp2-row">
             <span
               className={`vp2-status ${
@@ -170,7 +191,6 @@ export default function AdminViewPermissionModal({
             >
               {labelStatus}
             </span>
-
             <div className="vp2-actions">
               <button className="vp2-btn ghost" onClick={openDocument} disabled={!docUrl}>
                 Ver documento
@@ -183,7 +203,7 @@ export default function AdminViewPermissionModal({
             </div>
           </div>
 
-          {/* Datos base */}
+          {/* Datos principales */}
           <div className="vp2-grid">
             <div className="vp2-field">
               <label>Colaborador</label>
@@ -199,67 +219,9 @@ export default function AdminViewPermissionModal({
             </div>
           </div>
 
-          {/* Detalle por tipo */}
-          {permissionType === "minor" && (
-            <>
-              <h4 className="vp2-subtitle">Detalle permiso menor</h4>
-              <div className="vp2-grid">
-                <div className="vp2-field">
-                  <label>Fecha de ausencia</label>
-                  <div>{fmtDate(permissionDate)}</div>
-                </div>
-                <div className="vp2-field">
-                  <label>Entrada</label>
-                  <div>{startTime || "-"}</div>
-                </div>
-                <div className="vp2-field">
-                  <label>Salida</label>
-                  <div>{endTime || "-"}</div>
-                </div>
-              </div>
-            </>
-          )}
+        
 
-          {permissionType === "major" && (
-            <>
-              <h4 className="vp2-subtitle">Detalle permiso mayor</h4>
-              <div className="vp2-grid">
-                <div className="vp2-field">
-                  <label>Desde</label>
-                  <div>{fmtDate(permissionDateFrom)}</div>
-                </div>
-                <div className="vp2-field">
-                  <label>Hasta</label>
-                  <div>{fmtDate(permissionDateTo)}</div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {permissionType === "incapacity" && (
-            <>
-              <h4 className="vp2-subtitle">Detalle incapacidad</h4>
-              <div className="vp2-grid">
-                <div className="vp2-field">
-                  <label>Desde</label>
-                  <div>{fmtDate(sickLeaveDateFrom)}</div>
-                </div>
-                <div className="vp2-field">
-                  <label>Hasta</label>
-                  <div>{fmtDate(sickLeaveDateTo)}</div>
-                </div>
-                <div className="vp2-field">
-                  <label>Tipo de incapacidad</label>
-                  <div>{incapacityType || "-"}</div>
-                </div>
-                <div className="vp2-field">
-                  <label>Tipo de enfermedad</label>
-                  <div>{illnessType || "-"}</div>
-                </div>
-              </div>
-            </>
-          )}
-
+          {/* Notas */}
           {(reason || savedComments) && <h4 className="vp2-subtitle">Notas</h4>}
           <div className="vp2-notes">
             {reason && (
@@ -288,8 +250,6 @@ export default function AdminViewPermissionModal({
                     <option value="rejected">Rechazar</option>
                   </select>
                 </div>
-
-                {/* 🔸 Solo mostrar si aprueba */}
                 {action === "approved" && (
                   <div className="vp2-field">
                     <label>¿Aplica descuento?</label>
@@ -302,7 +262,6 @@ export default function AdminViewPermissionModal({
                     </select>
                   </div>
                 )}
-
                 <div className="vp2-field" style={{ gridColumn: "1 / -1" }}>
                   <label>Comentario del supervisor</label>
                   <textarea
@@ -313,11 +272,48 @@ export default function AdminViewPermissionModal({
                 </div>
               </div>
 
-              <div className="vp2-actions end">
+              {/* 👇 Botones de acción abajo del modal */}
+              <div className="vp2-footer">
+                <button className="vp2-btn ghost" onClick={onClose}>
+                  Cancelar
+                </button>
                 <button className="vp2-btn primary" onClick={handleSave}>
-                  Guardar
+                  Guardar cambios
                 </button>
               </div>
+            </>
+          )}
+
+            {/* 🧾 Historial */}
+          {Array.isArray(actionBy) && actionBy.length > 0 && (
+            <>
+              <h4 className="vp2-subtitle">Historial</h4>
+              <ul className="vp2-history">
+                {actionBy
+                  .sort((a, b) => {
+                    const da = new Date(a.year, a.month - 1, a.day, a.hour, a.min);
+                    const db = new Date(b.year, b.month - 1, b.day, b.hour, b.min);
+                    return da - db;
+                  })
+                  .map((a, idx) => {
+                    const day = String(a.day).padStart(2, "0");
+                    const month = String(a.month).padStart(2, "0");
+                    const year = a.year;
+                    const label =
+                      a.type === "approved"
+                        ? "Aprobado por"
+                        : a.type === "rejected"
+                        ? "Rechazado por"
+                        : "Gestionado por";
+
+                    return (
+                      <li key={a._id || idx}>
+                        <strong>{label}</strong> {a.user || "-"}    {day}/{month}/{year}{" "}
+                        {fmtTime(a.hour, a.min)}
+                      </li>
+                    );
+                  })}
+              </ul>
             </>
           )}
 

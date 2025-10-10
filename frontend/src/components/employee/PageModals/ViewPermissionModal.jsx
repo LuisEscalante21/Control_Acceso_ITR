@@ -12,7 +12,13 @@ function normalizeCloudinaryUrl(url) {
   return url;
 }
 
-export default function ViewPermissionModal({ isOpen, onClose, permission, onDeleted, deletePermission }) {
+export default function ViewPermissionModal({
+  isOpen,
+  onClose,
+  permission,
+  onDeleted,
+  deletePermission,
+}) {
   if (!isOpen || !permission) return null;
 
   const {
@@ -21,28 +27,22 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
     status,
     employeeName,
     employeeNumber,
-    department,
     applicationDay,
-    actionBy,
+    actionBy, // Array de historial
     reason,
     supportingDocument,
-    // minor
     permissionDate,
     startTime,
     endTime,
-    // major
     permissionDateFrom,
     permissionDateTo,
-    // incapacity
     sickLeaveDateFrom,
     sickLeaveDateTo,
     incapacityType,
     illnessType,
-    // sistema
     supervisorComments,
     createdAt,
     updatedAt,
-    // descuento
     Discount,
   } = permission;
 
@@ -75,6 +75,9 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
     }
   };
 
+  const fmtTime = (hour, min) =>
+    `${hour?.toString().padStart(2, "0")}:${min?.toString().padStart(2, "0")}`;
+
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose?.();
     window.addEventListener("keydown", onKey);
@@ -98,14 +101,24 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
     if (!result.isConfirmed) return;
 
     try {
-      Swal.fire({ title: "Eliminando...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      Swal.fire({
+        title: "Eliminando...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
       const res = await deletePermission(_id);
       Swal.close();
 
       if (!res.ok) {
         let msg = "";
-        try { msg = (await res.json())?.message || ""; } catch {}
-        return Swal.fire("Error", msg || `No se pudo eliminar (HTTP ${res.status})`, "error");
+        try {
+          msg = (await res.json())?.message || "";
+        } catch {}
+        return Swal.fire(
+          "Error",
+          msg || `No se pudo eliminar (HTTP ${res.status})`,
+          "error"
+        );
       }
 
       await Swal.fire("Eliminado", "El permiso fue eliminado.", "success");
@@ -114,7 +127,11 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
     } catch (err) {
       console.error(err);
       Swal.close();
-      Swal.fire("Error", err.message || "No se pudo eliminar el permiso.", "error");
+      Swal.fire(
+        "Error",
+        err.message || "No se pudo eliminar el permiso.",
+        "error"
+      );
     }
   };
 
@@ -128,7 +145,9 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
         {/* Header */}
         <div className="vp2-header">
           <h3 className="vp2-title">{labelType}</h3>
-          <button className="vp2-close" onClick={onClose} aria-label="Cerrar">×</button>
+          <button className="vp2-close" onClick={onClose} aria-label="Cerrar">
+            ×
+          </button>
         </div>
 
         {/* Body */}
@@ -156,18 +175,37 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
 
           {/* Datos comunes */}
           <div className="vp2-grid">
-            <div className="vp2-field"><label>Colaborador</label><div>{employeeName || "-"}</div></div>
-            <div className="vp2-field"><label>Código</label><div>{employeeNumber || "-"}</div></div>
-            <div className="vp2-field"><label>Fecha de solicitud</label><div>{applicationDay || "-"}</div></div>
+            <div className="vp2-field">
+              <label>Colaborador</label>
+              <div>{employeeName || "-"}</div>
+            </div>
+            <div className="vp2-field">
+              <label>Código</label>
+              <div>{employeeNumber || "-"}</div>
+            </div>
+            <div className="vp2-field">
+              <label>Fecha de solicitud</label>
+              <div>{applicationDay || "-"}</div>
+            </div>
           </div>
 
+          {/* Detalles por tipo */}
           {permissionType === "minor" && (
             <>
               <h4 className="vp2-subtitle">Detalle permiso menor</h4>
               <div className="vp2-grid">
-                <div className="vp2-field"><label>Fecha de ausencia</label><div>{fmtDate(permissionDate)}</div></div>
-                <div className="vp2-field"><label>Entrada</label><div>{startTime || "-"}</div></div>
-                <div className="vp2-field"><label>Salida</label><div>{endTime || "-"}</div></div>
+                <div className="vp2-field">
+                  <label>Fecha de ausencia</label>
+                  <div>{fmtDate(permissionDate)}</div>
+                </div>
+                <div className="vp2-field">
+                  <label>Entrada</label>
+                  <div>{startTime || "-"}</div>
+                </div>
+                <div className="vp2-field">
+                  <label>Salida</label>
+                  <div>{endTime || "-"}</div>
+                </div>
               </div>
             </>
           )}
@@ -176,8 +214,14 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
             <>
               <h4 className="vp2-subtitle">Detalle permiso mayor</h4>
               <div className="vp2-grid">
-                <div className="vp2-field"><label>Desde</label><div>{fmtDate(permissionDateFrom)}</div></div>
-                <div className="vp2-field"><label>Hasta</label><div>{fmtDate(permissionDateTo)}</div></div>
+                <div className="vp2-field">
+                  <label>Desde</label>
+                  <div>{fmtDate(permissionDateFrom)}</div>
+                </div>
+                <div className="vp2-field">
+                  <label>Hasta</label>
+                  <div>{fmtDate(permissionDateTo)}</div>
+                </div>
               </div>
             </>
           )}
@@ -186,15 +230,27 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
             <>
               <h4 className="vp2-subtitle">Detalle incapacidad</h4>
               <div className="vp2-grid">
-                <div className="vp2-field"><label>Desde</label><div>{fmtDate(sickLeaveDateFrom)}</div></div>
-                <div className="vp2-field"><label>Hasta</label><div>{fmtDate(sickLeaveDateTo)}</div></div>
-                <div className="vp2-field"><label>Tipo de incapacidad</label><div>{incapacityType || "-"}</div></div>
-                <div className="vp2-field"><label>Tipo de enfermedad</label><div>{illnessType || "-"}</div></div>
+                <div className="vp2-field">
+                  <label>Desde</label>
+                  <div>{fmtDate(sickLeaveDateFrom)}</div>
+                </div>
+                <div className="vp2-field">
+                  <label>Hasta</label>
+                  <div>{fmtDate(sickLeaveDateTo)}</div>
+                </div>
+                <div className="vp2-field">
+                  <label>Tipo de incapacidad</label>
+                  <div>{incapacityType || "-"}</div>
+                </div>
+                <div className="vp2-field">
+                  <label>Tipo de enfermedad</label>
+                  <div>{illnessType || "-"}</div>
+                </div>
               </div>
             </>
           )}
 
-          {/* ✅ Solo mostrar si aplica descuento */}
+          {/* Descuento */}
           {typeof Discount !== "undefined" && (
             <>
               <h4 className="vp2-subtitle">Resumen de descuento</h4>
@@ -208,15 +264,60 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
           )}
 
           {/* Notas */}
-          {(reason || supervisorComments || actionBy) && <h4 className="vp2-subtitle">Notas</h4>}
-          <div className="vp2-notes">
-            {reason && (<div className="vp2-note"><label>Razón del permiso</label><p>{reason}</p></div>)}
-            {supervisorComments && (<div className="vp2-note"><label>Comentario del supervisor</label><p>{supervisorComments}</p></div>)}
-            {actionBy && (<div className="vp2-note"><label>Gestionado por</label><p>{actionBy}</p></div>)}
-          </div>
+          {(reason || supervisorComments) && (
+            <>
+              <h4 className="vp2-subtitle">Notas</h4>
+              <div className="vp2-notes">
+                {reason && (
+                  <div className="vp2-note">
+                    <label>Razón del permiso</label>
+                    <p>{reason}</p>
+                  </div>
+                )}
+                {supervisorComments && (
+                  <div className="vp2-note">
+                    <label>Comentario del supervisor</label>
+                    <p>{supervisorComments}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
+          {/* 🧾 Historial de acciones */}
+          {Array.isArray(actionBy) && actionBy.length > 0 && (
+            <>
+              <h4 className="vp2-subtitle">Historial :</h4>
+              <ul className="vp2-history">
+  {actionBy.map((a, idx) => {
+    const day = String(a.day).padStart(2, "0");
+    const month = String(a.month).padStart(2, "0");
+    const year = a.year;
+
+    const label =
+      a.type === "approved"
+        ? "Aprobado por"
+        : a.type === "rejected"
+        ? "Rechazado por"
+        : "Gestionado por";
+
+    return (
+      <li key={idx}>
+        <strong>{label}</strong>   {a.user},  {day}/{month}/{year}{" "}
+        {fmtTime(a.hour, a.min)}
+      </li>
+    );
+  })}
+</ul>
+
+            </>
+          )}
+
+          {/* Footer */}
           <div className="vp2-meta">
-            <small>Creado: {fmtDate(createdAt)} — Actualizado: {fmtDate(updatedAt)}</small>
+            <small>
+              Creado: {fmtDate(createdAt)} — Actualizado: {fmtDate(updatedAt)}
+            </small>
           </div>
         </div>
       </div>
