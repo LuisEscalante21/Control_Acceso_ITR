@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Search, ChevronDown } from "lucide-react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
 import "../../styles/coordinators/Inasistencias.css";
@@ -7,13 +7,11 @@ import useDataAbsences from "../../hooks/coordinators/useDataAbsences.jsx";
 import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
-// Opciones de filtros
 const MainFilterOptions = [
   { value: "todos", label: "Todas" },
   { value: "mios", label: "Mis Inasistencias" },
 ];
-
-const JustificationFilterOptions = ["Todas", "Justificadas", "Sin justificar"];
+const JustificationFilterOptions = ["Todas", "Justificadas", "Sin justificar", "Con permiso"];
 
 const Absences = () => {
   const [mainFilter, setMainFilter] = useState("todos");
@@ -21,11 +19,22 @@ const Absences = () => {
   const [searchText, setSearchText] = useState("");
   const [viewJustify, setViewJustify] = useState(null);
 
-  // Leer y descifrar info del usuario desde cookie cifrada
+  // 🔹 Estados del filtro de fecha
+  const [dateFilterType, setDateFilterType] = useState("todas");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedWeek, setSelectedWeek] = useState("");
+  const [selectedDay, setSelectedDay] = useState("");
+
+  const mainRef = useRef(null);
+  const justifyRef = useRef(null);
+  const dateRef = useRef(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
+
+  // Leer y descifrar info del usuario
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
   const encryptedUserInfo = Cookies.get("userInfo");
-  
   if (encryptedUserInfo && secretKey) {
     try {
       const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
@@ -36,52 +45,76 @@ const Absences = () => {
       userInfo = null;
     }
   }
-
   const empleadoId = userInfo?._id || null;
 
-  // Hook de datos - Ya filtra automáticamente por área del coordinador
   const {
     absenceRecords,
     justificationMap,
     fetchAbsenceRecords,
     fetchJustifications,
-    userTeamId, // El área del coordinador
   } = useDataAbsences(empleadoId);
 
-  // Refrescar datos al montar el componente
-  const refreshAbsenceData = async () => {
-    await fetchAbsenceRecords();
-    await fetchJustifications();
+  // 🔸 Cargar datos al cambiar filtros de fecha
+  useEffect(() => {
+    const options = {};
+    if (dateFilterType !== "todas") {
+      options.filterType = dateFilterType;
+      options.selectedDate =
+        dateFilterType === "año"
+          ? selectedYear
+          : dateFilterType === "mes"
+          ? selectedMonth
+          : dateFilterType === "semana"
+          ? selectedWeek
+          : dateFilterType === "día"
+          ? selectedDay
+          : null;
+    }
+    fetchAbsenceRecords(options);
+    fetchJustifications();
+  }, [dateFilterType, selectedYear, selectedMonth, selectedWeek, selectedDay]);
+
+  // 🔸 Cerrar dropdowns al hacer click fuera
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        (openDropdown === "main" &&
+          mainRef.current &&
+          !mainRef.current.contains(event.target)) ||
+        (openDropdown === "justify" &&
+          justifyRef.current &&
+          !justifyRef.current.contains(event.target)) ||
+        (openDropdown === "date" &&
+          dateRef.current &&
+          !dateRef.current.contains(event.target))
+      ) {
+        setOpenDropdown(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openDropdown]);
+
+  const handleDropdown = (type) => {
+    setOpenDropdown(openDropdown === type ? null : type);
   };
 
-  useEffect(() => {
-    if (empleadoId) {
-      refreshAbsenceData();
-    }
-  }, [empleadoId]);
-
-  // Filtrar inasistencias en el frontend
   const filteredAbsences = (absenceRecords || [])
     .filter((absence) => {
-      // Filtro principal: Todas vs Mis Inasistencias
       if (mainFilter === "mios") {
         return absence.id_Employee === empleadoId;
       }
-      // "todos" ya viene filtrado por área desde el backend
       return true;
     })
     .filter((absence) => {
-      // Filtro por justificación
-      if (selectedJustify === "Justificadas") {
-        return !!justificationMap?.[absence._id];
-      }
-      if (selectedJustify === "Sin justificar") {
-        return !justificationMap?.[absence._id];
-      }
+      const status = absence.status?.toLowerCase() || "";
+      if (selectedJustify === "Justificadas") return status === "justificada";
+      if (selectedJustify === "Sin justificar")
+        return status === "pendiente" || status === "";
+      if (selectedJustify === "Con permiso") return status === "con permiso";
       return true;
     })
     .filter((absence) => {
-      // Filtro por búsqueda de texto
       if (!searchText.trim()) return true;
       const nombre = absence.employeeName?.toLowerCase() || "";
       return nombre.includes(searchText.toLowerCase());
@@ -89,12 +122,11 @@ const Absences = () => {
 
   return (
     <div className="absence-history-container">
-      {/* Encabezado */}
       <div className="encabezado-inasistencias">
         <h1 className="titulo">Historial de inasistencias</h1>
 
-        {/* Buscador */}
-        <div className="buscador">
+        {/* 🔍 Buscador */}
+        <div className="buscadora">
           <Search className="search-icon" />
           <input
             type="text"
@@ -104,34 +136,133 @@ const Absences = () => {
           />
         </div>
 
-        {/* Filtros */}
+        {/* 🔹 Filtros */}
         <div className="filters">
-          {/* Filtro principal: Todas vs Mis Inasistencias */}
-          <select
-            value={mainFilter}
-            onChange={(e) => setMainFilter(e.target.value)}
-            className="filter-dropdown"
-            style={{ marginRight: "10px" }}
-          >
-            {MainFilterOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          {/* Filtro principal */}
+          <div className="dropdown" ref={mainRef}>
+            <button
+              className="filter-button"
+              onClick={() => handleDropdown("main")}
+            >
+              {MainFilterOptions.find((f) => f.value === mainFilter)?.label}{" "}
+              <ChevronDown size={16} />
+            </button>
+            {openDropdown === "main" && (
+              <div className="dropdown-menu">
+                {MainFilterOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      setMainFilter(opt.value);
+                      setOpenDropdown(null);
+                    }}
+                    className={mainFilter === opt.value ? "selected" : ""}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-          {/* Filtro por justificación */}
-          <select
-            value={selectedJustify}
-            onChange={(e) => setSelectedJustify(e.target.value)}
-            className="filter-dropdown"
+          {/* Filtro de justificación */}
+          <div className="dropdown" ref={justifyRef}>
+            <button
+              className="filter-button"
+              onClick={() => handleDropdown("justify")}
+            >
+              {selectedJustify} <ChevronDown size={16} />
+            </button>
+            {openDropdown === "justify" && (
+              <div className="dropdown-menu">
+                {JustificationFilterOptions.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => {
+                      setSelectedJustify(option);
+                      setOpenDropdown(null);
+                    }}
+                    className={selectedJustify === option ? "selected" : ""}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 🔹 Filtro de fecha alineado */}
+          <div
+            className="dropdown date-filter-horizontal"
+            ref={dateRef}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              position: "relative",
+            }}
           >
-            {JustificationFilterOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            <button
+              className="filter-button"
+              onClick={() => handleDropdown("date")}
+            >
+              {dateFilterType.charAt(0).toUpperCase() + dateFilterType.slice(1)}{" "}
+              <ChevronDown size={16} />
+            </button>
+
+            {openDropdown === "date" && (
+              <div className="dropdown-menu">
+                {["todas", "año", "mes", "semana", "día"].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setDateFilterType(type);
+                      setOpenDropdown(null);
+                    }}
+                    className={dateFilterType === type ? "selected" : ""}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {dateFilterType === "año" && (
+              <input
+                type="number"
+                min="2000"
+                max="2100"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="filter-input-right"
+                placeholder="Año"
+              />
+            )}
+            {dateFilterType === "mes" && (
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="filter-input-right"
+              />
+            )}
+            {dateFilterType === "semana" && (
+              <input
+                type="week"
+                value={selectedWeek}
+                onChange={(e) => setSelectedWeek(e.target.value)}
+                className="filter-input-right"
+              />
+            )}
+            {dateFilterType === "día" && (
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+                className="filter-input-right"
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -148,7 +279,7 @@ const Absences = () => {
                 employeeType={absence.employeeType}
                 avatar={absence.employeeAvatar}
                 date={absence.date}
-                isJustified={!!justificationMap?.[absence._id]}
+                status={absence.status}
                 justification={justificationMap?.[absence._id]}
                 onViewJustification={() =>
                   setViewJustify(justificationMap?.[absence._id])
@@ -159,7 +290,7 @@ const Absences = () => {
         </div>
       </div>
 
-      {/* Modal de visualización de justificación */}
+      {/* Modal de justificación */}
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}

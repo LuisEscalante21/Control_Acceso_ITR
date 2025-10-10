@@ -137,7 +137,7 @@ const Accesos = () => {
       <div className="encabezado-accesos">
         <h1 className="titulo">Historial de accesos</h1>
 
-        <div className="buscador">
+        <div className="buscadora">
           <Search className="search-icon" />
           <input
             type="text"

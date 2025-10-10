@@ -77,19 +77,15 @@ const employeesSchema = new Schema(
       type: Date,
       default: null,
     },
-    
 
     //Booleano para la restablecimiento de contraseña
     updatePassBoolean: {
       type: Boolean,
       default: false,
-    },
-
-    // Booleano para bloquear la solicitud de restablecimiento de contraseña despues de 1 dia 
-    lockRecoveryPassTime: {
-      type: Date,
-      default: null,
     }
+
+
+
   },
   {
     timestamps: true,

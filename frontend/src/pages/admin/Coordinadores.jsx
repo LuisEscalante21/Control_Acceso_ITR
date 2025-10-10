@@ -51,7 +51,7 @@ const Coordinadores = () => {
       <div className="encabezado">
         <h1 className="titulo">Gestión de Coordinadores</h1>
         <div className="busqueda-bar">
-          <div className="buscador">
+          <div className="buscadora">
             <Search className="search-icon" />
             <input
               type="text"

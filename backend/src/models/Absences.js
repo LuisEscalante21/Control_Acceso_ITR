@@ -4,14 +4,14 @@ const absencesSchema = new Schema(
   {
     // 🔹 Referencia al empleado (quién)
     id_Employee: {
-      type: String, // Usamos String por flexibilidad (ObjectId, numEmpleado, etc.)
+      type: String,
       required: true,
       maxLength: 100,
     },
     
     // 🔹 Información de la inasistencia (cuándo y por qué)
     date: {
-      type: String, // Guardamos como "YYYY-MM-DD" para búsquedas simples
+      type: String,
       required: true,
       maxLength: 10,
       index: true,
@@ -27,33 +27,26 @@ const absencesSchema = new Schema(
       default: Date.now,
     },
 
-    // 🔹 Metadatos (información extra del empleado)
-    names: {
-      type: String,
-      required: false,
-      maxLength: 100,
-    },
-    surnames: {
-      type: String,
-      required: false,
-      maxLength: 100,
-    },
-    employee_type: {
-      type: String, // Ej: "Employee", "Coordinator"
-      required: false,
-      maxLength: 50,
-    },
+    // 🔹 Metadatos del empleado
+    names: { type: String, maxLength: 100 },
+    surnames: { type: String, maxLength: 100 },
+    employee_type: { type: String, maxLength: 50 },
 
     // 🔹 Relación con un equipo (si aplica)
     idTeam: { 
       type: Schema.Types.ObjectId, 
       ref: "Teams",
-      required: false,
+    },
+    // 🔹 Estado de la inasistencia
+    status: {
+      type: String,
+      enum: ["pendiente", "justificada"],
+      default: "pendiente",
     },
   },
   {
     timestamps: true, // createdAt y updatedAt
-    strict: true,     // Solo permite campos definidos en el esquema
+    strict: true,     // sigue impidiendo campos no definidos
   }
 );
 

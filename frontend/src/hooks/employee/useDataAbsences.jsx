@@ -1,11 +1,12 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import CryptoJS from "crypto-js";
 
 const BASE = import.meta.env.VITE_BASE_URL;
 const API_URL = `${BASE}4000/api`;
+const USERS_API_URL = `${BASE}4000/api/users`;
 const JWT_SECRET = import.meta.env.VITE_JWT_SECRET;
 
 const useDataAbsences = () => {
@@ -14,15 +15,16 @@ const useDataAbsences = () => {
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
   const navigate = useNavigate();
+  const userCache = useRef({});
 
-  // Configuración Axios
+  // Axios base config
   const axiosConfig = {
     withCredentials: true,
     headers: { "Content-Type": "application/json" },
     timeout: 10000,
   };
 
-  // Manejo de errores
+  // 🔹 Manejo de errores global
   const handleNetworkError = (err) => {
     if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
       navigate("/503");
@@ -34,7 +36,7 @@ const useDataAbsences = () => {
     }
   };
 
-  // Leer y descifrar cookie
+  // 🔹 Leer cookie cifrada del usuario logueado
   useEffect(() => {
     const userInfoCookie = document.cookie
       .split("; ")
@@ -55,7 +57,29 @@ const useDataAbsences = () => {
     }
   }, []);
 
-  // Obtener justificaciones
+  // 🔹 Obtener información del usuario por ID (cacheado)
+  const fetchUserById = async (id) => {
+    if (!id) return null;
+    if (userCache.current[id]) return userCache.current[id];
+
+    try {
+      const res = await axios.get(`${USERS_API_URL}/${id}`, axiosConfig);
+      const user = res.data;
+
+      let userType = "Empleado";
+      if (user?.collectionName === "coordinators") userType = "Coordinador";
+      if (user?.collectionName === "administrators") userType = "Administrador";
+
+      userCache.current[id] = { ...user, userType };
+      return userCache.current[id];
+    } catch (error) {
+      console.error("Error fetchUserById:", error);
+      userCache.current[id] = null;
+      return null;
+    }
+  };
+
+  // 🔹 Obtener todas las justificaciones
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(`${API_URL}/justifications`, axiosConfig);
@@ -72,7 +96,20 @@ const useDataAbsences = () => {
     }
   };
 
-  // Obtener SOLO las inasistencias del empleado logueado
+  // 🔹 Guardar una justificación nueva
+  const saveJustification = async (data) => {
+    try {
+      await axios.post(`${API_URL}/justifications`, data, axiosConfig);
+      Swal.fire("¡Justificado!", "La inasistencia ha sido justificada correctamente.", "success");
+      await fetchAbsenceRecords();
+      await fetchJustifications();
+    } catch (error) {
+      handleNetworkError(error);
+      Swal.fire("Error", "No se pudo guardar la justificación.", "error");
+    }
+  };
+
+  // 🔹 Obtener las inasistencias del empleado logueado
   const fetchAbsenceRecords = async () => {
     setLoading(true);
     try {
@@ -83,25 +120,34 @@ const useDataAbsences = () => {
         return;
       }
 
-      // Filtrar SOLO por el ID del empleado
       const url = `${API_URL}/absences?onlyEmployeeId=${userId}`;
       const res = await axios.get(url, axiosConfig);
       const records = res.data;
+      const user = await fetchUserById(userId);
 
-      // Mapear los datos
-      const mappedRecords = records.map((rec) => ({
-        ...rec,
-        _id: rec._id,
-        id_Employee: rec.id_Employee,
-        employeeName: `${rec.names || ''} ${rec.surnames || ''}`.trim(),
-        employeeType: rec.employee_type || "Empleado",
-        employeeAvatar: rec.avatar || null,
-        date: rec.date,
-        areaName: rec.idTeam?.name || 'Sin área',
-        idTeam: rec.idTeam?._id || rec.idTeam || null,
-        isJustified: !!justificationMap[rec._id],
-        justification: justificationMap[rec._id] || null,
-      }));
+      const mappedRecords = records.map((rec) => {
+        const statusLower = (rec.status || "").toLowerCase().trim();
+
+        return {
+          ...rec,
+          _id: rec._id,
+          id_Employee: rec.id_Employee || userId,
+          employeeName: `${user?.names || rec.names || ""} ${user?.surnames || rec.surnames || ""}`.trim(),
+          employeeType: user?.userType || rec.employee_type || "Empleado",
+          employeeAvatar:
+            user?.photo ||
+            (rec.avatar && rec.avatar.startsWith("http") ? rec.avatar : null) ||
+            null,
+          date: rec.date,
+          areaName: rec.idTeam?.name || "Sin área",
+          idTeam: rec.idTeam?._id || rec.idTeam || null,
+          // ✅ Mantener siempre el estado tal cual (no convertir a "Sin justificar")
+          status: rec.status || "pendiente",
+          isJustified:
+            statusLower === "justificada" || !!justificationMap[rec._id],
+          justification: justificationMap[rec._id] || null,
+        };
+      });
 
       setAbsenceRecords(mappedRecords);
       return mappedRecords;
@@ -114,47 +160,7 @@ const useDataAbsences = () => {
     }
   };
 
-  // Guardar o actualizar inasistencia
-  const saveAbsence = async (data, absenceId = null) => {
-    try {
-      if (absenceId) {
-        await axios.put(`${API_URL}/absences/${absenceId}`, data, axiosConfig);
-        Swal.fire("Actualizado", "Registro de inasistencia actualizado.", "success");
-      } else {
-        await axios.post(`${API_URL}/absences`, data, axiosConfig);
-        Swal.fire("Guardado", "Registro de inasistencia creado.", "success");
-      }
-      await fetchAbsenceRecords();
-    } catch (error) {
-      handleNetworkError(error);
-      Swal.fire("Error", "No se pudo guardar la inasistencia.", "error");
-    }
-  };
-
-  // Eliminar inasistencia
-  const deleteAbsence = async (id) => {
-    const result = await Swal.fire({
-      title: "¿Eliminar registro?",
-      text: "Esta acción no se puede deshacer.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      await axios.delete(`${API_URL}/absences/${id}`, axiosConfig);
-      Swal.fire("Eliminado", "Registro de inasistencia eliminado.", "success");
-      await fetchAbsenceRecords();
-    } catch (error) {
-      handleNetworkError(error);
-      Swal.fire("Error", "No se pudo eliminar el registro.", "error");
-    }
-  };
-
-  // Cargar datos cuando userId esté disponible
+  // 🔹 Cargar datos al inicio
   useEffect(() => {
     if (userId) {
       fetchAbsenceRecords();
@@ -162,14 +168,14 @@ const useDataAbsences = () => {
     }
   }, [userId]);
 
+  // 🔹 Retornar datos y acciones
   return {
     absenceRecords,
     justificationMap,
     loading,
     fetchAbsenceRecords,
     fetchJustifications,
-    saveAbsence,
-    deleteAbsence,
+    saveJustification,
     userId,
   };
 };

@@ -72,7 +72,7 @@ app.use("/api/teams", authMiddleware, teamsRoutes); // Rutas de equipos
 app.use("/api/permissions", authMiddleware, permissionsRoutes); // Rutas de permisos
 app.use("/api/justifications", authMiddleware, justificationsRoutes); // Rutas de justificaciones
 app.use("/api/reports", authMiddleware, reportRoutes); // Rutas de reportes
-app.use("/api/users", authMiddleware, usersRoutes); // Rutas de gestión de usuarios
+app.use("/api/users", usersRoutes); // Rutas de gestión de usuarios
 app.use("/api/profile", authMiddleware, profileRoutes); // Rutas de perfil
 app.use("/api/absences", absences); // Rutas de inasistencias
 

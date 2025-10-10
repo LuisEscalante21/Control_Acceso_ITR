@@ -101,8 +101,8 @@ export default function RecoveryPasswordModal({ open, onClose, onVerified }) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="link-button"
-                  style={{ marginLeft: 8 }}
+                  className="login-button"
+                  style={{ width:"100px",backgroundColor: "#ffffffff", color: "#548affff", marginLeft: 8 }}
                 >
                   Cancelar
                 </button>
@@ -145,8 +145,8 @@ export default function RecoveryPasswordModal({ open, onClose, onVerified }) {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="link-button"
-                  style={{ marginLeft: 8 }}
+                  className="login-button" 
+                  style={{ width:"100px",backgroundColor: "#ffffffff", color: "#548affff", marginLeft: 8 }}
                 >
                   Volver
                 </button>

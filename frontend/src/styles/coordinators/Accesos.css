@@ -22,26 +22,6 @@
   margin-bottom: 20px;
 }
 
-.search-bar {
-  display: flex;
-  align-items: center;
-  background: #ffffff;
-  padding: 0.75rem 1rem;
-  border-radius: 15px;
-  margin-bottom: 1rem;
-  box-shadow: 0px 4px 4px #57575740;
-  max-width: 1000px;
-  width: 100%;
-}
-
-.search-bar input {
-  border: none;
-  background: transparent;
-  flex: 1;
-  margin-left: 0.5rem;
-  font-size: 1rem;
-  outline: none;
-}
 
 .search-icon {
   color: gray;
@@ -56,6 +36,7 @@
   max-width: 1000px;
 }
 
+/* Botones de filtro */
 .filter-button {
   padding: 0.5rem 1rem;
   border-radius: 8px;
@@ -69,18 +50,21 @@
   position: relative;
   white-space: nowrap;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  /* Para que el ancho no cambie */
   width: 220px;
+  transition: all 0.2s ease;
 }
 
 .filter-button.salidas {
-  width: 120px; /* ancho fijo más pequeño */
+  width: 120px;
+}
+
+.filter-button:hover {
+  background: #eaeaea;
 }
 
 .dropdown {
   position: relative;
   display: inline-block;
-  /* Opcional: asegura mínimo ancho igual al botón */
   min-width: 220px;
 }
 
@@ -95,23 +79,11 @@
   border-radius: 8px;
   padding: 0.25rem 0;
   animation: fadeIn 0.15s;
-  /* Ancho fijo igual al botón */
   width: 220px;
 }
 
 .dropdown-menu.salidas {
-  width: 120px; /* mismo ancho que botón salidas */
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  width: 120px;
 }
 
 .dropdown-menu button {
@@ -125,24 +97,20 @@
   transition: background 0.2s;
 }
 
-.dropdown-menu button.selected,
-.dropdown-menu button:hover {
+.dropdown-menu button:hover,
+.dropdown-menu button.selected {
   background: #f4f4f4;
 }
 
-/* Estilo para el dropdown principal (Todos / Mis Accesos) */
-.main-filter {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none; /* elimina el estilo nativo del select */
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: none;
-  background: #f4f4f4 url("data:image/svg+xml,%3Csvg fill='gray' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 12px center;
-  font-weight: 500;
-  cursor: pointer;
-  width: 220px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .access-list-container {

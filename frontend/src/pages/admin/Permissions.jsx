@@ -12,7 +12,7 @@ const isUrgent = (p) =>
 
 // Mapeo de estado con clase
 const mapStatusForCard = (perm) => {
-  if (isUrgent(perm)) return { label: "🚨 Urgente", cls: "urgente" };
+  if (isUrgent(perm)) return { label: "! Urgente", cls: "urgente" };
   const s = (perm?.status || "").toLowerCase();
   if (s === "approved") return { label: "Aprobado", cls: "aprobado" };
   if (s === "rejected") return { label: "Rechazado", cls: "rechazado" };

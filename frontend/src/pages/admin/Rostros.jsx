@@ -59,7 +59,7 @@ const Rostros = () => {
       <div className="encabezado">
         <h1 className="titulo">Gestión de Rostros</h1>
         <div className="busqueda-bar-G">
-          <div className="buscador">
+          <div className="buscadora">
             <Search className="search-icon" />
             <input
               type="text"

@@ -8,7 +8,7 @@ import useDataTeams from "../../hooks/admin/useDataTeams";
 import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
-const justifyOptions = ["Todas", "Justificadas", "Sin justificar"];
+const justifyOptions = ["Todas", "Justificadas", "Sin justificar", "Con permiso"];
 
 const Absences = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -18,10 +18,17 @@ const Absences = () => {
   const [searchText, setSearchText] = useState("");
   const [viewJustify, setViewJustify] = useState(null);
 
+  // 🔹 Estados del filtro de fecha
+  const [dateFilterType, setDateFilterType] = useState("todas");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedWeek, setSelectedWeek] = useState("");
+  const [selectedDay, setSelectedDay] = useState("");
+
   const areaRef = useRef(null);
   const justifyRef = useRef(null);
 
-  // Leer info del usuario desde cookie cifrada
+  // 🔐 Leer info del usuario desde cookie cifrada
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
   const encryptedUserInfo = Cookies.get("userInfo");
@@ -37,7 +44,7 @@ const Absences = () => {
   }
   const empleadoId = userInfo?._id || null;
 
-  // Hooks
+  // 🔹 Hooks personalizados
   const {
     absenceRecords,
     justificationMap,
@@ -47,21 +54,43 @@ const Absences = () => {
   } = useDataAbsences(empleadoId);
   const { teams: areaOptions, fetchTeams } = useDataTeams();
 
-  // Cargar datos iniciales
+  // 🔸 Cargar datos iniciales
   useEffect(() => {
     fetchJustifications();
     fetchTeams();
     fetchAbsenceRecords();
   }, []);
 
-  // ⭐ Recargar inasistencias cuando cambia el área seleccionada
+  // 🔸 Recargar inasistencias al cambiar de área
   useEffect(() => {
     if (selectedAreaId !== undefined) {
       fetchAbsenceRecords({ idTeam: selectedAreaId });
     }
   }, [selectedAreaId]);
 
-  // Cerrar dropdown al hacer click fuera
+  // 🔸 Recargar inasistencias cuando cambian los filtros de fecha
+  useEffect(() => {
+    if (dateFilterType !== "todas") {
+      let selectedDate = "";
+
+      if (dateFilterType === "año") selectedDate = selectedYear;
+      if (dateFilterType === "mes") selectedDate = selectedMonth;
+      if (dateFilterType === "semana") selectedDate = selectedWeek;
+      if (dateFilterType === "día") selectedDate = selectedDay;
+
+      if (selectedDate) {
+        fetchAbsenceRecords({
+          idTeam: selectedAreaId,
+          filterType: dateFilterType,
+          selectedDate,
+        });
+      }
+    } else {
+      fetchAbsenceRecords({ idTeam: selectedAreaId });
+    }
+  }, [dateFilterType, selectedYear, selectedMonth, selectedWeek, selectedDay]);
+
+  // 🔸 Cerrar dropdowns al hacer click fuera
   useEffect(() => {
     function handleClickOutside(event) {
       if (
@@ -100,16 +129,17 @@ const Absences = () => {
     setOpenDropdown(null);
   };
 
-  // Filtrado (solo justificación y búsqueda, el área se filtra en backend)
+  // 🔹 Filtrado de justificación y búsqueda
   const filteredAbsences = absenceRecords
     .filter((absence) => {
-      // Filtro por justificación
-      if (selectedJustify === "Justificadas") return !!justificationMap?.[absence._id];
-      else if (selectedJustify === "Sin justificar") return !justificationMap?.[absence._id];
+      const status = absence.status?.toLowerCase() || "";
+      if (selectedJustify === "Justificadas") return status === "justificada";
+      if (selectedJustify === "Sin justificar")
+        return status === "pendiente" || status === "";
+      if (selectedJustify === "Con permiso") return status === "con permiso";
       return true;
     })
     .filter((absence) => {
-      // Filtro por búsqueda de nombre
       if (!searchText.trim()) return true;
       const nombre = absence.employeeName?.toLowerCase() || "";
       return nombre.includes(searchText.toLowerCase());
@@ -120,7 +150,8 @@ const Absences = () => {
       <div className="encabezado-inasistencias">
         <h1 className="titulo">Historial de inasistencias</h1>
 
-        <div className="buscador">
+        {/* 🔍 Buscador */}
+        <div className="buscadora">
           <Search className="search-icon" />
           <input
             type="text"
@@ -130,6 +161,7 @@ const Absences = () => {
           />
         </div>
 
+        {/* 🔹 Filtros */}
         <div className="filters">
           {/* Dropdown Área */}
           <div className="dropdown" ref={areaRef}>
@@ -164,6 +196,7 @@ const Absences = () => {
           <div className="dropdown" ref={justifyRef}>
             <button
               className="filter-button salidas"
+              style={{ width: "200px", background: "#f4f4f4" }}
               onClick={() => handleDropdown("justify")}
             >
               {selectedJustify} <ChevronDown size={16} />
@@ -182,10 +215,83 @@ const Absences = () => {
               </div>
             )}
           </div>
+
+          {/* 🔹 Filtro de fecha alineado horizontalmente */}
+          <div
+            className="dropdown date-filter-horizontal"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              position: "relative",
+            }}
+          >
+            <button
+              className="filter-button salidas"
+              style={{ width: "200px", background: "#f4f4f4" }}
+              onClick={() => handleDropdown("date")}
+            >
+              {dateFilterType.charAt(0).toUpperCase() + dateFilterType.slice(1)}{" "}
+              <ChevronDown size={16} />
+            </button>
+
+            {openDropdown === "date" && (
+              <div className="dropdown-menu salidas">
+                {["todas", "año", "mes", "semana", "día"].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setDateFilterType(type);
+                      setOpenDropdown(null);
+                    }}
+                    className={dateFilterType === type ? "selected" : ""}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {dateFilterType === "año" && (
+              <input
+                type="number"
+                min="2000"
+                max="2100"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="filter-input-right"
+                placeholder="Año"
+              />
+            )}
+            {dateFilterType === "mes" && (
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="filter-input-right"
+              />
+            )}
+            {dateFilterType === "semana" && (
+              <input
+                type="week"
+                value={selectedWeek}
+                onChange={(e) => setSelectedWeek(e.target.value)}
+                className="filter-input-right"
+              />
+            )}
+            {dateFilterType === "día" && (
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+                className="filter-input-right"
+              />
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Lista de inasistencias */}
+      {/* 🧾 Lista de inasistencias */}
       <div className="absence-list-container">
         <div className="absence-list">
           {loading ? (
@@ -200,7 +306,7 @@ const Absences = () => {
                 employeeType={absence.employeeType}
                 avatar={absence.employeeAvatar}
                 date={absence.date}
-                isJustified={!!justificationMap?.[absence._id]}
+                status={absence.status}
                 justification={justificationMap?.[absence._id]}
                 onViewJustification={() =>
                   setViewJustify(justificationMap?.[absence._id])
@@ -211,7 +317,7 @@ const Absences = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* 🪟 Modal de justificación */}
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}

@@ -31,7 +31,7 @@ const Admins = () => {
     <div className="encabezado" style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
       <h1 className="titulo">Gestión de Administradores</h1>
       <div className="busqueda-bar">
-        <div className="buscador" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
+        <div className="buscadora" style={{ display: "flex", alignItems: "center", gap: "8px", flex: '0 1 70%' }}>
           <Search className="search-icon" />
           <input
             type="text"

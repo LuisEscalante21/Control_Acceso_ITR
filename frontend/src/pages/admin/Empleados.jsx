@@ -70,8 +70,8 @@ const Empleados = () => {
     <>
       <div className="encabezado">
         <h1 className="titulo">Gestión de Empleados</h1>
-        <div className="busqueda-bar">
-          <div className="buscador">
+        <div className="busqueda-bar" >
+          <div className="buscadora" >
             <Search className="search-icon" />
             <input
               type="text"

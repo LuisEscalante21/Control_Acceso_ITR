@@ -7,19 +7,17 @@ import useDataAccess from "../../hooks/coordinators/useDataAccess.jsx";
 import AccessCard from "../../components/coordinator/Cards/AccessCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
-
 // Opciones de filtros
 const HorarioOptions = ["Entrada", "Salida"];
 const JustificationFilterOptions = ["Todos", "Justificados", "Pendientes"];
 const MainFilterOptions = [
-  { value: "todos", label: "Todos " },
+  { value: "todos", label: "Todos" },
   { value: "mios", label: "Mis Accesos" },
 ];
 
 const Accesos = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [selectedJustificationFilter, setSelectedJustificationFilter] =
-    useState("Todos");
+  const [selectedJustificationFilter, setSelectedJustificationFilter] = useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
   const [searchText, setSearchText] = useState("");
   const [mainFilter, setMainFilter] = useState("todos");
@@ -27,8 +25,9 @@ const Accesos = () => {
 
   const justificationFilterRef = useRef(null);
   const salidasRef = useRef(null);
+  const mainFilterRef = useRef(null);
 
-  // Leer y descifrar info del usuario desde cookie cifrada con AES
+  // Leer cookie y descifrar info usuario
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
   const encryptedUserInfo = Cookies.get("userInfo");
@@ -44,7 +43,8 @@ const Accesos = () => {
   }
 
   const empleadoId = userInfo?._id || null;
-  // Extraemos datos y funciones del hook personalizado
+
+  // Hook personalizado
   const {
     accessRecords,
     justificationMap = {},
@@ -68,6 +68,9 @@ const Accesos = () => {
   useEffect(() => {
     function handleClickOutside(event) {
       if (
+        (openDropdown === "mainFilter" &&
+          mainFilterRef.current &&
+          !mainFilterRef.current.contains(event.target)) ||
         (openDropdown === "justificationFilter" &&
           justificationFilterRef.current &&
           !justificationFilterRef.current.contains(event.target)) ||
@@ -95,6 +98,11 @@ const Accesos = () => {
     setOpenDropdown(openDropdown === dropdown ? null : dropdown);
   };
 
+  const handleSelectMainFilter = (value) => {
+    setMainFilter(value);
+    setOpenDropdown(null);
+  };
+
   const handleSelectJustificationFilter = (option) => {
     setSelectedJustificationFilter(option);
     setOpenDropdown(null);
@@ -105,7 +113,7 @@ const Accesos = () => {
     setOpenDropdown(null);
   };
 
-  // Filtrar accesos según filtro principal, tipo, estado justificación, y búsqueda
+  // Filtrado de accesos
   const filteredAccess = (accessRecords || [])
     .filter((person) => {
       if (mainFilter === "mios") return person.id_Employee === empleadoId;
@@ -143,7 +151,7 @@ const Accesos = () => {
         <h1 className="titulo">Historial de accesos</h1>
 
         {/* Buscador */}
-        <div className="buscador">
+        <div className="buscadora">
           <Search className="search-icon" />
           <input
             type="text"
@@ -155,30 +163,40 @@ const Accesos = () => {
 
         {/* Filtros */}
         <div className="filters">
-          {/* Filtro principal */}
-          <select
-            value={mainFilter}
-            onChange={(e) => setMainFilter(e.target.value)}
-            className="main-filter"
-            style={{ marginRight: "10px" }}
-          >
-            {MainFilterOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          {/* Filtro principal (custom dropdown) */}
+          <div className="dropdown" ref={mainFilterRef}>
+            <button
+              className="filter-button"
+              onClick={() => handleDropdown("mainFilter")}
+            >
+              {mainFilter === "todos" ? "Todos" : "Mis Accesos"}{" "}
+              <ChevronDown size={16} />
+            </button>
+            {openDropdown === "mainFilter" && (
+              <div className="dropdown-menu">
+                {MainFilterOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleSelectMainFilter(opt.value)}
+                    className={mainFilter === opt.value ? "selected" : ""}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Filtro por justificación */}
           <div className="dropdown" ref={justificationFilterRef}>
             <button
-              className="filter-button justification-filter"
+              className="filter-button"
               onClick={() => handleDropdown("justificationFilter")}
             >
               {selectedJustificationFilter} <ChevronDown size={16} />
             </button>
             {openDropdown === "justificationFilter" && (
-              <div className="dropdown-menu justification-filter">
+              <div className="dropdown-menu">
                 {JustificationFilterOptions.map((option) => (
                   <button
                     key={option}
@@ -243,16 +261,17 @@ const Accesos = () => {
                   tipoRegistro={person.tipo_registro}
                   docente={person.docente}
                   isJustified={!!justificationMap?.[person._id]}
-                  justification={justificationMap?.[person._id]} // pasar la justificación
+                  justification={justificationMap?.[person._id]}
                   onViewJustification={() =>
                     setViewJustify(justificationMap?.[person._id])
-                  } // abrir modal
+                  }
                 />
               );
             })
           )}
         </div>
       </div>
+
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}

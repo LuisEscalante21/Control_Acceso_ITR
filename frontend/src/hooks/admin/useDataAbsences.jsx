@@ -13,14 +13,14 @@ const useDataAbsences = (userId = null) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Configuración Axios
+  // ⚙️ Configuración base de Axios
   const axiosConfig = {
     withCredentials: true,
     headers: { "Content-Type": "application/json" },
     timeout: 10000,
   };
 
-  // Manejo de errores
+  // ⚠️ Manejo centralizado de errores
   const handleNetworkError = (err) => {
     if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
       navigate("/503");
@@ -32,12 +32,13 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // ⭐ Obtener usuario por ID (igual que en useDataAccess)
+  // 👤 Obtener usuario por ID
   const fetchUserById = async (id) => {
     try {
       const res = await axios.get(`${USERS_API_URL}/${id}`, axiosConfig);
       const user = res.data;
 
+      // Normaliza el tipo de usuario
       let userType = "Sin definir";
       if (user?.collectionName) {
         if (user.collectionName === "employees") userType = "Empleado";
@@ -52,7 +53,7 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // Obtener justificaciones
+  // 📜 Obtener todas las justificaciones
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(`${API_URL}/justifications`, axiosConfig);
@@ -69,79 +70,109 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // ⭐ Obtener registros de inasistencias (con datos de usuario desde endpoint de users)
+  // 📆 Obtener registros de inasistencias (con soporte para filtros)
   const fetchAbsenceRecords = async (options = {}) => {
     console.log("🚀 Iniciando fetchAbsenceRecords con opciones:", options);
     setLoading(true);
     try {
       const params = {};
-      
-      // Filtro por empleado específico
+
+      // Filtro: solo mis inasistencias
       if (options.onlyMine && userId) {
         params.onlyEmployeeId = userId;
       }
-      
-      // Filtro por área/equipo
-      if (options.idTeam && options.idTeam !== 'Todas') {
+
+      // Filtro: por equipo o área
+      if (options.idTeam && options.idTeam !== "Todas") {
         params.idTeam = options.idTeam;
       }
 
-      console.log("📡 Llamando API con URL:", `${API_URL}/absences`, "Params:", params);
+      // 🔹 NUEVO: filtros de fecha dinámica
+      if (options.filterType && options.selectedDate) {
+        switch (options.filterType) {
+          case "año":
+            params.year = options.selectedDate; // Ej: 2025
+            break;
+          case "mes":
+            params.month = options.selectedDate; // Ej: 2025-10
+            break;
+          case "semana":
+            params.week = options.selectedDate; // Ej: 2025-W41
+            break;
+          case "día":
+            params.day = options.selectedDate; // Ej: 2025-10-06
+            break;
+        }
+      }
+
+      // 📡 Petición principal al backend
       const res = await axios.get(`${API_URL}/absences`, { ...axiosConfig, params });
-      const records = res.data;
+      const records = res.data || [];
 
-      console.log("📊 Registros de inasistencias recibidos:", records);
-      console.log("📊 Cantidad de registros:", records?.length);
+      console.log("📊 Registros recibidos:", records?.length);
 
-      // ⭐ Obtener IDs únicos de empleados (puede venir como idEmployee, id_employee, o employeeId)
-      const uniqueUserIds = [...new Set(records.map((rec) => rec.idEmployee || rec.id_employee || rec.employeeId).filter(Boolean))];
-      console.log("👥 IDs únicos de usuarios a buscar:", uniqueUserIds);
-      
+      // Extrae los IDs únicos de empleados
+      const uniqueUserIds = [
+        ...new Set(
+          records
+            .map(
+              (rec) =>
+                rec.idEmployee ||
+                rec.id_Employee ||
+                rec.employeeId ||
+                rec.id_employee
+            )
+            .filter(Boolean)
+        ),
+      ];
+
       const usersMap = {};
 
-      // ⭐ Traer datos de usuarios involucrados desde el endpoint de users
+      // Obtener datos de los usuarios asociados
       await Promise.all(
         uniqueUserIds.map(async (id) => {
-          if (id) {
-            const user = await fetchUserById(id);
-            if (user) {
-              usersMap[id] = user;
-              console.log(`✅ Usuario obtenido para ID ${id}:`, user);
-            } else {
-              console.warn(`⚠️ No se pudo obtener usuario para ID ${id}`);
-            }
-          }
+          const user = await fetchUserById(id);
+          if (user) usersMap[id] = user;
         })
       );
 
-      console.log("🗺️ Mapa de usuarios:", usersMap);
-
-      // ⭐ Mapear los datos con información del usuario y área
+      // Mapear registros completos
       const mappedRecords = records.map((rec) => {
-        const employeeId = rec.idEmployee || rec.id_employee || rec.employeeId;
+        const employeeId =
+          rec.idEmployee || rec.id_Employee || rec.employeeId || rec.id_employee;
         const user = usersMap[employeeId];
-        
-        const mappedRecord = {
+
+        const statusNorm = (rec.status || "").toLowerCase().trim();
+        const isJustifiedByStatus = statusNorm === "justificada";
+        const hasPermission = statusNorm === "con permiso";
+
+        const employeeAvatar =
+          user?.photo ||
+          rec.id_Employee?.photo ||
+          (rec.avatar && rec.avatar.startsWith("http") ? rec.avatar : null) ||
+          null;
+
+        const employeeName = user
+          ? `${user.names ?? ""} ${user.surnames ?? ""}`.trim()
+          : `${rec.names ?? ""} ${rec.surnames ?? ""}`.trim() || "Usuario no encontrado";
+
+        const employeeType = user?.userType || rec.employee_type || "Sin definir";
+
+        return {
           ...rec,
           _id: rec._id,
-          employeeName: user ? `${user.names} ${user.surnames}` : (rec.names && rec.surnames ? `${rec.names} ${rec.surnames}` : "Usuario no encontrado"),
-          employeeType: user?.userType || rec.employee_type || "Sin definir",
-          employeeAvatar: user?.photo || rec.avatar || null,
+          employeeId,
+          employeeName,
+          employeeType,
+          employeeAvatar,
           date: rec.date,
-          areaName: rec.idTeam?.name || 'Sin área',
+          areaName: rec.idTeam?.name || "Sin área",
           idTeam: rec.idTeam?._id || null,
-          isJustified: !!justificationMap[rec._id],
+          status: statusNorm,
+          isJustified: isJustifiedByStatus || !!justificationMap[rec._id],
+          hasPermission,
           justification: justificationMap[rec._id] || null,
         };
-
-        console.log("📝 Registro mapeado:", {
-          employeeId,
-          employeeName: mappedRecord.employeeName,
-          employeeAvatar: mappedRecord.employeeAvatar,
-          employeeType: mappedRecord.employeeType
-        });
-
-        return mappedRecord;
       });
 
       setAbsenceRecords(mappedRecords);
@@ -155,7 +186,7 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // Guardar o actualizar inasistencia
+  // 💾 Guardar o actualizar una inasistencia
   const saveAbsence = async (data, absenceId = null) => {
     try {
       if (absenceId) {
@@ -172,7 +203,7 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // Eliminar inasistencia
+  // 🗑️ Eliminar una inasistencia
   const deleteAbsence = async (id) => {
     const result = await Swal.fire({
       title: "¿Eliminar registro?",
@@ -182,7 +213,7 @@ const useDataAbsences = (userId = null) => {
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
-    
+
     if (!result.isConfirmed) return;
 
     try {
@@ -195,6 +226,7 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
+  // 🚀 Inicialización automática
   useEffect(() => {
     fetchJustifications();
     fetchAbsenceRecords();
