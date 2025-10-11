@@ -92,7 +92,7 @@ export default function AdminViewPermissionModal({
         supervisorComments,
       };
 
-      // ✅ Solo se envía descuento si APRUEBA
+      //Solo se envía descuento si APRUEBA
       if (action === "approved") {
         payload.Discount = applyDiscount;
       } else {

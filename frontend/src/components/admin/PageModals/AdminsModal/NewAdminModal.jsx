@@ -5,6 +5,10 @@ import Swal from "sweetalert2";
 import { Camera } from "lucide-react";
 import "../../../styles/Modal.css";
 
+const API_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${API_URL}${PORT}`; 
+
 // Componente reutilizable para inputs
 const FormInput = ({ label, id, register, errors, validation, required, ...props }) => (
   <div className="form-field">
@@ -82,7 +86,7 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
   useEffect(() => {
     const fetchTeams = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/teams");
+        const res = await axios.get(`${BASE_URL}/api/teams`);
         setTeams(
           res.data.map((team) => ({
             value: team._id,
@@ -170,7 +174,7 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         formData.append("photo", image);
       }
 
-      await axios.post("http://localhost:4000/api/registerAdministrators", formData, {
+      await axios.post(`${BASE_URL}/api/registerAdministrators`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

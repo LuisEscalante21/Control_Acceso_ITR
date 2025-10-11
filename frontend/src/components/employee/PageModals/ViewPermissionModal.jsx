@@ -194,7 +194,7 @@ export default function ViewPermissionModal({ isOpen, onClose, permission, onDel
             </>
           )}
 
-          {/* ✅ Solo mostrar si aplica descuento */}
+          {/*Solo mostrar si aplica descuento */}
           {typeof Discount !== "undefined" && (
             <>
               <h4 className="vp2-subtitle">Resumen de descuento</h4>

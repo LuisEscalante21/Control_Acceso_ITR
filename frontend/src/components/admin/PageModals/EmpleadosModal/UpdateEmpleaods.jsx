@@ -5,6 +5,11 @@ import "../../../../styles/Admin/Empleados.css";
 import { Pencil, Trash2, Camera, UserCircle } from "lucide-react";
 import { useGenerateReport } from "../../../../hooks/Global/useGenerateReport";
 
+const API_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${API_URL}${PORT}`; 
+
+
 const toInputDateFormat = (date) => {
   if (!date) return "";
   const d = new Date(date);
@@ -13,7 +18,7 @@ const toInputDateFormat = (date) => {
   return localDate.toISOString().split("T")[0];
 };
 
-// 👉 Función para dar formato al número
+// Función para dar formato al número
 const formatPhone = (value) => {
   value = value.replace(/\D/g, ""); // quitar todo lo que no sea número
   if (value.length > 4) {
@@ -69,7 +74,7 @@ export default function UpdateEmpleaods({
     const fetchTeams = async () => {
       setLoadingTeams(true);
       try {
-        const res = await fetch(`http://localhost:4000/api/teams`, {
+        const res = await fetch(`${BASE_URL}/api/teams`, {
           method: "GET",
           credentials: "include", // envía cookies/sesión
           headers: {
@@ -266,14 +271,14 @@ export default function UpdateEmpleaods({
                   {empleado.IdTeam?.name || "No asignado"}
                 </span>
               </div>
-              {/* ✅ BOTÓN PARA GENERAR REPORTE */}
+              {/* BOTÓN PARA GENERAR REPORTE */}
               <div style={{ textAlign: "center", marginTop: "20px" }}>
                 <button
                   className="btn-reporte"
                   onClick={async () => {
                     setLoadingPDF(true);
                     try {
-                      await generateReport(empleado._id); // ✅ Ejecuta el reporte
+                      await generateReport(empleado._id); //Ejecuta el reporte
                     } catch (error) {
                       console.error("Error al generar reporte:", error);
                       Swal.fire(

@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
-const API_BASE =
-  window.location.hostname === "localhost" ? "http://localhost:4000" : "";
-const API_URL = `${API_BASE}/api/permissions`;
+const URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${URL}${PORT}`; 
+
+const API_URL = `${BASE_URL}/api/permissions`;
 
 const useDataPermissions = () => {
   const [permissions, setPermissions] = useState([]);

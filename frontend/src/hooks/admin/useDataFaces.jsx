@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
 // Variables de entorno
-const BASE_URL = "http://localhost:4500";
+const API_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT_FACES;
+const BASE_URL = `${API_URL}${PORT}`;
 const API_KEY = import.meta.env.VITE_MAPEO_API_KEY;
 
 const useDataFace = () => {

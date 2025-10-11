@@ -4,6 +4,11 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import "../../../../components/styles/ModalNewTeams.css";
 
+const API_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${API_URL}${PORT}`; 
+
+
 export default function ModalNuevaArea({ onSaved, onClose }) {
   const {
     register,
@@ -18,7 +23,7 @@ export default function ModalNuevaArea({ onSaved, onClose }) {
     }
 
     try {
-      await axios.post("http://localhost:4000/api/teams", { name: data.name });
+      await axios.post(`${BASE_URL}/api/teams`, { name: data.name });
       await Swal.fire("¡Guardado!", "El área ha sido registrada exitosamente.", "success");
       reset();
       if (onSaved) onSaved();

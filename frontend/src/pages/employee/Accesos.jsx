@@ -27,6 +27,7 @@ const Accesos = () => {
   // === Perfil desde cookie AES ===
   const [userName, setUserName] = useState("Usuario");
   const [userPhoto, setUserPhoto] = useState(null);
+  const [userTeam, setUserTeam] = useState(null); // <-- nuevo: idTeam del usuario
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   const [empleadoId, setEmpleadoId] = useState(null);
 
@@ -42,6 +43,11 @@ const Accesos = () => {
           setUserName(userInfo.fullName || "Usuario");
           setUserPhoto(userInfo.photoUrl || null);
           setEmpleadoId(userInfo._id || null);
+
+          // Intentar capturar idTeam bajo varios nombres posibles
+          setUserTeam(
+            userInfo.idTeam || userInfo.IdTeam || userInfo.teamId || null
+          );
         }
       } catch (error) {
         console.error("Error al descifrar userInfo:", error);
@@ -49,9 +55,13 @@ const Accesos = () => {
     }
   }, [secretKey]);
 
-  // Extraemos datos del hook
-  const { accessRecords, fetchAccessRecords, fetchJustifications } =
-    useDataAccess(empleadoId);
+  // Extraemos datos del hook (incluimos saveJustification si existe)
+  const {
+    accessRecords,
+    fetchAccessRecords,
+    fetchJustifications,
+    saveJustification,
+  } = useDataAccess(empleadoId);
 
   // Refrescar registros y justificaciones
   const refreshAccessData = async () => {
@@ -142,7 +152,6 @@ const Accesos = () => {
 
   return (
     <div className="access-history-container" style={{ position: "relative" }}>
-     
       <div className="encabezado-accesos">
         <h1 className="titulo">Historial de accesos</h1>
 
@@ -243,7 +252,8 @@ const Accesos = () => {
                   justification={person.justification}
                   onJustifyClick={() => {
                     if (person.justification) {
-                      setViewJustify(person);
+                      // pasar el objeto de justificación, no todo el registro de acceso
+                      setViewJustify(person.justification);
                     } else {
                       handleOpenJustifyModal(person);
                     }
@@ -260,8 +270,14 @@ const Accesos = () => {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           record={justificarInfo}
-          currentUser={{ name: userName, photo: userPhoto, id: empleadoId }}
+          currentUser={{
+            name: userName,
+            photo: userPhoto,
+            id: empleadoId,
+            idTeam: userTeam, // <-- pasamos idTeam para evitar IdTeam vacío
+          }}
           refreshAccessRecords={refreshAccessData}
+          onSave={saveJustification} // function from hook, may be undefined (fallback en modal lo maneja)
         />
       )}
 

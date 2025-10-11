@@ -59,7 +59,7 @@ const filteredPermissions = useMemo(() => {
     list = list.filter((p) => {
       if (!p.applicationDay) return false;
       const permDate = new Date(p.applicationDay);
-      return permDate <= selectedDate; // 👈 incluye el día elegido y días anteriores
+      return permDate <= selectedDate; //incluye el día elegido y días anteriores
     });
   }
 

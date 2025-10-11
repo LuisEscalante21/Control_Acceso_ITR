@@ -23,7 +23,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
   const [file, setFile] = useState(null);
   const [docPreview, setDocPreview] = useState(null);
 
-  const today = new Date().toISOString().split("T")[0]; // ⬅️ hoy como min
+  const today = new Date().toISOString().split("T")[0]; 
 
   const {
     register,

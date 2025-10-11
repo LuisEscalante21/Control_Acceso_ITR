@@ -3,6 +3,12 @@ import Swal from "sweetalert2";
 import useFaceRecognition from "../../hooks/widgets/useFaceRecognition";
 import "../../styles/videoCapture/VideoDashboard.css";
 
+const API_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT_ACCESS;
+const PORT_RECOG = import.meta.env.VITE_PORT_RECONOCIMIENTO;
+const BASE_URL = `${API_URL}${PORT}`;
+const API_KEY = import.meta.env.VITE_API_ACCESS_KEY;
+
 export default function VideoDashboard() {
   const [time, setTime] = useState(new Date());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -77,10 +83,10 @@ export default function VideoDashboard() {
         accessData.exit_result = "Reconocido";
       }
 
-      const response = await fetch("http://localhost:4800/api/access", {
+      const response = await fetch(`${BASE_URL}/api/access`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${"b11qp8D&UeX2@9"}`,
+          "Authorization": `Bearer ${API_KEY}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(accessData)
@@ -135,13 +141,16 @@ export default function VideoDashboard() {
           <div className="vd-header">
             <h1>BIENVENIDO</h1>
           </div>
-          
+
           {/* Principal */}
           <div className="vd-main">
             <div className="vd-video-card">
-              <img src="http://localhost:4600/videoCapture" alt="Streaming cámara" />
+              <img
+                src={`${API_URL}${PORT_RECOG}/videoCapture`}
+                alt="Streaming cámara"
+              />
             </div>
-            
+
             <div className="vd-widgets">
               <div className="vd-date-card">
                 <div className="vd-date-day">
@@ -149,7 +158,7 @@ export default function VideoDashboard() {
                 </div>
                 <div className="vd-date-num">{dateNumber}</div>
               </div>
-              
+
               <div className="vd-time-card">
                 <span className="vd-time-text">{timeStr}</span>
               </div>
@@ -161,7 +170,11 @@ export default function VideoDashboard() {
             <button
               onClick={handleManualAccess}
               disabled={!recognized || isProcessing || accessRegistered}
-              className={`vd-access-button ${!recognized || isProcessing || accessRegistered ? 'vd-access-button--disabled' : ''}`}
+              className={`vd-access-button ${
+                !recognized || isProcessing || accessRegistered
+                  ? "vd-access-button--disabled"
+                  : ""
+              }`}
             >
               {isProcessing ? (
                 <>
@@ -169,19 +182,22 @@ export default function VideoDashboard() {
                   <span>Procesando...</span>
                 </>
               ) : accessRegistered ? (
-                'Acceso Ya Registrado'
+                "Acceso Ya Registrado"
               ) : (
-                `Registrar ${recognized?.tipo === "salida" ? "Salida" : "Entrada"} Manual`
+                `Registrar ${
+                  recognized?.tipo === "salida" ? "Salida" : "Entrada"
+                } Manual`
               )}
             </button>
-            
+
             <div className="vd-access-instruction">
-              {!recognized 
+              {!recognized
                 ? "Espera a ser reconocido para registrar acceso manual"
                 : accessRegistered
                 ? "Acceso registrado. Espere reconocimiento de otro empleado."
-                : `Presiona para registrar tu ${recognized.tipo || "acceso"} manualmente (se evaluará según tu horario)`
-              }
+                : `Presiona para registrar tu ${
+                    recognized.tipo || "acceso"
+                  } manualmente (se evaluará según tu horario)`}
             </div>
           </div>
         </div>

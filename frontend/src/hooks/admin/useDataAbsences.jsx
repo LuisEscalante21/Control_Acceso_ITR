@@ -4,8 +4,9 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
 const BASE = import.meta.env.VITE_BASE_URL;
-const API_URL = `${BASE}4000/api`;
-const USERS_API_URL = `${BASE}4000/api/users`; // ⭐ Endpoint de usuarios
+const PORT = import.meta.env.VITE_PORT;
+const API_URL = `${BASE}${PORT}/api`;
+const USERS_API_URL = `${BASE}${PORT}/api/users`; 
 
 const useDataAbsences = (userId = null) => {
   const [absenceRecords, setAbsenceRecords] = useState([]);
@@ -13,14 +14,14 @@ const useDataAbsences = (userId = null) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ⚙️ Configuración base de Axios
+  //  Configuración base de Axios
   const axiosConfig = {
     withCredentials: true,
     headers: { "Content-Type": "application/json" },
     timeout: 10000,
   };
 
-  // ⚠️ Manejo centralizado de errores
+  // Manejo centralizado de errores
   const handleNetworkError = (err) => {
     if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
       navigate("/503");
@@ -28,11 +29,11 @@ const useDataAbsences = (userId = null) => {
       Swal.fire("Error", "No autorizado. Inicia sesión nuevamente.", "error");
       navigate("/login");
     } else {
-      console.error("🔴 Error:", err);
+      console.error("Error:", err);
     }
   };
 
-  // 👤 Obtener usuario por ID
+  // Obtener usuario por ID
   const fetchUserById = async (id) => {
     try {
       const res = await axios.get(`${USERS_API_URL}/${id}`, axiosConfig);
@@ -48,12 +49,12 @@ const useDataAbsences = (userId = null) => {
 
       return { ...user, userType };
     } catch (error) {
-      console.error("🔴 Error fetchUserById:", error);
+      console.error("Error fetchUserById:", error);
       return null;
     }
   };
 
-  // 📜 Obtener todas las justificaciones
+  //  Obtener todas las justificaciones
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(`${API_URL}/justifications`, axiosConfig);
@@ -70,9 +71,8 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // 📆 Obtener registros de inasistencias (con soporte para filtros)
+  // Obtener registros de inasistencias (con soporte para filtros)
   const fetchAbsenceRecords = async (options = {}) => {
-    console.log("🚀 Iniciando fetchAbsenceRecords con opciones:", options);
     setLoading(true);
     try {
       const params = {};
@@ -105,11 +105,9 @@ const useDataAbsences = (userId = null) => {
         }
       }
 
-      // 📡 Petición principal al backend
+      // Petición principal al backend
       const res = await axios.get(`${API_URL}/absences`, { ...axiosConfig, params });
       const records = res.data || [];
-
-      console.log("📊 Registros recibidos:", records?.length);
 
       // Extrae los IDs únicos de empleados
       const uniqueUserIds = [
@@ -186,7 +184,7 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // 💾 Guardar o actualizar una inasistencia
+  // Guardar o actualizar una inasistencia
   const saveAbsence = async (data, absenceId = null) => {
     try {
       if (absenceId) {
@@ -203,7 +201,7 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // 🗑️ Eliminar una inasistencia
+  // Eliminar una inasistencia
   const deleteAbsence = async (id) => {
     const result = await Swal.fire({
       title: "¿Eliminar registro?",
@@ -226,7 +224,7 @@ const useDataAbsences = (userId = null) => {
     }
   };
 
-  // 🚀 Inicialización automática
+  // Inicialización automática
   useEffect(() => {
     fetchJustifications();
     fetchAbsenceRecords();

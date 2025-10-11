@@ -6,6 +6,7 @@ import "../../styles/coordinators/Accesos.css";
 import useDataAccess from "../../hooks/coordinators/useDataAccess.jsx";
 import AccessCard from "../../components/coordinator/Cards/AccessCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
+import JustifyModal from "../../components/employee/PageModals/justifictions.jsx"; // <-- import del modal de justificar
 
 // Opciones de filtros
 const HorarioOptions = ["Entrada", "Salida"];
@@ -17,11 +18,16 @@ const MainFilterOptions = [
 
 const Accesos = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [selectedJustificationFilter, setSelectedJustificationFilter] = useState("Todos");
+  const [selectedJustificationFilter, setSelectedJustificationFilter] =
+    useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
   const [searchText, setSearchText] = useState("");
   const [mainFilter, setMainFilter] = useState("todos");
   const [viewJustify, setViewJustify] = useState(null);
+
+  // Estados nuevos para justificar
+  const [isJustifyModalOpen, setIsJustifyModalOpen] = useState(false);
+  const [justificarInfo, setJustificarInfo] = useState(null);
 
   const justificationFilterRef = useRef(null);
   const salidasRef = useRef(null);
@@ -50,6 +56,8 @@ const Accesos = () => {
     justificationMap = {},
     fetchAccessRecords,
     fetchJustifications,
+    saveJustification, // <-- ideal: función añadida en useDataAccess para enviar FormData con axios
+    userTeamId,
   } = useDataAccess(empleadoId);
 
   // Refrescar registros y justificaciones
@@ -111,6 +119,17 @@ const Accesos = () => {
   const handleSelectSalida = (option) => {
     setSelectedSalida(option);
     setOpenDropdown(null);
+  };
+
+  // Abrir modal de justificar (recibe el registro de acceso)
+  const handleOpenJustifyModal = (record) => {
+    setJustificarInfo(record);
+    setIsJustifyModalOpen(true);
+  };
+
+  const handleCloseJustifyModal = () => {
+    setJustificarInfo(null);
+    setIsJustifyModalOpen(false);
   };
 
   // Filtrado de accesos
@@ -265,6 +284,12 @@ const Accesos = () => {
                   onViewJustification={() =>
                     setViewJustify(justificationMap?.[person._id])
                   }
+                  // Mostrar botón de justificar SOLO para los accesos del coordinador (no para empleados del area)
+                  showJustifyButton={
+                    person.id_Employee === empleadoId &&
+                    !justificationMap?.[person._id]
+                  }
+                  onJustifyClick={() => handleOpenJustifyModal(person)}
                 />
               );
             })
@@ -272,11 +297,32 @@ const Accesos = () => {
         </div>
       </div>
 
+      {/* Modal para ver justificación */}
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}
           onClose={() => setViewJustify(null)}
           justification={viewJustify}
+        />
+      )}
+
+      {/* Modal para crear justificación (coordinador) */}
+      {isJustifyModalOpen && justificarInfo && (
+        <JustifyModal
+          isOpen={isJustifyModalOpen}
+          onClose={handleCloseJustifyModal}
+          record={justificarInfo}
+          currentUser={{
+            name: userInfo
+              ? `${userInfo.names} ${userInfo.surnames}`
+              : "Coordinador",
+            photo: userInfo?.photo || null,
+            id: empleadoId,
+            idTeam: userTeamId,
+          }}
+          refreshAccessRecords={refreshAccessData}
+          onSave={saveJustification}
+          isAbsence={false}
         />
       )}
     </div>

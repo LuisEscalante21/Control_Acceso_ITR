@@ -4,11 +4,12 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
+const BASE_PORT = import.meta.env.VITE_PORT;
 const PORT = import.meta.env.VITE_PORT_ACCESS;
 const API_URL = `${BASE_URL}${PORT}/api`; // Flask
-const API_URL_JUSTIFICATIONS = `${BASE_URL}4000/api/justifications`; // Node
-const USERS_API_URL = `${BASE_URL}4000/api/users`; // Node
-const TEAM_API_URL = `${BASE_URL}4000/api/teams`; // Node
+const API_URL_JUSTIFICATIONS = `${BASE_URL}${BASE_PORT}/api/justifications`; // Node
+const USERS_API_URL = `${BASE_URL}${BASE_PORT}/api/users`; // Node
+const TEAM_API_URL = `${BASE_URL}${BASE_PORT}/api/teams`; // Node
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
 
 const useDataAccess = (userId = null) => {
@@ -30,7 +31,7 @@ const useDataAccess = (userId = null) => {
   };
 
   const axiosConfigNode = {
-    withCredentials: true, // ✅ envía cookies de sesión
+    withCredentials: true, //envía cookies de sesión
     headers: {
       "Content-Type": "application/json",
     },
@@ -46,7 +47,7 @@ const useDataAccess = (userId = null) => {
     } else if (err.response?.status === 401 || err.response?.status === 403) {
       Swal.fire("Error", "No autorizado. Inicia sesión nuevamente.", "error");
     } else {
-      console.error("🔴 Error de red:", err);
+      console.error("Error de red:", err);
     }
   };
 
@@ -67,7 +68,7 @@ const useDataAccess = (userId = null) => {
 
       return { ...user, userType };
     } catch (error) {
-      console.error("🔴 Error fetchUserById:", error);
+      console.error("Error fetchUserById:", error);
       return null;
     }
   };
@@ -81,7 +82,7 @@ const useDataAccess = (userId = null) => {
       setTeams(res.data || []);
     } catch (error) {
       handleNetworkError(error);
-      console.error("🔴 Error al obtener áreas:", error);
+      console.error("Error al obtener áreas:", error);
     }
   };
 
@@ -98,7 +99,7 @@ const useDataAccess = (userId = null) => {
       setJustificationMap(map);
     } catch (error) {
       handleNetworkError(error);
-      console.error("🔴 Error al obtener justificaciones:", error);
+      console.error("Error al obtener justificaciones:", error);
       setJustificationMap({});
     }
   };

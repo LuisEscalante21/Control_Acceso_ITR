@@ -70,7 +70,7 @@ const passwordRecoveryController = {};
 
 // 1. Solicitar código
 passwordRecoveryController.requestCode = async (req, res) => {
-  const { email } = req.body; // 👈 ahora recibimos correo
+  const { email } = req.body; // ahora recibimos correo
   try {
     if (!email) {
       return res.status(400).json({ message: "El correo es obligatorio" });
@@ -110,9 +110,9 @@ passwordRecoveryController.requestCode = async (req, res) => {
 
     res.cookie("tokenRecoveryCode", token, {
      httpOnly: true, 
-     secure: false, // ⚠️ no uses https en localhost
-     sameSite: "lax", // ⚠️ permite compartir entre 5173 y 4000
-     domain: "localhost", // 👈 asegura que pertenece al backend
+     secure: false, // no uses https en localhost
+     sameSite: "lax", // permite compartir entre 5173 y 4000
+     domain: "localhost", // asegura que pertenece al backend
      path: "/", 
      maxAge: 25 * 60 * 1000,
     });
@@ -124,7 +124,7 @@ passwordRecoveryController.requestCode = async (req, res) => {
       await transporter.verify();
       await transporter.sendMail({
         from: `"Soporte PTC" <${process.env.EMAIL_USER}>`,
-        to: userFound.email, // 👈 correo del usuario
+        to: userFound.email, // correo del usuario
         subject: "Código de recuperación de contraseña",
         html: HTMLRecoveryEmail(code),
       });

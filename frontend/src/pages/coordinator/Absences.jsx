@@ -5,19 +5,27 @@ import CryptoJS from "crypto-js";
 import "../../styles/coordinators/Inasistencias.css";
 import useDataAbsences from "../../hooks/coordinators/useDataAbsences.jsx";
 import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
+import JustifyModal from "../../components/employee/PageModals/justifictions.jsx"; // 🔹 NUEVO: Modal de justificación
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
 const MainFilterOptions = [
   { value: "todos", label: "Todas" },
   { value: "mios", label: "Mis Inasistencias" },
 ];
-const JustificationFilterOptions = ["Todas", "Justificadas", "Sin justificar", "Con permiso"];
+const JustificationFilterOptions = [
+  "Todas",
+  "Justificadas",
+  "Sin justificar",
+  "Con permiso",
+];
 
 const Absences = () => {
   const [mainFilter, setMainFilter] = useState("todos");
   const [selectedJustify, setSelectedJustify] = useState("Todas");
   const [searchText, setSearchText] = useState("");
   const [viewJustify, setViewJustify] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false); // 🔹 NUEVO: Estado del modal de justificación
+  const [justificarInfo, setJustificarInfo] = useState(null); // 🔹 NUEVO: Info de la inasistencia a justificar
 
   // 🔹 Estados del filtro de fecha
   const [dateFilterType, setDateFilterType] = useState("todas");
@@ -31,7 +39,7 @@ const Absences = () => {
   const dateRef = useRef(null);
   const [openDropdown, setOpenDropdown] = useState(null);
 
-  // Leer y descifrar info del usuario
+  // 🔹 Leer y descifrar info del usuario
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
   const encryptedUserInfo = Cookies.get("userInfo");
@@ -45,14 +53,35 @@ const Absences = () => {
       userInfo = null;
     }
   }
-  const empleadoId = userInfo?._id || null;
+  const coordinatorId = userInfo?._id || null;
 
   const {
     absenceRecords,
     justificationMap,
+    userId,
     fetchAbsenceRecords,
     fetchJustifications,
-  } = useDataAbsences(empleadoId);
+    saveAbsenceJustification, // 🔹 NUEVO: Función para justificar
+  } = useDataAbsences();
+
+  // 🔹 Abrir modal de justificación
+  const handleOpenJustifyModal = (absence) => {
+    console.log("📝 Abriendo modal para justificar:", absence);
+    setJustificarInfo(absence);
+    setIsModalOpen(true);
+  };
+
+  // 🔹 Cerrar modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setJustificarInfo(null);
+  };
+
+  // 🔹 Refrescar datos
+  const refreshData = async () => {
+    await fetchAbsenceRecords();
+    await fetchJustifications();
+  };
 
   // 🔸 Cargar datos al cambiar filtros de fecha
   useEffect(() => {
@@ -99,10 +128,11 @@ const Absences = () => {
     setOpenDropdown(openDropdown === type ? null : type);
   };
 
+  // 🔹 Filtrado de inasistencias
   const filteredAbsences = (absenceRecords || [])
     .filter((absence) => {
       if (mainFilter === "mios") {
-        return absence.id_Employee === empleadoId;
+        return absence.id_Employee === coordinatorId;
       }
       return true;
     })
@@ -272,25 +302,67 @@ const Absences = () => {
           {filteredAbsences.length === 0 ? (
             <p>No hay inasistencias para mostrar.</p>
           ) : (
-            filteredAbsences.map((absence, index) => (
-              <AbsenceCard
-                key={absence._id || index}
-                name={absence.employeeName}
-                employeeType={absence.employeeType}
-                avatar={absence.employeeAvatar}
-                date={absence.date}
-                status={absence.status}
-                justification={justificationMap?.[absence._id]}
-                onViewJustification={() =>
-                  setViewJustify(justificationMap?.[absence._id])
-                }
-              />
-            ))
+            filteredAbsences.map((absence, index) => {
+              // 🔹 Determinar si el coordinador puede justificar esta inasistencia
+              const isOwnAbsence = absence.id_Employee === coordinatorId;
+              const statusNormalized = (absence.status || "pendiente")
+                .toLowerCase()
+                .trim();
+              const isPending =
+                statusNormalized === "pendiente" ||
+                statusNormalized === "sin justificar" ||
+                !absence.status;
+
+              // 🔹 Solo mostrar botón de justificar si:
+              // 1. Es su propia inasistencia
+              // 2. Está pendiente
+              const showJustifyButton = isOwnAbsence && isPending;
+
+              console.log("🔍 Debug Card (Coordinador):", {
+                nombre: absence.employeeName,
+                employeeId: absence.id_Employee,
+                coordinatorId,
+                isOwnAbsence,
+                isPending,
+                showJustifyButton,
+              });
+
+              return (
+                <AbsenceCard
+                  key={absence._id || index}
+                  name={absence.employeeName}
+                  employeeType={absence.employeeType}
+                  avatar={absence.employeeAvatar}
+                  date={absence.date}
+                  status={absence.status || "pendiente"}
+                  isJustified={statusNormalized === "justificada"}
+                  justification={justificationMap?.[absence._id]}
+                  showJustifyButton={showJustifyButton} // 🔹 Solo si es suya y está pendiente
+                  onJustifyClick={() => handleOpenJustifyModal(absence)}
+                  onViewJustification={() =>
+                    setViewJustify(justificationMap?.[absence._id])
+                  }
+                />
+              );
+            })
           )}
         </div>
       </div>
 
-      {/* Modal de justificación */}
+      {/* 🔹 Modal de justificación (solo para inasistencias del coordinador) */}
+      {isModalOpen && (
+        <JustifyModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          record={justificarInfo}
+          currentUser={{ id: userId }}
+          onSave={saveAbsenceJustification}
+          refreshAccessRecords={refreshData}
+          isAbsence={true} // 🔹 Flag para identificar que es una inasistencia
+        />
+      )}
+
+      {/* Modal de visualización de justificación */}
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}

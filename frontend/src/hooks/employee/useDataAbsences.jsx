@@ -5,8 +5,9 @@ import Swal from "sweetalert2";
 import CryptoJS from "crypto-js";
 
 const BASE = import.meta.env.VITE_BASE_URL;
-const API_URL = `${BASE}4000/api`;
-const USERS_API_URL = `${BASE}4000/api/users`;
+const PORT = import.meta.env.VITE_PORT;
+const API_URL = `${BASE}${PORT}/api`;
+const USERS_API_URL = `${BASE}${PORT}/api/users`;
 const JWT_SECRET = import.meta.env.VITE_JWT_SECRET;
 
 const useDataAbsences = () => {
@@ -14,25 +15,49 @@ const useDataAbsences = () => {
   const [justificationMap, setJustificationMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [userInfo, setUserInfo] = useState(null); // 🔹 NUEVO: Guardar info completa del usuario
   const navigate = useNavigate();
   const userCache = useRef({});
 
-  // Axios base config
+  // 🔹 Axios config con credenciales (JSON)
   const axiosConfig = {
-    withCredentials: true,
-    headers: { "Content-Type": "application/json" },
-    timeout: 10000,
+    withCredentials: true, // 🔹 Enviar cookies de sesión
+    headers: {
+      "Content-Type": "application/json",
+    },
+    timeout: 15000,
+  };
+
+  // 🔹 Axios config con credenciales (FormData para archivos)
+  const axiosConfigMultipart = {
+    withCredentials: true, // 🔹 Enviar cookies de sesión
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+    timeout: 15000,
   };
 
   // 🔹 Manejo de errores global
   const handleNetworkError = (err) => {
-    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
+    console.error("❌ Error de red:", err);
+
+    if (
+      !err.response ||
+      err.code === "ERR_NETWORK" ||
+      err.response?.status === 503
+    ) {
       navigate("/503");
     } else if (err.response?.status === 401 || err.response?.status === 403) {
-      Swal.fire("Error", "No autorizado. Inicia sesión nuevamente.", "error");
-      navigate("/login");
+      Swal.fire({
+        icon: "error",
+        title: "No autorizado",
+        text: "Tu sesión ha expirado. Por favor, inicia sesión nuevamente.",
+        confirmButtonText: "Ir al login",
+      }).then(() => {
+        navigate("/login");
+      });
     } else {
-      console.error("Error:", err);
+      console.error("Error detallado:", err.response?.data || err.message);
     }
   };
 
@@ -47,15 +72,23 @@ const useDataAbsences = () => {
         const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
         const bytes = CryptoJS.AES.decrypt(encrypted, JWT_SECRET);
         const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
-        if (!decryptedStr) throw new Error("No se pudo descifrar correctamente.");
-        const userInfo = JSON.parse(decryptedStr);
-        setUserId(userInfo._id || null);
+
+        if (!decryptedStr) {
+          throw new Error("No se pudo descifrar correctamente.");
+        }
+
+        const userData = JSON.parse(decryptedStr);
+        setUserId(userData._id || null);
+        setUserInfo(userData); // 🔹 Guardar info completa
       } catch (err) {
         console.error("Error al descifrar userInfo:", err);
         setUserId(null);
+        setUserInfo(null);
       }
+    } else {
+      console.warn("No se encontró cookie de usuario o JWT_SECRET");
     }
-  }, []);
+  }, [JWT_SECRET]);
 
   // 🔹 Obtener información del usuario por ID (cacheado)
   const fetchUserById = async (id) => {
@@ -79,33 +112,121 @@ const useDataAbsences = () => {
     }
   };
 
-  // 🔹 Obtener todas las justificaciones
+  // 🔹 Obtener todas las justificaciones (filtradas por idAbsence)
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(`${API_URL}/justifications`, axiosConfig);
+
+      // 🔹 Mapear solo las justificaciones de INASISTENCIAS (idAbsence)
       const map = (res.data || []).reduce((acc, j) => {
         if (j?.idAbsence) acc[j.idAbsence] = j;
         return acc;
       }, {});
+
       setJustificationMap(map);
       return map;
     } catch (error) {
+      console.error("Error al obtener justificaciones:", error);
       handleNetworkError(error);
       setJustificationMap({});
       return {};
     }
   };
 
-  // 🔹 Guardar una justificación nueva
-  const saveJustification = async (data) => {
+  // 🔹 Guardar justificación de INASISTENCIA (con FormData para archivos)
+  const saveAbsenceJustification = async (formData) => {
     try {
-      await axios.post(`${API_URL}/justifications`, data, axiosConfig);
-      Swal.fire("¡Justificado!", "La inasistencia ha sido justificada correctamente.", "success");
+      // 🔹 Debug: Mostrar qué se está enviando
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(
+            `  ${key}: [Archivo] ${value.name} (${value.size} bytes)`
+          );
+        } else {
+          console.log(`  ${key}:`, value);
+        }
+      }
+
+      // 🔹 Enviar con axios (con credenciales)
+      const response = await axios.post(
+        `${API_URL}/justifications`,
+        formData,
+        axiosConfigMultipart
+      );
+
+      Swal.fire({
+        icon: "success",
+        title: "¡Justificado!",
+        text: "La inasistencia ha sido justificada correctamente.",
+        confirmButtonText: "Aceptar",
+        timer: 3000,
+      });
+
+      // 🔹 Refrescar datos
       await fetchAbsenceRecords();
       await fetchJustifications();
+
+      return true;
     } catch (error) {
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "No se pudo guardar la justificación.";
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: errorMessage,
+        confirmButtonText: "Aceptar",
+      });
+
       handleNetworkError(error);
-      Swal.fire("Error", "No se pudo guardar la justificación.", "error");
+      return false;
+    }
+  };
+
+  // 🔹 Guardar justificación genérica (mantener compatibilidad para accesos)
+  const saveJustification = async (data) => {
+    try {
+      const config =
+        data instanceof FormData ? axiosConfigMultipart : axiosConfig;
+      const response = await axios.post(
+        `${API_URL}/justifications`,
+        data,
+        config
+      );
+
+
+      Swal.fire({
+        icon: "success",
+        title: "¡Justificado!",
+        text: "La justificación ha sido guardada correctamente.",
+        confirmButtonText: "Aceptar",
+        timer: 3000,
+      });
+
+      await fetchAbsenceRecords();
+      await fetchJustifications();
+
+      return true;
+    } catch (error) {
+      console.error("Error al guardar justificación:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "No se pudo guardar la justificación.";
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: errorMessage,
+        confirmButtonText: "Aceptar",
+      });
+
+      handleNetworkError(error);
+      return false;
     }
   };
 
@@ -114,25 +235,31 @@ const useDataAbsences = () => {
     setLoading(true);
     try {
       if (!userId) {
-        console.warn("No hay userId disponible");
         setAbsenceRecords([]);
         setLoading(false);
-        return;
+        return [];
       }
+
 
       const url = `${API_URL}/absences?onlyEmployeeId=${userId}`;
       const res = await axios.get(url, axiosConfig);
       const records = res.data;
+
+      // Obtener justificaciones actualizadas
+      const justMap = await fetchJustifications();
       const user = await fetchUserById(userId);
 
       const mappedRecords = records.map((rec) => {
-        const statusLower = (rec.status || "").toLowerCase().trim();
+        const statusLower = (rec.status || "pendiente").toLowerCase().trim();
 
         return {
           ...rec,
           _id: rec._id,
           id_Employee: rec.id_Employee || userId,
-          employeeName: `${user?.names || rec.names || ""} ${user?.surnames || rec.surnames || ""}`.trim(),
+          employeeName:
+            `${user?.names || rec.names || ""} ${
+              user?.surnames || rec.surnames || ""
+            }`.trim() || "Sin nombre",
           employeeType: user?.userType || rec.employee_type || "Empleado",
           employeeAvatar:
             user?.photo ||
@@ -141,22 +268,77 @@ const useDataAbsences = () => {
           date: rec.date,
           areaName: rec.idTeam?.name || "Sin área",
           idTeam: rec.idTeam?._id || rec.idTeam || null,
-          // ✅ Mantener siempre el estado tal cual (no convertir a "Sin justificar")
           status: rec.status || "pendiente",
-          isJustified:
-            statusLower === "justificada" || !!justificationMap[rec._id],
-          justification: justificationMap[rec._id] || null,
+          isJustified: statusLower === "justificada" || !!justMap[rec._id],
+          justification: justMap[rec._id] || null,
         };
       });
 
       setAbsenceRecords(mappedRecords);
       return mappedRecords;
     } catch (error) {
+      console.error("Error al obtener inasistencias:", error);
       handleNetworkError(error);
-      Swal.fire("Error", "No se pudo obtener la lista de inasistencias.", "error");
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo obtener la lista de inasistencias.",
+        confirmButtonText: "Aceptar",
+      });
+
       return [];
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🔹 Eliminar una justificación (opcional)
+  const deleteJustification = async (justificationId) => {
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción eliminará la justificación y la inasistencia volverá a estado pendiente.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+    });
+
+    if (!result.isConfirmed) return false;
+
+    try {
+      await axios.delete(
+        `${API_URL}/justifications/${justificationId}`,
+        axiosConfig
+      );
+
+      Swal.fire({
+        icon: "success",
+        title: "¡Eliminado!",
+        text: "La justificación ha sido eliminada.",
+        confirmButtonText: "Aceptar",
+        timer: 3000,
+      });
+
+      // Refrescar datos
+      await fetchAbsenceRecords();
+      await fetchJustifications();
+
+      return true;
+    } catch (error) {
+      console.error("Error al eliminar justificación:", error);
+      handleNetworkError(error);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo eliminar la justificación.",
+        confirmButtonText: "Aceptar",
+      });
+
+      return false;
     }
   };
 
@@ -164,7 +346,6 @@ const useDataAbsences = () => {
   useEffect(() => {
     if (userId) {
       fetchAbsenceRecords();
-      fetchJustifications();
     }
   }, [userId]);
 
@@ -173,10 +354,13 @@ const useDataAbsences = () => {
     absenceRecords,
     justificationMap,
     loading,
+    userId,
+    userInfo, // 🔹 NUEVO: Info completa del usuario
     fetchAbsenceRecords,
     fetchJustifications,
-    saveJustification,
-    userId,
+    saveJustification, // Genérica (para accesos)
+    saveAbsenceJustification, // 🔹 Específica para inasistencias
+    deleteJustification, // Eliminar justificación
   };
 };
 

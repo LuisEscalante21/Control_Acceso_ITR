@@ -29,7 +29,7 @@ const useDataCoordinators = () => {
   const fetchCoordinators = async () => {
     try {
       const res = await axios.get(`${API_URL}/coordinators`, {
-        withCredentials: true, // ✅ enviar cookie authToken
+        withCredentials: true, //enviar cookie authToken
       });
       setCoordinators(res.data);
     } catch (error) {

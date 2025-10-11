@@ -231,14 +231,14 @@ export default function UpdateEmpleaods({
                   {toInputDateFormat(empleado.birthday)}
                 </span>
               </div>
-              {/* ✅ BOTÓN PARA GENERAR REPORTE */}
+              {/*BOTÓN PARA GENERAR REPORTE */}
               <div style={{ textAlign: "center", marginTop: "20px" }}>
                 <button
                   className="btn-reporte"
                   onClick={async () => {
                     setLoadingPDF(true);
                     try {
-                      await generateReport(empleado._id); // ✅ Ejecuta el reporte
+                      await generateReport(empleado._id); //Ejecuta el reporte
                     } catch (error) {
                       console.error("Error al generar reporte:", error);
                       Swal.fire(

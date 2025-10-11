@@ -1,8 +1,10 @@
 import { useState } from "react";
 
-const API_BASE =
-  window.location.hostname === "localhost" ? "http://localhost:4000" : "";
-const API_URL = `${API_BASE}/api/recoveryPassword/newPassword`;
+const URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${URL}${PORT}`; 
+
+const API_URL = `${BASE_URL}/api/recoveryPassword/newPassword`;
 
 export default function useDataRecoveryNewPass() {
   const [loading, setLoading] = useState(false);
@@ -13,7 +15,7 @@ export default function useDataRecoveryNewPass() {
 
       const res = await fetch(API_URL, {
         method: "POST",
-        credentials: "include", // 👈 Envia la cookie tokenRecoveryCode
+        credentials: "include", //Envia la cookie tokenRecoveryCode
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword }),
       });

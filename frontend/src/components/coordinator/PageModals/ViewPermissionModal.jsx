@@ -76,7 +76,7 @@ export default function ViewPermissionModal({
 
   const fmtDate = (d) => (!d ? "-" : String(d).substring(0, 10));
 
-  // ✅ Actualizado: si rechaza, nunca se envía descuento
+  //Actualizado: si rechaza, nunca se envía descuento
   const handleUpdate = async () => {
     if (!canEdit) return;
 

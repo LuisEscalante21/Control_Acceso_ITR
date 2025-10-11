@@ -150,63 +150,61 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   };
 
   const handleSave = async () => {
-  if (isSaving) return;
+    if (isSaving) return;
 
-  if (
-    (mode === "add" &&
-      (!name.trim() ||
-        !employeeCode.trim() ||
-        !selectedScheduleId ||
-        !gender ||
-        !areaId ||
-        !newFile))
-  ) {
-    return Swal.fire(
-      "Campos incompletos",
-      "Completa todos los campos requeridos.",
-      "warning"
-    );
-  }
+    // Validación de campos requeridos
+    if (
+      !name.trim() ||
+      !employeeCode.trim() ||
+      !selectedScheduleId ||
+      !gender ||
+      !areaId
+    ) {
+      return Swal.fire(
+        "Campos incompletos",
+        "Completa todos los campos requeridos.",
+        "warning"
+      );
+    }
 
-  setIsSaving(true);
+    // En modo "add" también validamos que exista una imagen
+    if (mode === "add" && !newFile) {
+      return Swal.fire(
+        "Imagen requerida",
+        "Debes seleccionar una imagen.",
+        "warning"
+      );
+    }
 
-  const basePayload = {};
+    setIsSaving(true);
 
-  if (mode === "add" || name.trim() !== face.name) {
-    basePayload.name = name.trim();
-  }
-  if (mode === "add" || employeeCode.trim() !== face.employee_code) {
-    basePayload.employee_code = employeeCode.trim();
-    basePayload.code = employeeCode.trim();
-  }
-  if (mode === "add" || selectedScheduleId !== face.schedule_id) {
-    basePayload.schedule_id = selectedScheduleId;
-  }
-  if (mode === "add" || gender !== face.gender) {
-    basePayload.gender = gender;
-  }
-  if (mode === "add" || (areaId && areaId !== (face.area_id || face?.area?._id))) {
-    basePayload.area_id = areaId;
-  }
+    // Siempre incluimos todos los campos en el payload
+    const formData = new FormData();
+    formData.append("name", name.trim());
+    formData.append("employee_code", employeeCode.trim());
+    formData.append("code", employeeCode.trim());
+    formData.append("schedule_id", selectedScheduleId);
+    formData.append("gender", gender);
+    formData.append("area_id", areaId);
 
-  try {
-    const data = new FormData();
-    Object.entries(basePayload).forEach(([k, v]) => data.append(k, v));
-    if (newFile) data.append("image", newFile);
+    // Solo agregamos la imagen si hay una nueva
+    if (newFile) {
+      formData.append("image", newFile);
+    }
 
-    await onSubmit(data, { asJson: false });
-    handleClose();
-  } catch (err) {
-    console.error(err);
-    setIsSaving(false);
-    const msg =
-      (err && err.message) ||
-      (typeof err === "string" ? err : null) ||
-      "Ocurrió un error al guardar.";
-    Swal.fire("Error", msg, "error");
-  }
-};
-
+    try {
+      await onSubmit(formData, { asJson: false });
+      handleClose();
+    } catch (err) {
+      console.error(err);
+      setIsSaving(false);
+      const msg =
+        (err && err.message) ||
+        (typeof err === "string" ? err : null) ||
+        "Ocurrió un error al guardar.";
+      Swal.fire("Error", msg, "error");
+    }
+  };
 
   return (
     <div className="employee-modal-overlay active" onClick={handleClose}>

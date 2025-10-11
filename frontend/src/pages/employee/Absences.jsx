@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Search } from "lucide-react";
 import "../../styles/employee/Inasistencias.css";
 import useDataAbsences from "../../hooks/employee/useDataAbsences.jsx";
-import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
+import AbsenceCard from "../../components/employee/Cards/AbsenceCard.jsx";
 import JustifyModal from "../../components/employee/PageModals/justifictions.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
@@ -19,7 +19,7 @@ const AbsencesEmployee = () => {
     absenceRecords,
     justificationMap,
     loading,
-    saveJustification,
+    saveAbsenceJustification, // 🔹 Función específica para inasistencias
     userId,
     fetchAbsenceRecords,
     fetchJustifications,
@@ -43,7 +43,7 @@ const AbsencesEmployee = () => {
   // 🔹 Filtrado de inasistencias
   const filteredAbsences = (absenceRecords || [])
     .filter((absence) => {
-      const status = (absence.status || "").toLowerCase().trim();
+      const status = (absence.status || "pendiente").toLowerCase().trim();
       if (selectedJustify === "Justificadas") return status === "justificada";
       if (selectedJustify === "Pendientes")
         return ["pendiente", "sin justificar"].includes(status);
@@ -93,22 +93,30 @@ const AbsencesEmployee = () => {
             <p>No hay inasistencias para mostrar.</p>
           ) : (
             filteredAbsences.map((absence, index) => {
-              const isPending = ["pendiente", "sin justificar"].includes(
-                (absence.status || "").toLowerCase().trim()
-              );
+              // 🔹 Normalizar estado para validación
+              const statusNormalized = (absence.status || "pendiente")
+                .toLowerCase()
+                .trim();
 
+              // 🔹 Determinar si debe mostrar el botón de justificar
+              const isPending =
+                statusNormalized === "pendiente" ||
+                statusNormalized === "sin justificar" ||
+                !absence.status;
 
               return (
                 <AbsenceCard
                   key={absence._id || index}
                   name={absence.employeeName}
                   employeeType={absence.employeeType}
-                  avatar={absence.employeeAvatar || "/images/default-avatar.png"}
+                  avatar={
+                    absence.employeeAvatar || "/images/default-avatar.png"
+                  }
                   date={absence.date}
-                  status={absence.status}
-                  isJustified={absence.status === "justificada"}
+                  status={absence.status || "pendiente"} // 🔹 Valor por defecto
+                  isJustified={statusNormalized === "justificada"}
                   justification={justificationMap?.[absence._id]}
-                  showJustifyButton={isPending}
+                  showJustifyButton={isPending} // 🔹 Debe ser true para "pendiente"
                   onJustifyClick={() => handleOpenJustifyModal(absence)}
                   onViewJustification={() =>
                     setViewJustify(justificationMap?.[absence._id])
@@ -120,17 +128,20 @@ const AbsencesEmployee = () => {
         </div>
       </div>
 
+      {/* 🔹 Modal de justificación con flag isAbsence=true */}
       {isModalOpen && (
         <JustifyModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           record={justificarInfo}
           currentUser={{ id: userId }}
-          onSave={saveJustification}
+          onSave={saveAbsenceJustification} // 🔹 Función específica para inasistencias
           refreshAccessRecords={refreshData}
+          isAbsence={true} // 🔹 Flag para identificar que es una inasistencia
         />
       )}
 
+      {/* Modal de visualización de justificación */}
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}

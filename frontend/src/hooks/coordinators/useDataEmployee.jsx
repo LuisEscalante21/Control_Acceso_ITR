@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
 const API_ACCESS_KEY = import.meta.env.VITE_API_ACCESS_KEY;
-const BASE_URL = "http://localhost:4000";
+const url = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${url}${PORT}`;
 
 const useDataEmployee = () => {
   const [employees, setEmployees] = useState([]);

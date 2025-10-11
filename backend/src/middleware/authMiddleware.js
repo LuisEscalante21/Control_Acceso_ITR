@@ -6,10 +6,10 @@ import Administrator from "../models/Administrators.js";
 
 export const authMiddleware = async (req, res, next) => {
   try {
-    // 🔑 Aceptar ambos tokens (login y recuperación)
+    //Aceptar ambos tokens (login y recuperación)
     const token =
       req.cookies.authToken ||
-      req.cookies.tokenRecoveryCode || // 👈 también aceptar este
+      req.cookies.tokenRecoveryCode || //también aceptar este
       req.headers.authorization?.split(" ")[1];
 
     if (!token) return res.status(401).json({ message: "No autenticado" });
@@ -22,7 +22,7 @@ export const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "Token inválido o expirado" });
     }
 
-    // ⚙️ Si es token de recuperación (verificado)
+    // Si es token de recuperación (verificado)
     if (decoded.code && decoded.verified) {
       req.user = {
         _id: decoded.id,
@@ -33,7 +33,7 @@ export const authMiddleware = async (req, res, next) => {
       return next();
     }
 
-    // ⚙️ Si es token normal de sesión (authToken)
+    //Si es token normal de sesión (authToken)
     // Caso especial: Admin del .env
     if (decoded.isReadOnly && decoded.id === "Admin") {
       req.user = {
@@ -67,7 +67,7 @@ export const authMiddleware = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    console.error("⚠️ Error en authMiddleware:", error);
+    console.error("Error en authMiddleware:", error);
     res.status(401).json({ message: "Token inválido o expirado" });
   }
 };

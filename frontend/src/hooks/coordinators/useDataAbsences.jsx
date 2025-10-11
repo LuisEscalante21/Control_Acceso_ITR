@@ -5,8 +5,9 @@ import Swal from "sweetalert2";
 import CryptoJS from "crypto-js";
 
 const BASE = import.meta.env.VITE_BASE_URL;
-const API_URL = `${BASE}4000/api`;
-const USERS_API_URL = `${BASE}4000/api/users`;
+const PORT = import.meta.env.VITE_PORT;
+const API_URL = `${BASE}${PORT}/api`;
+const USERS_API_URL = `${BASE}${PORT}/api/users`;
 const JWT_SECRET = import.meta.env.VITE_JWT_SECRET;
 
 const useDataAbsences = () => {
@@ -15,25 +16,45 @@ const useDataAbsences = () => {
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
   const [userTeamId, setUserTeamId] = useState(null);
+  const [userInfo, setUserInfo] = useState(null); // 🔹 NUEVO: Info completa del usuario
   const navigate = useNavigate();
   const userCache = useRef({});
 
-  // 🔹 Configuración de Axios
+  // 🔹 Axios config con credenciales (JSON)
   const axiosConfig = {
     withCredentials: true,
     headers: { "Content-Type": "application/json" },
-    timeout: 10000,
+    timeout: 15000,
+  };
+
+  // 🔹 Axios config con credenciales (FormData para archivos)
+  const axiosConfigMultipart = {
+    withCredentials: true,
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 15000,
   };
 
   // 🔹 Manejo de errores de red
   const handleNetworkError = (err) => {
-    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
+    console.error("❌ Error de red:", err);
+
+    if (
+      !err.response ||
+      err.code === "ERR_NETWORK" ||
+      err.response?.status === 503
+    ) {
       navigate("/503");
     } else if (err.response?.status === 401 || err.response?.status === 403) {
-      Swal.fire("Error", "No autorizado. Inicia sesión nuevamente.", "error");
-      navigate("/login");
+      Swal.fire({
+        icon: "error",
+        title: "No autorizado",
+        text: "Tu sesión ha expirado. Por favor, inicia sesión nuevamente.",
+        confirmButtonText: "Ir al login",
+      }).then(() => {
+        navigate("/login");
+      });
     } else {
-      console.error("Error:", err);
+      console.error("Error detallado:", err.response?.data || err.message);
     }
   };
 
@@ -44,8 +65,10 @@ const useDataAbsences = () => {
       const user = res.data;
       const teamId = user?.idTeam?._id || user?.idTeam || user?.id_team || null;
       if (teamId) setUserTeamId(teamId);
+      return user;
     } catch (error) {
       console.error("Error al obtener teamId del servidor:", error);
+      return null;
     }
   };
 
@@ -60,22 +83,28 @@ const useDataAbsences = () => {
         const encrypted = decodeURIComponent(userInfoCookie.split("=")[1]);
         const bytes = CryptoJS.AES.decrypt(encrypted, JWT_SECRET);
         const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
-        if (!decryptedStr) throw new Error("No se pudo descifrar correctamente.");
-        const userInfo = JSON.parse(decryptedStr);
 
-        const userId = userInfo._id || null;
-        const teamId = userInfo.teamId || userInfo.idTeam || userInfo.id_team || null;
+        if (!decryptedStr)
+          throw new Error("No se pudo descifrar correctamente.");
+
+        const userData = JSON.parse(decryptedStr);
+        const userId = userData._id || null;
+        const teamId =
+          userData.teamId || userData.idTeam || userData.id_team || null;
+
         setUserId(userId);
         setUserTeamId(teamId);
+        setUserInfo(userData); // 🔹 Guardar info completa
 
         if (userId && !teamId) fetchUserTeamFromServer(userId);
       } catch (err) {
         console.error("Error al descifrar userInfo:", err);
         setUserId(null);
         setUserTeamId(null);
+        setUserInfo(null);
       }
     }
-  }, []);
+  }, [JWT_SECRET]);
 
   // 🔹 Obtener usuario por ID (con caché)
   const fetchUserById = async (id) => {
@@ -90,7 +119,8 @@ const useDataAbsences = () => {
       if (user?.collectionName) {
         if (user.collectionName === "employees") userType = "Empleado";
         if (user.collectionName === "coordinators") userType = "Coordinador";
-        if (user.collectionName === "administrators") userType = "Administrador";
+        if (user.collectionName === "administrators")
+          userType = "Administrador";
       }
 
       userCache.current[id] = { ...user, userType };
@@ -102,33 +132,87 @@ const useDataAbsences = () => {
     }
   };
 
-  // 🔹 Obtener todas las justificaciones
+  // 🔹 Obtener todas las justificaciones (filtradas por idAbsence)
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(`${API_URL}/justifications`, axiosConfig);
+
       const map = (res.data || []).reduce((acc, j) => {
         if (j?.idAbsence) acc[j.idAbsence] = j;
         return acc;
       }, {});
+
       setJustificationMap(map);
       return map;
     } catch (error) {
+      console.error("Error al obtener justificaciones:", error);
       handleNetworkError(error);
       setJustificationMap({});
       return {};
     }
   };
 
+  // 🔹 Guardar justificación de INASISTENCIA (con FormData para archivos)
+  const saveAbsenceJustification = async (formData) => {
+    try {
+      // 🔹 Debug: Mostrar qué se está enviando
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(
+            `  ${key}: [Archivo] ${value.name} (${value.size} bytes)`
+          );
+        } else {
+          console.log(`  ${key}:`, value);
+        }
+      }
+
+      const response = await axios.post(
+        `${API_URL}/justifications`,
+        formData,
+        axiosConfigMultipart
+      );
+
+      Swal.fire({
+        icon: "success",
+        title: "¡Justificado!",
+        text: "La inasistencia ha sido justificada correctamente.",
+        confirmButtonText: "Aceptar",
+        timer: 3000,
+      });
+
+      // 🔹 Refrescar datos
+      await fetchAbsenceRecords();
+      await fetchJustifications();
+
+      return true;
+    } catch (error) {
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "No se pudo guardar la justificación.";
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: errorMessage,
+        confirmButtonText: "Aceptar",
+      });
+
+      handleNetworkError(error);
+      return false;
+    }
+  };
+
   // 🔹 Obtener inasistencias (con filtros dinámicos)
   const fetchAbsenceRecords = async (options = {}) => {
-    console.log("Iniciando fetchAbsenceRecords con opciones:", options);
     setLoading(true);
+
     try {
       if (!userTeamId) {
-        console.warn("No hay userTeamId disponible, no se cargarán inasistencias");
         setAbsenceRecords([]);
         setLoading(false);
-        return;
+        return [];
       }
 
       // Construcción dinámica de query params
@@ -153,16 +237,24 @@ const useDataAbsences = () => {
       }
 
       const url = `${API_URL}/absences?${params.toString()}`;
-      console.log("📡 Consultando:", url);
 
       const res = await axios.get(url, axiosConfig);
       const records = res.data;
+
+      // Obtener justificaciones actualizadas
+      const justMap = await fetchJustifications();
 
       // Obtener usuarios únicos
       const uniqueUserIds = [
         ...new Set(
           records
-            .map((rec) => rec.id_Employee || rec.idEmployee || rec.id_employee || rec.employeeId)
+            .map(
+              (rec) =>
+                rec.id_Employee ||
+                rec.idEmployee ||
+                rec.id_employee ||
+                rec.employeeId
+            )
             .filter(Boolean)
         ),
       ];
@@ -179,13 +271,15 @@ const useDataAbsences = () => {
       // Mapear registros con datos completos
       const mappedRecords = records.map((rec) => {
         const employeeId =
-          rec.id_Employee || rec.idEmployee || rec.id_employee || rec.employeeId;
+          rec.id_Employee ||
+          rec.idEmployee ||
+          rec.id_employee ||
+          rec.employeeId;
         const user = usersMap[employeeId];
-        const statusNorm = (rec.status || "").toLowerCase().trim();
+        const statusNorm = (rec.status || "pendiente").toLowerCase().trim();
 
         const isJustifiedByStatus = statusNorm === "justificada";
         const hasPermission = statusNorm === "con permiso";
-
         const employeeAvatar =
           user?.photo ||
           (rec.avatar && rec.avatar.startsWith("http") ? rec.avatar : null);
@@ -196,24 +290,30 @@ const useDataAbsences = () => {
           id_Employee: employeeId,
           employeeName: user
             ? `${user.names ?? ""} ${user.surnames ?? ""}`.trim()
-            : `${rec.names ?? ""} ${rec.surnames ?? ""}`.trim() || "Usuario no encontrado",
+            : `${rec.names ?? ""} ${rec.surnames ?? ""}`.trim() ||
+              "Usuario no encontrado",
           employeeType: user?.userType || rec.employee_type || "Sin definir",
           employeeAvatar,
           date: rec.date,
           areaName: rec.idTeam?.name || "Sin área",
           idTeam: rec.idTeam?._id || rec.idTeam || null,
-          status: statusNorm,
-          isJustified: isJustifiedByStatus || !!justificationMap[rec._id],
+          status: rec.status || "pendiente",
+          isJustified: isJustifiedByStatus || !!justMap[rec._id],
           hasPermission,
-          justification: justificationMap[rec._id] || null,
+          justification: justMap[rec._id] || null,
         };
       });
 
       setAbsenceRecords(mappedRecords);
       return mappedRecords;
     } catch (error) {
+      console.error("Error al obtener inasistencias:", error);
       handleNetworkError(error);
-      Swal.fire("Error", "No se pudo obtener la lista de inasistencias.", "error");
+      Swal.fire(
+        "Error",
+        "No se pudo obtener la lista de inasistencias.",
+        "error"
+      );
       return [];
     } finally {
       setLoading(false);
@@ -225,7 +325,11 @@ const useDataAbsences = () => {
     try {
       if (absenceId) {
         await axios.put(`${API_URL}/absences/${absenceId}`, data, axiosConfig);
-        Swal.fire("Actualizado", "Registro de inasistencia actualizado.", "success");
+        Swal.fire(
+          "Actualizado",
+          "Registro de inasistencia actualizado.",
+          "success"
+        );
       } else {
         await axios.post(`${API_URL}/absences`, data, axiosConfig);
         Swal.fire("Guardado", "Registro de inasistencia creado.", "success");
@@ -264,7 +368,6 @@ const useDataAbsences = () => {
   useEffect(() => {
     if (userId && userTeamId) {
       fetchAbsenceRecords();
-      fetchJustifications();
     }
   }, [userId, userTeamId]);
 
@@ -272,12 +375,14 @@ const useDataAbsences = () => {
     absenceRecords,
     justificationMap,
     loading,
+    userId,
+    userTeamId,
+    userInfo, // 🔹 NUEVO: Info completa del usuario
     fetchAbsenceRecords,
     fetchJustifications,
     saveAbsence,
     deleteAbsence,
-    userId,
-    userTeamId,
+    saveAbsenceJustification, // 🔹 NUEVO: Para justificar inasistencias
   };
 };
 

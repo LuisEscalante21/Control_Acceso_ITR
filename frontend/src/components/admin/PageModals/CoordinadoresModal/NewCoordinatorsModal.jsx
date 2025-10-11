@@ -4,9 +4,12 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { Camera } from "lucide-react";
 import "../../../styles/Modal.css";
-
-// ⬇️ Usa tu hook de equipos
 import useDataTeams from "../../../../hooks/admin/useDataTeams.jsx";
+
+const API_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${API_URL}${PORT}`; 
+
 
 // -------- Utilidades --------
 const toInputDateFormat = (date) => {
@@ -159,14 +162,10 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
     if (image) formData.append("photo", image);
 
     try {
-      await axios.post(
-        "http://localhost:4000/api/registerCoordinators",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true, // ✅ por si tu API usa cookies auth
-        }
-      );
+      await axios.post(`${BASE_URL}/api/registerCoordinators`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true, // por si tu API usa cookies auth
+      });
 
       await Swal.fire({
         icon: "success",

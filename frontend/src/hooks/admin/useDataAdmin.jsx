@@ -29,7 +29,7 @@ const useDataAdmin = () => {
   const fetchAdmins = async () => {
     try {
       const res = await axios.get(`${API_URL}/administrators`, {
-        withCredentials: true, // ✅ importante para enviar la cookie authToken
+        withCredentials: true, 
       });
       setAdmins(res.data);
     } catch (error) {

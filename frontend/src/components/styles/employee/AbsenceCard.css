@@ -78,7 +78,9 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: fit-content;
 }
 
 /* 🟩 Justificada */
@@ -95,13 +97,20 @@
   gap: 4px;
   border: 1px solid #b7f2c6;
   transition: background 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .justified-label:hover {
   background: #c6f6d5;
 }
 
-/* 🟥 Sin justificar */
+.justified-label:focus {
+  outline: 2px solid #15803d;
+  outline-offset: 2px;
+}
+
+/* 🟥 Sin justificar / Pendiente */
 .pending-label {
   font-size: 13px;
   font-weight: 600;
@@ -113,6 +122,8 @@
   align-items: center;
   gap: 4px;
   border: 1px solid #fca5a5;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* 🟦 Con permiso */
@@ -121,12 +132,14 @@
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 6px;
-  background: #dbeafe; /* azul suave */
-  color: #1e3a8a; /* azul fuerte */
+  background: #dbeafe;
+  color: #1e3a8a;
   display: flex;
   align-items: center;
   gap: 4px;
   border: 1px solid #93c5fd;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* ------------------------------
@@ -137,17 +150,39 @@
   color: #ffffff;
   border: none;
   border-radius: 8px;
-  padding: 6px 12px;
+  padding: 8px 16px;
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
   transition: all 0.2s ease;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .justify-btn:hover {
   background-color: #0056b3;
   transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.justify-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.justify-btn:focus {
+  outline: 2px solid #0056b3;
+  outline-offset: 2px;
+}
+
+/* Estilo adicional para cuando está al lado del label */
+.absence-status .pending-label + .justify-btn {
+  margin-left: 4px;
 }
 
 /* ------------------------------
@@ -162,10 +197,111 @@
 
   .absence-status {
     justify-content: flex-start;
+    width: 100%;
   }
 
   .justify-btn {
-    padding: 5px 10px;
+    padding: 6px 12px;
     font-size: 0.8rem;
+    width: 100%;
   }
+
+  .pending-label,
+  .justified-label,
+  .permission-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .absence-card {
+    padding: 0.8rem 1rem;
+    gap: 0.6rem;
+  }
+
+  .absence-name {
+    font-size: 0.9rem;
+  }
+
+  .absence-employee-type {
+    font-size: 0.75rem;
+  }
+
+  .absence-date {
+    font-size: 0.85rem;
+  }
+
+  .absence-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .justify-btn {
+    width: 100%;
+    padding: 8px;
+  }
+}
+
+/* ------------------------------
+   Estados adicionales
+------------------------------ */
+.absence-card.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.absence-card.loading {
+  position: relative;
+}
+
+.absence-card.loading::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ------------------------------
+   Animaciones
+------------------------------ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.absence-card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* ------------------------------
+   Accesibilidad
+------------------------------ */
+.absence-card:focus-within {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.clickable:focus {
+  outline: 2px solid #15803d;
+  outline-offset: 2px;
+  border-radius: 6px;
 }

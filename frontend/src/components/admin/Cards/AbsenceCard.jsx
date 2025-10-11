@@ -7,7 +7,7 @@ const AbsenceCard = ({
   avatar,
   employeeType,
   date,
-  status = "pendiente",          // 👈 ahora llega el estado del backend
+  status = "pendiente",          //ahora llega el estado del backend
   justification = null,
   onViewJustification = null,
 }) => {

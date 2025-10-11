@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import RostroReconocido from "../../../../backend/audio/RostroReconocido.mp3";
 
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT_RECONOCIMIENTO;
+
 export default function useFaceRecognition(
-  pollUrl = "http://localhost:4600/api/last_recognized",
+  pollUrl = `${BASE_URL}${PORT}/api/last_recognized`,
   intervalMs = 3000
 ) {
   const [recognized, setRecognized] = useState(null);

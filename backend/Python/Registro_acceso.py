@@ -7,6 +7,7 @@ import pytz
 import os
 from Config import PORT_ACCESO
 from dotenv import load_dotenv
+import traceback
 
 # Cargar variables de entorno
 load_dotenv()
@@ -272,19 +273,39 @@ def obtener_todos_registros():
         if team_id:
             try:
                 team_object_id = ObjectId(team_id)
-            except Exception:
+            except Exception as e:
                 return jsonify({"error": "teamId inválido"}), 400
 
+            # 🔹 Buscar con TODOS los posibles nombres del campo
             empleados_cursor = employee_collection.find(
-                {"id_team": team_object_id},
-                {"_id": 1}
+                {"$or": [
+                    {"id_team": team_object_id},
+                    {"IdTeam": team_object_id},
+                    {"teamId": team_object_id}
+                ]},
+                {"_id": 1, "names": 1, "surnames": 1, "id_team": 1, "IdTeam": 1, "teamId": 1}
             )
-            emp_ids = [e["_id"] for e in empleados_cursor]
+            empleados_list = list(empleados_cursor)
+            emp_ids = [e["_id"] for e in empleados_list]
+            
+            if empleados_list:
+                for emp in empleados_list[:3]:  # Mostrar solo los primeros 3
+                    print(f"   - {emp.get('names', 'N/A')} {emp.get('surnames', 'N/A')}")
+                    print(f"     ID: {emp['_id']}")
+                    print(f"     id_team: {emp.get('id_team', 'NO EXISTE')}")
+                    print(f"     IdTeam: {emp.get('IdTeam', 'NO EXISTE')}")
+                    print(f"     teamId: {emp.get('teamId', 'NO EXISTE')}")
+            else:
+                # Mostrar cuántos empleados hay en total
+                total_employees = employee_collection.count_documents({})
 
             if not emp_ids:
                 return jsonify([])
 
             pipeline.append({"$match": {"idEmpObj": {"$in": emp_ids}}})
+
+        # 🔹 Ver total de accesos
+        total_accesos = access_collection.count_documents({})
 
         pipeline += [
             {
@@ -324,9 +345,12 @@ def obtener_todos_registros():
 
         cursor = access_collection.aggregate(pipeline)
         registros = [limpiar_registro(reg) for reg in cursor]
+
+        
         return jsonify(registros)
 
     except Exception as e:
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 

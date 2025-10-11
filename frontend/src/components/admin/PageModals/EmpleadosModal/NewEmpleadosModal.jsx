@@ -6,6 +6,10 @@ import { Camera } from "lucide-react";
 import "../../../../components/styles/Modal.css";
 import useDataTeams from "../../../../hooks/admin/useDataTeams.jsx";
 
+const API_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${API_URL}${PORT}`;
+
 // Componente reutilizable para campos del formulario
 const FormField = ({ label, name, register, errors, validation = {}, type = "text", ...props }) => (
   <div className={`form-field ${errors[name] ? "has-error" : ""}`}>
@@ -72,7 +76,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     },
   });
 
-  // ⬇️ Hook para equipos (igual que en tu otro modal)
+  // Hook para equipos (igual que en tu otro modal)
   const { teams: teamsRaw, fetchTeams } = useDataTeams();
   const [loadingTeams, setLoadingTeams] = useState(true);
 
@@ -174,7 +178,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     }
 
     try {
-      await axios.post("http://localhost:4000/api/registerEmployees", formData, {
+      await axios.post(`${BASE_URL}/api/registerEmployees`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

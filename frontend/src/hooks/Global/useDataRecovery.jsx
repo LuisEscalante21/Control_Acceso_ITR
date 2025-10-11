@@ -1,9 +1,11 @@
 // hooks/Global/useDataRecoveryPass.js
 import { useState } from "react";
 
-const API_BASE =
-  window.location.hostname === "localhost" ? "http://localhost:4000" : "";
-const API_URL = `${API_BASE}/api/recoveryPassword`;
+const URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${URL}${PORT}`; 
+
+const API_URL = `${BASE_URL}/api/recoveryPassword`;
 
 export default function useDataRecoveryPass() {
   const [loading, setLoading] = useState(false);

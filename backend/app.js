@@ -74,6 +74,6 @@ app.use("/api/justifications", authMiddleware, justificationsRoutes); // Rutas d
 app.use("/api/reports", authMiddleware, reportRoutes); // Rutas de reportes
 app.use("/api/users", usersRoutes); // Rutas de gestión de usuarios
 app.use("/api/profile", authMiddleware, profileRoutes); // Rutas de perfil
-app.use("/api/absences", absences); // Rutas de inasistencias
+app.use("/api/absences",authMiddleware, absences); // Rutas de inasistencias
 
 export default app;

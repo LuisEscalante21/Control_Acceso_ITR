@@ -12,7 +12,9 @@ const AccessCard = ({
   tipoRegistro,
   isJustified = false,
   justification = null, // información de la justificación
-  onViewJustification = null, // callback para abrir modal
+  onViewJustification = null, // callback para abrir modal de ver justificación
+  showJustifyButton = false, // mostrar botón de justificar (coordinador)
+  onJustifyClick = null, // callback para abrir modal de justificar
 }) => {
   const horaFormateada = new Date(time).toLocaleTimeString([], {
     hour: "2-digit",
@@ -58,9 +60,22 @@ const AccessCard = ({
             <CheckCircle2 size={16} /> Justificado
           </span>
         ) : (
-          <span className="pending-label">
-            <Clock size={16} /> Pendiente
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span className="pending-label">
+              <Clock size={16} /> Pendiente
+            </span>
+
+            {showJustifyButton && (
+              <button
+                type="button"
+                className="justify-btn"
+                onClick={() => onJustifyClick && onJustifyClick()}
+                title="Justificar este acceso"
+              >
+                Justificar
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -18,7 +18,7 @@ export default function RecoveryPasswordModal({ open, onClose, onVerified }) {
   if (!open) return null;
 
   const handleRequest = async ({ email }) => {
-    const res = await requestCode({ email }); // 👈 ahora por correo
+    const res = await requestCode({ email }); //ahora por correo
     if (res.ok) {
       Swal.fire({
         icon: "success",

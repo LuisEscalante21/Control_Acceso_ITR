@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import Error403 from "../pages/error/Error403";
 
+const baseUrl = import.meta.env.VITE_BASE_URL;
+const port = import.meta.env.VITE_PORT;
+const apiUrl = `${baseUrl}${port}`;
+
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const [userRole, setUserRole] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -10,7 +14,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch("http://localhost:4000/api/checkAuth", {
+        const response = await fetch(`${apiUrl}/api/checkAuth`, {
           method: "GET",
           credentials: "include", // importante para enviar cookies siempre
         });

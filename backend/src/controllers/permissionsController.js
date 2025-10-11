@@ -218,14 +218,14 @@ permissionsController.InsertPermission = async (req, res) => {
 
         console.log(`📧 Notificación enviada a ${coordinators.length} coordinador(es).`);
       } else {
-        console.log("⚠️ No se encontraron coordinadores con el mismo IdTeam.");
+        console.log(" No se encontraron coordinadores con el mismo IdTeam.");
       }
     } catch (mailErr) {
       console.error("Error enviando correo a coordinadores:", mailErr);
     }
 
     // ==========================================================
-    // ✅ Respuesta al frontend
+    // Respuesta al frontend
     // ==========================================================
     return res.status(201).json({
       message: "Permiso creado exitosamente y notificación enviada.",

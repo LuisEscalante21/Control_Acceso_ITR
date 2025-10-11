@@ -12,7 +12,10 @@ import {
 import useAccessStats from "../../../hooks/widgets/useAccessStats.jsx";
 
 const AttendanceChart = () => {
-  const API_URL = "http://localhost:4800/api/access";
+  // Variables de entorno
+  const url = import.meta.env.VITE_BASE_URL;
+  const port = import.meta.env.VITE_PORT_ACCESS;
+  const API_URL = `${url}${port}/api/access`;
   const API_KEY = import.meta.env.VITE_API_ACCESS_KEY;
 
   const { data, loading, error } = useAccessStats(API_URL, API_KEY);

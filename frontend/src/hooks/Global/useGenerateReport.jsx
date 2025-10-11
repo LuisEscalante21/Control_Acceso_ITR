@@ -1,13 +1,18 @@
 import { useState } from "react";
 import Swal from "sweetalert2";
 
+const API_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${API_URL}${PORT}`; 
+
+
 export function useGenerateReport() {
   const [loading, setLoading] = useState(false);
 
   const generateReport = async (userId) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/reports/user/${userId}/report`, {
+      const response = await fetch(`${BASE_URL}/api/reports/user/${userId}/report`, {
         method: "GET",
         credentials: "include",
       });
