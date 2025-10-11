@@ -40,6 +40,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
     },
   });
 
+  // Nombre del usuario
   const displayName = useMemo(() => {
     if (!user) return "";
     if (user.names || user.surnames)
@@ -47,11 +48,13 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
     return user.fullName || "";
   }, [user]);
 
+  // Nombre de área
   const areaName = useMemo(() => {
     const id = user?.idTeam || user?.IdTeam;
     return id ? getTeamNameById?.(id) || "Área desconocida" : "";
   }, [user?.idTeam, user?.IdTeam, getTeamNameById]);
 
+  // Autorellenar al cargar usuario
   useEffect(() => {
     if (!loading && user) {
       reset({
@@ -114,7 +117,11 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
     if (typeErr) return Swal.fire("Datos incompletos", typeErr, "error");
 
     try {
-      Swal.fire({ title: "Enviando permiso...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      Swal.fire({
+        title: "Enviando permiso...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
 
       const fd = new FormData();
       fd.append("permissionType", permissionType);
@@ -165,7 +172,9 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
   return createPortal(
     <div className="np-overlay">
       <form className="np-content" onSubmit={handleSubmit(onSubmit)} noValidate>
-        <button type="button" className="np-close" onClick={closeAndReset}>×</button>
+        <button type="button" className="np-close" onClick={closeAndReset}>
+          ×
+        </button>
 
         <div className="np-header">
           <h3>Nuevo permiso</h3>
@@ -188,41 +197,83 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
         <input type="hidden" {...register("idTeam")} />
         <input type="hidden" {...register("Discount")} />
 
+        {/* Datos usuario */}
         <div className="np-grid">
-          <div className="np-field"><label>Nombre del empleado</label><input disabled value={displayName} /></div>
-          <div className="np-field"><label>Número de empleado</label><input disabled value={user?.numEmpleado || ""} /></div>
-          <div className="np-field"><label>Área</label><input disabled value={areaName} /></div>
+          <div className="np-field">
+            <label>Nombre del empleado</label>
+            <input disabled value={displayName} />
+          </div>
+          <div className="np-field">
+            <label>Número de empleado</label>
+            <input disabled value={user?.numEmpleado || ""} />
+          </div>
+          <div className="np-field">
+            <label>Área</label>
+            <input disabled value={areaName} />
+          </div>
         </div>
 
+        {/* Permiso menor */}
         {permissionType === "minor" && (
           <div className="np-grid">
-            <div className="np-field"><label>Fecha de ausencia</label><input type="date" min={today} {...register("permissionDate", { required: "Requerido" })} /></div>
-            <div className="np-field"><label>Entrada</label><input type="time" {...register("startTime", { required: "Requerido" })} /></div>
-            <div className="np-field"><label>Salida</label><input type="time" {...register("endTime", { required: "Requerido" })} /></div>
-            <div className="np-field np-col-2"><label>Razón (opcional)</label><textarea rows={3} {...register("reason")} /></div>
+            <div className="np-field">
+              <label>Fecha de ausencia</label>
+              <input type="date" min={today} {...register("permissionDate", { required: "Requerido" })} />
+            </div>
+            <div className="np-field">
+              <label>Entrada</label>
+              <input type="time" {...register("startTime", { required: "Requerido" })} />
+            </div>
+            <div className="np-field">
+              <label>Salida</label>
+              <input type="time" {...register("endTime", { required: "Requerido" })} />
+            </div>
+            <div className="np-field np-col-2">
+              <label>Razón (opcional)</label>
+              <textarea rows={3} {...register("reason")} />
+            </div>
           </div>
         )}
 
+        {/* Permiso mayor */}
         {permissionType === "major" && (
           <div className="np-grid">
-            <div className="np-field"><label>Inicio</label><input type="date" min={today} {...register("permissionDateFrom", { required: "Requerido" })} /></div>
-            <div className="np-field"><label>Fin</label><input type="date" min={today} {...register("permissionDateTo", { required: "Requerido" })} /></div>
-            <div className="np-field np-col-2"><label>Razón (opcional si adjuntas documento)</label><textarea rows={3} {...register("reason")} /></div>
+            <div className="np-field">
+              <label>Inicio</label>
+              <input type="date" min={today} {...register("permissionDateFrom", { required: "Requerido" })} />
+            </div>
+            <div className="np-field">
+              <label>Fin</label>
+              <input type="date" min={today} {...register("permissionDateTo", { required: "Requerido" })} />
+            </div>
+            <div className="np-field np-col-2">
+              <label>Razón (opcional si adjuntas documento)</label>
+              <textarea rows={3} {...register("reason")} />
+            </div>
           </div>
         )}
 
+        {/* Incapacidad */}
         {permissionType === "incapacity" && (
           <div className="np-grid">
-            <div className="np-field"><label>Inicio</label><input type="date" min={today} {...register("sickLeaveDateFrom", { required: "Requerido" })} /></div>
-            <div className="np-field"><label>Fin</label><input type="date" min={today} {...register("sickLeaveDateTo", { required: "Requerido" })} /></div>
-            <div className="np-field"><label>Tipo de incapacidad</label>
+            <div className="np-field">
+              <label>Inicio</label>
+              <input type="date" min={today} {...register("sickLeaveDateFrom", { required: "Requerido" })} />
+            </div>
+            <div className="np-field">
+              <label>Fin</label>
+              <input type="date" min={today} {...register("sickLeaveDateTo", { required: "Requerido" })} />
+            </div>
+            <div className="np-field">
+              <label>Tipo de incapacidad</label>
               <select {...register("incapacityType", { required: "Requerido" })}>
                 <option value="">Seleccione…</option>
                 <option value="Initial">Inicial</option>
                 <option value="Extension">Prórroga</option>
               </select>
             </div>
-            <div className="np-field"><label>Tipo de enfermedad</label>
+            <div className="np-field">
+              <label>Tipo de enfermedad</label>
               <select {...register("illnessType", { required: "Requerido" })}>
                 <option value="">Seleccione…</option>
                 <option value="Common illness">Enfermedad común</option>
@@ -232,6 +283,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
           </div>
         )}
 
+        {/* Documento */}
         <div className="np-field">
           <label>Documento de justificación</label>
           <input type="file" accept="image/*,.pdf" onChange={handleFileChange} />
@@ -242,9 +294,14 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
           )}
         </div>
 
+        {/* Acciones */}
         <div className="np-actions">
-          <button type="button" className="np-btn ghost" onClick={closeAndReset} disabled={isSubmitting}>Cancelar</button>
-          <button type="submit" className="np-btn" disabled={isSubmitting}>{isSubmitting ? "Enviando…" : "Enviar permiso"}</button>
+          <button type="button" className="np-btn ghost" onClick={closeAndReset} disabled={isSubmitting}>
+            Cancelar
+          </button>
+          <button type="submit" className="np-btn" disabled={isSubmitting}>
+            {isSubmitting ? "Enviando…" : "Enviar permiso"}
+          </button>
         </div>
       </form>
     </div>,

@@ -1,19 +1,10 @@
-// src/components/employee/PageModals/NewPermissionModal.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 
-
 import useDataCredentials from "../../../hooks/Global/useDataCredentials";
 import useDataTeams from "../../../hooks/Global/useDataTeams";
-
-// Departamentos SV
-const DEPARTAMENTOS = [
-  "Ahuachapán","Santa Ana","Sonsonate","La Libertad","Chalatenango",
-  "San Salvador","Cuscatlán","La Paz","Cabañas","San Vicente",
-  "Usulután","San Miguel","Morazán","La Unión"
-];
 
 export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermissionMultipart }) {
   const { user, loading } = useDataCredentials();
@@ -30,24 +21,19 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-    watch,
   } = useForm({
     defaultValues: {
       applicationDay: "",
       employeeNumber: "",
       idTeam: "",
-      department: "",
       Discount: false,
       quantityDiscount: 0,
-      // minor
       permissionDate: "",
       startTime: "",
       endTime: "",
       reason: "",
-      // major
       permissionDateFrom: "",
       permissionDateTo: "",
-      // incapacity
       sickLeaveDateFrom: "",
       sickLeaveDateTo: "",
       incapacityType: "",
@@ -55,27 +41,23 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
     },
   });
 
-  // Nombre a mostrar
   const displayName = useMemo(() => {
     if (!user) return "";
     if (user.names || user.surnames) return `${user.names || ""} ${user.surnames || ""}`.trim();
     return user.fullName || "";
   }, [user]);
 
-  // Nombre de área
   const areaName = useMemo(() => {
     const id = user?.idTeam || user?.IdTeam;
     return id ? (getTeamNameById?.(id) || "Área desconocida") : "";
   }, [user?.idTeam, user?.IdTeam, getTeamNameById]);
 
-  // Autorellenar cuando cargue el usuario
   useEffect(() => {
     if (!loading && user) {
       reset({
         applicationDay: today,
         employeeNumber: user?.numEmpleado || "",
         idTeam: user?.idTeam || user?.IdTeam || "",
-        department: user?.department || "",
         Discount: false,
         quantityDiscount: 0,
         permissionDate: "",
@@ -113,10 +95,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
     setDocPreview(URL.createObjectURL(f));
   };
 
-  // Valida por tipo (lado cliente)
-  const validateByType = (form, dept) => {
-    if (!dept) return "Debe seleccionar un departamento.";
-
+  const validateByType = (form) => {
     if (permissionType === "minor") {
       if (!form.permissionDate || !form.startTime || !form.endTime) {
         return "Completa fecha de ausencia, entrada y salida.";
@@ -174,8 +153,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
   };
 
   const onSubmit = async (form) => {
-    const dept = form.department || user?.department || "";
-    const typeErr = validateByType(form, dept);
+    const typeErr = validateByType(form);
     if (typeErr) {
       return Swal.fire("Datos incompletos", typeErr, "error");
     }
@@ -184,14 +162,11 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
       Swal.fire({ title: "Enviando permiso...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
       const fd = new FormData();
-      // campos comunes
       fd.append("permissionType", permissionType);
       fd.append("applicationDay", form.applicationDay);
-      fd.append("department", dept);
       fd.append("Discount", form.Discount ?? false);
       fd.append("quantityDiscount", form.quantityDiscount ?? 0);
 
-      // por tipo
       if (permissionType === "minor") {
         fd.append("permissionDate", form.permissionDate);
         fd.append("startTime", form.startTime);
@@ -213,7 +188,6 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
       }
 
       if (file) fd.append("supportingDocumentFile", file);
-
       if (user?._id) fd.append("idUser", String(user._id));
 
       const res = await postPermissionMultipart(fd);
@@ -225,7 +199,7 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
       Swal.close();
       await Swal.fire("¡Éxito!", "Permiso enviado correctamente.", "success");
       onSaved?.();
-      closeAndReset(); // ⬅️ cerrar al enviar
+      closeAndReset();
     } catch (err) {
       console.error(err);
       Swal.close();
@@ -244,15 +218,9 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
 
   return createPortal(
     <div className="np-overlay">
-      <form
-        className="np-content"
-        onSubmit={handleSubmit(onSubmit)}
-        noValidate
-      >
-        {/* Cerrar */}
+      <form className="np-content" onSubmit={handleSubmit(onSubmit)} noValidate>
         <button type="button" className="np-close" onClick={closeAndReset}>×</button>
 
-        {/* Header */}
         <div className="np-header">
           <h3>Nuevo permiso</h3>
           <div className="np-type">
@@ -269,14 +237,12 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
           </div>
         </div>
 
-        {/* Hidden */}
         <input type="hidden" {...register("applicationDay")} />
         <input type="hidden" {...register("employeeNumber")} />
         <input type="hidden" {...register("idTeam")} />
         <input type="hidden" {...register("Discount")} />
         <input type="hidden" {...register("quantityDiscount", { valueAsNumber: true })} />
 
-        {/* Datos del usuario */}
         <div className="np-grid">
           <div className="np-field">
             <label>Nombre del empleado</label>
@@ -290,21 +256,8 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
             <label>Área</label>
             <input disabled value={areaName} />
           </div>
-          <div className="np-field">
-            <label>Departamento</label>
-            <select
-              defaultValue={user?.department || ""}
-              {...register("department")}
-            >
-              <option value="">Seleccione…</option>
-              {DEPARTAMENTOS.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </div>
         </div>
 
-        {/* Campos por tipo */}
         {permissionType === "minor" && (
           <div className="np-grid">
             <div className="np-field">
@@ -384,7 +337,6 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
           </div>
         )}
 
-        {/* Documento */}
         <div className="np-field">
           <label>Documento de justificación</label>
           <input type="file" accept="image/*,.pdf" onChange={handleFileChange} />
@@ -395,7 +347,6 @@ export default function NewPermissionModal({ isOpen, onClose, onSaved, postPermi
           )}
         </div>
 
-        {/* Acciones */}
         <div className="np-actions">
           <button type="button" className="np-btn ghost" onClick={closeAndReset} disabled={isSubmitting}>
             Cancelar

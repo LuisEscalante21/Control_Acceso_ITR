@@ -1,4 +1,3 @@
-// src/hooks/Global/useDataPermissions.js
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -12,7 +11,7 @@ const API_URL = `${BASE_URL}/api/permissions`;
 const useDataPermissions = () => {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
 
@@ -26,11 +25,17 @@ const useDataPermissions = () => {
       const data = await res.json();
       return data?.message || null;
     } catch {
-      try { return await res.text(); } catch { return null; }
+      try {
+        return await res.text();
+      } catch {
+        return null;
+      }
     }
   };
 
+  // =========================
   // EMPLEADO: Mis permisos
+  // =========================
   const fetchPermissions = async () => {
     try {
       setLoading(true);
@@ -45,7 +50,11 @@ const useDataPermissions = () => {
     } catch (err) {
       setError(err);
       handleNetworkError(err);
-      Swal.fire("Error", err.message || "No se pudieron obtener los permisos.", "error");
+      Swal.fire(
+        "Error",
+        err.message || "No se pudieron obtener los permisos.",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -69,7 +78,9 @@ const useDataPermissions = () => {
     });
   };
 
+  // =========================
   // COORDINADOR: Permisos del área
+  // =========================
   const fetchTeamPermissions = async () => {
     try {
       setLoading(true);
@@ -85,15 +96,24 @@ const useDataPermissions = () => {
     } catch (err) {
       setError(err);
       handleNetworkError(err);
-      Swal.fire("Error", err.message || "No se pudieron obtener los permisos del área.", "error");
+      Swal.fire(
+        "Error",
+        err.message || "No se pudieron obtener los permisos del área.",
+        "error"
+      );
       return null;
     } finally {
       setLoading(false);
     }
   };
 
-  // ACTUALIZAR ESTADO
-  const updatePermissionStatus = async (id, { status, supervisorComments, Discount, quantityDiscount }) => {
+  // =========================
+  // PATCH: ACTUALIZAR ESTADO DE PERMISO
+  // =========================
+  const updatePermissionStatus = async (
+    id,
+    { status, supervisorComments, Discount, quantityDiscount, actionBy }
+  ) => {
     return fetch(`${API_URL}/${id}/status`, {
       method: "PATCH",
       credentials: "include",
@@ -104,11 +124,14 @@ const useDataPermissions = () => {
         Discount: typeof Discount === "boolean" ? Discount : undefined,
         quantityDiscount:
           typeof quantityDiscount === "number" ? quantityDiscount : undefined,
+        actionBy: actionBy || undefined, // 👈 Agregamos historial de acción
       }),
     });
   };
 
-  // ADMIN: TODOS LOS PERMISOS
+  // =========================
+  // ADMIN: Todos los permisos
+  // =========================
   const fetchAllPermissions = async () => {
     try {
       setLoading(true);
@@ -124,15 +147,23 @@ const useDataPermissions = () => {
     } catch (err) {
       setError(err);
       handleNetworkError(err);
-      Swal.fire("Error", err.message || "No se pudieron obtener los permisos globales.", "error");
+      Swal.fire(
+        "Error",
+        err.message || "No se pudieron obtener los permisos globales.",
+        "error"
+      );
       return null;
     } finally {
       setLoading(false);
     }
   };
 
+  // =========================
   // EFECTO INICIAL
-  useEffect(() => { fetchPermissions(); }, []);
+  // =========================
+  useEffect(() => {
+    fetchPermissions();
+  }, []);
 
   return {
     permissions,

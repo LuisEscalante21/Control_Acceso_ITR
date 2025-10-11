@@ -104,7 +104,11 @@ export default function AdminViewPermissionModal({
 
       if (!res.ok) {
         const msg = await res.json().catch(() => ({}));
-        return Swal.fire("Error", msg?.message || `HTTP ${res.status}`, "error");
+        return Swal.fire(
+          "Error",
+          msg?.message || `HTTP ${res.status}`,
+          "error"
+        );
       }
 
       await Swal.fire("Listo", "Permiso actualizado correctamente.", "success");
@@ -144,7 +148,12 @@ export default function AdminViewPermissionModal({
   };
 
   return createPortal(
-    <div className="vp2-overlay" onClick={onClose} role="dialog" aria-modal="true">
+    <div
+      className="vp2-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="vp2-modal" onClick={(e) => e.stopPropagation()}>
         <div className="vp2-header">
           <h3 className="vp2-title">
@@ -172,7 +181,11 @@ export default function AdminViewPermissionModal({
             </span>
 
             <div className="vp2-actions">
-              <button className="vp2-btn ghost" onClick={openDocument} disabled={!docUrl}>
+              <button
+                className="vp2-btn ghost"
+                onClick={openDocument}
+                disabled={!docUrl}
+              >
                 Ver documento
               </button>
               {isPending && (
@@ -283,7 +296,10 @@ export default function AdminViewPermissionModal({
               <div className="vp2-grid">
                 <div className="vp2-field">
                   <label>Acción</label>
-                  <select value={action} onChange={(e) => setAction(e.target.value)}>
+                  <select
+                    value={action}
+                    onChange={(e) => setAction(e.target.value)}
+                  >
                     <option value="approved">Aprobar</option>
                     <option value="rejected">Rechazar</option>
                   </select>
@@ -295,7 +311,9 @@ export default function AdminViewPermissionModal({
                     <label>¿Aplica descuento?</label>
                     <select
                       value={applyDiscount ? "yes" : "no"}
-                      onChange={(e) => setApplyDiscount(e.target.value === "yes")}
+                      onChange={(e) =>
+                        setApplyDiscount(e.target.value === "yes")
+                      }
                     >
                       <option value="no">No</option>
                       <option value="yes">Sí</option>

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
 import "../PageStyles/ViewPermission.css";
 
-// 🔧 Normalizador para PDFs
+// 🔧 Normalizador para PDFs de Cloudinary
 function normalizeCloudinaryUrl(url) {
   if (!url) return url;
   const isPdf = /\.pdf(\?|$)/i.test(url);
@@ -12,6 +12,26 @@ function normalizeCloudinaryUrl(url) {
   }
   return url;
 }
+
+// 🕒 Genera la acción con usuario, hora y tipo de acción
+const getActionData = (type) => {
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const fullName =
+    storedUser.fullName ||
+    `${storedUser.names ?? ""} ${storedUser.surnames ?? ""}`.trim() ||
+    "Usuario desconocido";
+
+  const now = new Date();
+  return {
+    user: fullName,
+    day: now.getDate(),
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+    hour: now.getHours(),
+    min: now.getMinutes(),
+    type, // 🆕 guardamos si fue aprobado o rechazado
+  };
+};
 
 export default function ViewPermissionModal({
   isOpen,
@@ -31,7 +51,6 @@ export default function ViewPermissionModal({
     status,
     employeeName,
     employeeNumber,
-    department,
     applicationDay,
     reason,
     supervisorComments,
@@ -48,6 +67,7 @@ export default function ViewPermissionModal({
     updatedAt,
     Discount: discountSaved,
     supportingDocument,
+    actionBy,
   } = permission;
 
   const docUrl = normalizeCloudinaryUrl(supportingDocument);
@@ -75,8 +95,9 @@ export default function ViewPermissionModal({
   }, [status]);
 
   const fmtDate = (d) => (!d ? "-" : String(d).substring(0, 10));
+  const fmtTime = (hour, min) =>
+    `${hour?.toString().padStart(2, "0")}:${min?.toString().padStart(2, "0")}`;
 
-  //Actualizado: si rechaza, nunca se envía descuento
   const handleUpdate = async () => {
     if (!canEdit) return;
 
@@ -93,6 +114,7 @@ export default function ViewPermissionModal({
       status: statusTo,
       supervisorComments: comment,
       Discount: finalDiscount,
+      actionBy: getActionData(statusTo),
     });
 
     Swal.close();
@@ -125,10 +147,8 @@ export default function ViewPermissionModal({
 
         {/* Body */}
         <div className="vp2-body">
-          {/* Estado + Ver documento */}
           <div className="vp2-row">
             <span className={`vp2-status ${status?.toLowerCase()}`}>{labelStatus}</span>
-
             <div className="vp2-actions">
               <button
                 className="vp2-btn ghost"
@@ -141,7 +161,7 @@ export default function ViewPermissionModal({
             </div>
           </div>
 
-          {/* Datos básicos */}
+          {/* Datos comunes */}
           <div className="vp2-grid">
             <div className="vp2-field">
               <label>Colaborador</label>
@@ -151,12 +171,13 @@ export default function ViewPermissionModal({
               <label>Código</label>
               <div>{employeeNumber}</div>
             </div>
-            
             <div className="vp2-field">
               <label>Fecha de solicitud</label>
               <div>{applicationDay}</div>
             </div>
           </div>
+
+          
 
           {/* Detalles según tipo */}
           {permissionType === "minor" && (
@@ -210,6 +231,7 @@ export default function ViewPermissionModal({
             </div>
           )}
 
+          {/* Comentario */}
           {reason && (
             <div className="vp2-notes">
               <div className="vp2-note">
@@ -232,7 +254,6 @@ export default function ViewPermissionModal({
                   </select>
                 </div>
 
-                {/* 🔸 Solo mostrar la opción de descuento si aprueba */}
                 {action === "approve" && (
                   <div className="vp2-field">
                     <label>¿Aplica descuento?</label>
@@ -280,6 +301,38 @@ export default function ViewPermissionModal({
                 {action === "approve" ? "Aprobar" : "Rechazar"}
               </button>
             </div>
+          )}
+
+          {/* 🧾 Historial de acciones */}
+          {Array.isArray(actionBy) && actionBy.length > 0 && (
+            <>
+              <h4 className="vp2-subtitle">Historial de acciones</h4>
+              <ul className="vp2-history">
+                {actionBy
+                  .sort((a, b) => {
+                    const da = new Date(a.year, a.month - 1, a.day, a.hour, a.min);
+                    const db = new Date(b.year, b.month - 1, b.day, b.hour, b.min);
+                    return da - db;
+                  })
+                  .map((a, idx) => {
+                    const day = String(a.day ?? "").padStart(2, "0");
+                    const month = String(a.month ?? "").padStart(2, "0");
+                    const year = a.year ?? "-";
+                    const label =
+                      a.type === "approved"
+                        ? "Aprobado por"
+                        : a.type === "rejected"
+                        ? "Rechazado por"
+                        : "Gestionado por";
+                    return (
+                      <li key={a._id || idx}>
+                        <strong>{label}</strong> {a.user || "-"}   {day}/{month}/{year}{" "}
+                        {fmtTime(a.hour, a.min)}
+                      </li>
+                    );
+                  })}
+              </ul>
+            </>
           )}
 
           <div className="vp2-meta">

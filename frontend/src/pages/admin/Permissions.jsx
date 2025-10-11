@@ -5,12 +5,12 @@ import "../../styles/admin/Permission.css";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
 
-// Qué es urgente
+// ✅ Qué es urgente
 const isUrgent = (p) =>
   p?.permissionType === "incapacity" &&
   (p?.status || "").toLowerCase() === "pending";
 
-// Mapeo de estado con clase
+// ✅ Mapeo de estado con clase para badge
 const mapStatusForCard = (perm) => {
   if (isUrgent(perm)) return { label: "! Urgente", cls: "urgente" };
   const s = (perm?.status || "").toLowerCase();
@@ -37,7 +37,7 @@ export default function AdminPermissions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Obtener userInfo descifrado (si existe cookie cifrada)
+  // 🧠 Obtener userInfo descifrado (si existe cookie cifrada)
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
   const encryptedUserInfo = Cookies.get("userInfo");
@@ -52,14 +52,20 @@ export default function AdminPermissions() {
     }
   }
 
-  // Filtrado + orden urgentes primero
+  // 🧮 Filtrado + orden urgentes primero
   const filtered = useMemo(() => {
     let list = permissions || [];
 
+    // 📅 Filtrar por fecha seleccionada y días anteriores
     if (searchDate) {
-      list = list.filter((p) => (p.applicationDay || "").includes(searchDate));
+      const selectedDate = new Date(searchDate);
+      list = list.filter((p) => {
+        const permDate = new Date(p.applicationDay);
+        return permDate <= selectedDate;
+      });
     }
 
+    // 🟡 Filtrar por estado
     if (filterStatus !== "Todos") {
       if (filterStatus === "Urgente") {
         list = list.filter(isUrgent);
@@ -75,7 +81,7 @@ export default function AdminPermissions() {
       }
     }
 
-    // Urgentes al inicio (como prioridad)
+    // 🚨 Urgentes al inicio de la lista
     list = [...list].sort((a, b) => {
       if (isUrgent(a) && !isUrgent(b)) return -1;
       if (!isUrgent(a) && isUrgent(b)) return 1;
@@ -85,6 +91,7 @@ export default function AdminPermissions() {
     return list;
   }, [permissions, filterStatus, searchDate]);
 
+  // 📌 Abrir y cerrar modal
   const openView = (p) => {
     setSelected(p);
     setViewOpen(true);
@@ -100,9 +107,8 @@ export default function AdminPermissions() {
 
   return (
     <div className="apg__page">
-
       <div className="apg__container">
-        {/* Título solo */}
+        {/* 🧾 Título */}
         <header className="apg__header">
           <h1 className="titulo">Gestión de Permisos - Administrador</h1>
         </header>
@@ -110,15 +116,18 @@ export default function AdminPermissions() {
         <section className="apg__sheet">
           <div className="apg__actions">
             <div className="apg__filters">
+              {/* 📅 Filtro de fecha */}
               <div className="apg__chip">
                 <input
                   type="date"
                   value={searchDate}
+                  max={new Date().toISOString().split("T")[0]} // ⛔ no permite fechas futuras
                   onChange={(e) => setSearchDate(e.target.value)}
                   className="apg__input"
                 />
               </div>
 
+              {/* 🟡 Filtro por estado */}
               <div className="apg__chip">
                 <select
                   value={filterStatus}
@@ -135,7 +144,7 @@ export default function AdminPermissions() {
             </div>
           </div>
 
-          {/* Lista */}
+          {/* 📜 Lista de permisos */}
           {filtered.length === 0 ? (
             <div className="apg__empty">No hay permisos para mostrar.</div>
           ) : (
@@ -169,7 +178,7 @@ export default function AdminPermissions() {
         </section>
       </div>
 
-      {/* Modal */}
+      {/* 🪟 Modal */}
       <AdminViewPermissionModal
         isOpen={viewOpen}
         onClose={closeView}

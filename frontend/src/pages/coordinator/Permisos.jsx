@@ -1,55 +1,50 @@
-// src/pages/coordinators/CoordinatorPermissions.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import useDataPermissions from "../../hooks/Global/UseDataPermissions";
-import useDataCredentials from "../../hooks/Global/useDataCredentials";
-import NewPermissionModal from "../../components/coordinator/PageModals/NewPermissionModal";
-import ViewPermissionModal from "../../components/coordinator/PageModals/ViewPermissionModal";
-import "../../styles/coordinators/Permissions.css";
+import AdminViewPermissionModal from "../../components/admin/PageModals/PermisionsModal/ViewPermissionModal";
+import "../../styles/admin/Permission.css";
+import Cookies from "js-cookie";
+import CryptoJS from "crypto-js";
 
-// Permiso urgente = incapacidad + pendiente
+// 📌 Qué es urgente
 const isUrgent = (p) =>
-  (p?.permissionType === "incapacity") &&
-  ((p?.status || "").toLowerCase() === "pending");
+  p?.permissionType === "incapacity" &&
+  (p?.status || "").toLowerCase() === "pending";
 
+// 📌 Mapeo de estado con clase
 const mapStatusForCard = (perm) => {
   if (isUrgent(perm)) return { label: "! URGENTE", cls: "urgente" };
   const s = (perm?.status || "").toLowerCase();
   switch (s) {
-    case "rejected": return { label: "Rechazado", cls: "rechazado" };
-    case "pending":  return { label: "Pendiente", cls: "pendiente" };
-    case "approved": return { label: "Aprobado",  cls: "aprobado"  };
-    default:         return { label: "Desconocido", cls: "" };
+    case "rejected":
+      return { label: "Rechazado", cls: "rechazado" };
+    case "pending":
+      return { label: "Pendiente", cls: "pendiente" };
+    case "approved":
+      return { label: "Aprobado", cls: "aprobado" };
+    default:
+      return { label: "Desconocido", cls: "" };
   }
 };
 
-export default function CoordinatorPermissions() {
+export default function AdminPermissions() {
   const {
     permissions,
-    fetchPermissions,
-    fetchTeamPermissions,
-    postPermissionMultipart,
-    deletePermission,
+    fetchAllPermissions,
     updatePermissionStatus,
-    showModal,
-    setShowModal,
+    deletePermission,
   } = useDataPermissions();
 
-  const { user } = useDataCredentials();
-  const currentUserId = user?._id ? String(user._id) : null;
-
-  // 👇 Cambié el valor inicial a "team" para que siempre muestre primero los del área
-  const [scope, setScope] = useState("team"); 
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [searchDate, setSearchDate] = useState("");
   const [viewOpen, setViewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
-    if (scope === "mine") fetchPermissions();
-    else fetchTeamPermissions();
+    fetchAllPermissions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope]);
+  }, []);
 
+<<<<<<< HEAD
 const filteredPermissions = useMemo(() => {
   let list = permissions || [];
 
@@ -75,70 +70,105 @@ const filteredPermissions = useMemo(() => {
       list = list.filter(
         (p) => (p.status || "").toLowerCase() === desired && !isUrgent(p)
       );
+=======
+  // 🔐 Obtener userInfo descifrado (si existe cookie cifrada)
+  const secretKey = import.meta.env.VITE_JWT_SECRET;
+  let userInfo = null;
+  const encryptedUserInfo = Cookies.get("userInfo");
+  if (encryptedUserInfo && secretKey) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
+      const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+      userInfo = decryptedStr ? JSON.parse(decryptedStr) : null;
+    } catch (err) {
+      console.error("Error descifrando userInfo:", err);
+      userInfo = null;
+>>>>>>> 65de1165dd33779e61b74b4cd5c16aefd7089764
     }
   }
 
-  //Ordena: urgentes primero
-  list = [...list].sort((a, b) => {
-    if (isUrgent(a) && !isUrgent(b)) return -1;
-    if (!isUrgent(a) && isUrgent(b)) return 1;
-    return 0; 
-  });
+  // 🧮 Filtrado igual que CoordinatorPermissions.jsx
+  const filteredPermissions = useMemo(() => {
+    let list = permissions || [];
 
-  return list;
-}, [permissions, filterStatus, searchDate]);
+    // 📅 Filtrar por fecha seleccionada y días anteriores
+    if (searchDate) {
+      const selectedDate = new Date(searchDate);
+      list = list.filter((p) => {
+        if (!p.applicationDay) return false;
+        const permDate = new Date(p.applicationDay);
+        return permDate <= selectedDate;
+      });
+    }
 
-  const openNew = () => setShowModal(true);
-  const closeNew = async () => {
-    setShowModal(false);
-    if (scope === "mine") await fetchPermissions();
-    else await fetchTeamPermissions();
+    // 🟡 Filtrar por estado
+    if (filterStatus !== "Todos") {
+      if (filterStatus === "Urgente") {
+        list = list.filter(isUrgent);
+      } else {
+        const desired = {
+          Rechazado: "rejected",
+          Pendiente: "pending",
+          Aprobado: "approved",
+        }[filterStatus];
+        list = list.filter(
+          (p) => (p.status || "").toLowerCase() === desired && !isUrgent(p)
+        );
+      }
+    }
+
+    // 🚨 Urgentes primero
+    list = [...list].sort((a, b) => {
+      if (isUrgent(a) && !isUrgent(b)) return -1;
+      if (!isUrgent(a) && isUrgent(b)) return 1;
+      return 0;
+    });
+
+    return list;
+  }, [permissions, filterStatus, searchDate]);
+
+  // 📌 Modal handlers
+  const openView = (p) => {
+    setSelected(p);
+    setViewOpen(true);
+  };
+  const closeView = () => {
+    setSelected(null);
+    setViewOpen(false);
   };
 
-  const openView = (perm) => { setSelected(perm); setViewOpen(true); };
-  const closeView = () => { setSelected(null); setViewOpen(false); };
-
   const refresh = async () => {
-    if (scope === "mine") await fetchPermissions();
-    else await fetchTeamPermissions();
+    await fetchAllPermissions();
   };
 
   return (
-    <div className="cpg">
-      <div className="cpg__container">
-        <header className="cpg__header">
-           <h1 className="titulo">Gestión de Empleados</h1>
+    <div className="apg__page">
+      <div className="apg__container">
+        <header className="apg__header">
+          <h1 className="titulo">Gestión de Permisos - Administrador</h1>
         </header>
 
-        <div className="cpg__newWrap">
-          <button onClick={openNew} className="cpg__new">Nuevo permiso</button>
-        </div>
-
-        <section className="cpg__sheet">
-          <div className="cpg__actions">
-            <div className="cpg__filters">
-              <div className="cpg__chip">
-                <select value={scope} onChange={(e) => setScope(e.target.value)} className="cpg__select">
-                  <option value="team">Permisos del área</option>
-                  <option value="mine">Mis permisos</option>
-                </select>
-              </div>
-
-              <div className="cpg__chip">
+        <section className="apg__sheet">
+          <div className="apg__actions">
+            <div className="apg__filters">
+              {/* 📅 Fecha */}
+              <div className="apg__chip">
                 <input
                   type="date"
                   value={searchDate}
+                  max={new Date().toISOString().split("T")[0]} // ⛔ no permite fechas futuras
                   onChange={(e) => setSearchDate(e.target.value)}
-                  className="cpg__input"
+                  className="apg__input"
                   aria-label="Buscar por fecha"
                 />
               </div>
 
-              <div className="cpg__chip">
+              {/* 🟡 Estado */}
+              <div className="apg__chip">
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="cpg__select"
+                  className="apg__select"
                   aria-label="Estado"
                 >
                   <option value="Todos">Todos</option>
@@ -151,29 +181,32 @@ const filteredPermissions = useMemo(() => {
             </div>
           </div>
 
-          {/* LISTA */}
+          {/* 📜 Lista de permisos */}
           {filteredPermissions.length === 0 ? (
-            <div className="cpg__empty">No hay permisos para mostrar.</div>
+            <div className="apg__empty">No hay permisos para mostrar.</div>
           ) : (
-            <div className="cpg__list">
+            <div className="apg__list">
               {filteredPermissions.map((perm) => {
                 const { label, cls } = mapStatusForCard(perm);
                 return (
                   <button
                     key={perm._id}
-                    className={`cpg__row`}
+                    className="apg__row"
                     onClick={() => openView(perm)}
                     title="Ver / Gestionar"
                   >
-                    <div className="cpg__rowLeft">
-                      <span className="cpg__dot" />
-                      <span className="cpg__doc" aria-hidden>📄</span>
-                      <span className="cpg__rowTitle">
-                        {perm.employeeName || "Colaborador"} — {perm.applicationDay}
+                    <div className="apg__rowLeft">
+                      <span className="apg__dot" />
+                      <span className="apg__doc" aria-hidden>
+                        📄
+                      </span>
+                      <span className="apg__rowTitle">
+                        {perm.employeeName || "Colaborador"} —{" "}
+                        {perm.applicationDay}
                       </span>
                     </div>
-                    <div className="cpg__rowRight">
-                      <span className={`cpg__badge ${cls}`}>{label}</span>
+                    <div className="apg__rowRight">
+                      <span className={`apg__badge ${cls}`}>{label}</span>
                     </div>
                   </button>
                 );
@@ -183,22 +216,14 @@ const filteredPermissions = useMemo(() => {
         </section>
       </div>
 
-      {/* Modales */}
-      <NewPermissionModal
-        isOpen={showModal}
-        onClose={closeNew}
-        onSaved={refresh}
-        postPermissionMultipart={postPermissionMultipart}
-      />
-
-      <ViewPermissionModal
+      {/* 🪟 Modal */}
+      <AdminViewPermissionModal
         isOpen={viewOpen}
         onClose={closeView}
         permission={selected}
         onChanged={refresh}
-        deletePermission={deletePermission}
         updatePermissionStatus={updatePermissionStatus}
-        currentUserId={currentUserId}
+        deletePermission={deletePermission}
       />
     </div>
   );
