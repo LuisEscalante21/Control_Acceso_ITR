@@ -85,7 +85,7 @@ const useDataPermissions = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_URL}/team`, { credentials: "include" });
+      const res = await fetch(`${API_URL}/teams`, { credentials: "include" });
       if (!res.ok) {
         const msg = await safeJsonMessage(res);
         throw new Error(msg || `Error ${res.status} al obtener permisos del área`);

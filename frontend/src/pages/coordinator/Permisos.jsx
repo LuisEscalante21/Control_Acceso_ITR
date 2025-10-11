@@ -44,33 +44,6 @@ export default function AdminPermissions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-<<<<<<< HEAD
-const filteredPermissions = useMemo(() => {
-  let list = permissions || [];
-
-  if (searchDate) {
-    const selectedDate = new Date(searchDate);
-
-    list = list.filter((p) => {
-      if (!p.applicationDay) return false;
-      const permDate = new Date(p.applicationDay);
-      return permDate <= selectedDate; //incluye el día elegido y días anteriores
-    });
-  }
-
-  if (filterStatus !== "Todos") {
-    if (filterStatus === "Urgente") {
-      list = list.filter((p) => isUrgent(p));
-    } else {
-      const desired = {
-        Rechazado: "rejected",
-        Pendiente: "pending",
-        Aprobado: "approved",
-      }[filterStatus];
-      list = list.filter(
-        (p) => (p.status || "").toLowerCase() === desired && !isUrgent(p)
-      );
-=======
   // 🔐 Obtener userInfo descifrado (si existe cookie cifrada)
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
@@ -83,7 +56,6 @@ const filteredPermissions = useMemo(() => {
     } catch (err) {
       console.error("Error descifrando userInfo:", err);
       userInfo = null;
->>>>>>> 65de1165dd33779e61b74b4cd5c16aefd7089764
     }
   }
 
@@ -132,6 +104,7 @@ const filteredPermissions = useMemo(() => {
     setSelected(p);
     setViewOpen(true);
   };
+
   const closeView = () => {
     setSelected(null);
     setViewOpen(false);
