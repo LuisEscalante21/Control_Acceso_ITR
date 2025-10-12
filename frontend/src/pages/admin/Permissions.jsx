@@ -110,7 +110,7 @@ export default function AdminPermissions() {
       <div className="apg__container">
         {/* 🧾 Título */}
         <header className="apg__header">
-          <h1 className="titulo">Gestión de Permisos - Administrador</h1>
+          <h1 className="titulo">Gestión de Permisos</h1>
         </header>
 
         <section className="apg__sheet">

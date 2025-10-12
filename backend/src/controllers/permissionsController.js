@@ -1,6 +1,5 @@
 // src/controllers/permissionsController.js
 import PermissionsModel from "../models/Permissions.js";
-import CoordinatorsModel from "../models/Coordinators.js";
 import cloudinary from "../lib/cloudinary.js";
 import fs from "fs/promises";
 import nodemailer from "nodemailer";
@@ -353,21 +352,24 @@ permissionsController.updateStatus = async (req, res) => {
     let { status, supervisorComments, Discount } = req.body;
     const user = req.user;
 
-    // 🔐 Validación de permisos
+    // 🔐 Validación de permisos de admin read-only
     if (user.userType === "Admin" && user.isReadOnly) {
       return res.status(403).json({
         message: "Solo administradores registrados pueden gestionar permisos.",
       });
     }
 
+    // 📝 Validación de estado
     const statusNorm = String(status || "").toLowerCase();
     if (!["approved", "rejected", "pending", "urgent"].includes(statusNorm)) {
       return res.status(400).json({ message: "Estado inválido." });
     }
 
+    // 🧮 Conversión de Discount a booleano
     if (typeof Discount === "string") Discount = Discount === "true";
     else Discount = !!Discount;
 
+    // 📄 Buscar permiso
     const permission = await PermissionsModel.findById(id);
     if (!permission)
       return res.status(404).json({ message: "Permiso no encontrado" });
@@ -384,16 +386,28 @@ permissionsController.updateStatus = async (req, res) => {
         permission.idTeam?.toString() ===
         (user.idTeam ?? user.IdTeam)?.toString();
       const isOwn = String(permission.idUser) === String(user._id);
-      if (!sameTeam || isOwn) {
+
+      if (!sameTeam) {
         return res.status(403).json({
-          message:
-            "Solo administradores registrados pueden gestionar permisos.",
+          message: "No puedes gestionar permisos de otros equipos.",
+        });
+      }
+
+      if (isOwn) {
+        return res.status(403).json({
+          message: "No puedes aprobar o rechazar tus propios permisos.",
         });
       }
     } else if (user.userType !== "Admin") {
       return res.status(403).json({
-        message: "Solo administradores registrados pueden gestionar permisos.",
+        message: "Solo administradores o coordinadores pueden gestionar permisos.",
       });
+    }
+
+    // 🛠 Si actionBy es null, lo inicializamos como array para evitar error en $push
+    if (!Array.isArray(permission.actionBy)) {
+      permission.actionBy = [];
+      await permission.save();
     }
 
     // 🕒 Datos para historial de acción
@@ -427,9 +441,14 @@ permissionsController.updateStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al actualizar permiso:", error);
-    return res.status(500).json({ message: "Error al actualizar permiso" });
+    return res.status(500).json({
+      message: "Error al actualizar permiso",
+      error: error.message,
+    });
   }
 };
+
+
 
 permissionsController.deleteOne = async (req, res) => {
   try {

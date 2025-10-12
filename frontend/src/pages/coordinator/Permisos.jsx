@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import useDataPermissions from "../../hooks/Global/UseDataPermissions";
-import AdminViewPermissionModal from "../../components/admin/PageModals/PermisionsModal/ViewPermissionModal";
+import ViewPermissionModal from "../../components/coordinator/PageModals/ViewPermissionModal";
+import NewPermissionModal from "../../components/coordinator/PageModals/NewPermissionModal";
 import "../../styles/admin/Permission.css";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
 
-// 📌 Qué es urgente
+// 🟥 Identificar si un permiso es urgente
 const isUrgent = (p) =>
   p?.permissionType === "incapacity" &&
   (p?.status || "").toLowerCase() === "pending";
 
-// 📌 Mapeo de estado con clase
+// 🟡 Mapear estado a texto y clase visual
 const mapStatusForCard = (perm) => {
   if (isUrgent(perm)) return { label: "! URGENTE", cls: "urgente" };
   const s = (perm?.status || "").toLowerCase();
@@ -26,28 +27,30 @@ const mapStatusForCard = (perm) => {
   }
 };
 
-export default function AdminPermissions() {
-  const {
-    permissions,
-    fetchAllPermissions,
-    updatePermissionStatus,
-    deletePermission,
-  } = useDataPermissions();
+export default function CoordinatorPermissions() {
+ const {
+  permissions,
+  fetchPermissions,
+  fetchTeamPermissions,
+  postPermissionMultipart,
+  updatePermissionStatus,
+  deletePermission,
+  showModal,
+  setShowModal,
+} = useDataPermissions(false); 
+
 
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [searchDate, setSearchDate] = useState("");
   const [viewOpen, setViewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [permissionScope, setPermissionScope] = useState("area"); // area | mine
 
-  useEffect(() => {
-    fetchAllPermissions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // 🔐 Obtener userInfo descifrado (si existe cookie cifrada)
+  // 🧠 Obtener datos del usuario desde cookie cifrada
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   let userInfo = null;
   const encryptedUserInfo = Cookies.get("userInfo");
+
   if (encryptedUserInfo && secretKey) {
     try {
       const bytes = CryptoJS.AES.decrypt(encryptedUserInfo, secretKey);
@@ -59,11 +62,16 @@ export default function AdminPermissions() {
     }
   }
 
-  // 🧮 Filtrado igual que CoordinatorPermissions.jsx
+  // 📡 Al cargar, mostrar permisos del área por defecto
+  useEffect(() => {
+    fetchTeamPermissions();
+  }, [fetchTeamPermissions]);
+
+  // 🧮 Filtrar permisos
   const filteredPermissions = useMemo(() => {
     let list = permissions || [];
 
-    // 📅 Filtrar por fecha seleccionada y días anteriores
+    // 📅 Filtro por fecha
     if (searchDate) {
       const selectedDate = new Date(searchDate);
       list = list.filter((p) => {
@@ -73,7 +81,7 @@ export default function AdminPermissions() {
       });
     }
 
-    // 🟡 Filtrar por estado
+    // 🟡 Filtro por estado
     if (filterStatus !== "Todos") {
       if (filterStatus === "Urgente") {
         list = list.filter(isUrgent);
@@ -111,32 +119,63 @@ export default function AdminPermissions() {
   };
 
   const refresh = async () => {
-    await fetchAllPermissions();
+    if (permissionScope === "mine") {
+      await fetchPermissions();
+    } else {
+      await fetchTeamPermissions();
+    }
+  };
+
+  const handleOpenModal = () => setShowModal(true);
+  const handleCloseModal = async () => {
+    setShowModal(false);
+    await refresh();
+  };
+
+  // 🧭 Cambiar entre "mis permisos" o "permisos del área"
+  const handleScopeChange = async (e) => {
+    const value = e.target.value;
+    setPermissionScope(value);
+    if (value === "mine") {
+      await fetchPermissions(); // /api/permissions/mine
+    } else {
+      await fetchTeamPermissions(); // /api/permissions/team
+    }
   };
 
   return (
     <div className="apg__page">
       <div className="apg__container">
         <header className="apg__header">
-          <h1 className="titulo">Gestión de Permisos - Administrador</h1>
+          <h1 className="titulo">Gestión de permisos</h1>
         </header>
+
+        {/* 📎 Controles superiores */}
+        <div className="pgp__new1">
+          <button onClick={handleOpenModal} className="pgp__new">
+            <span className="plus-icon"></span> Nuevo permiso
+          </button>
+
+          {/* 🔽 Dropdown con estilo igual al filtro */}
+          
+        </div>
 
         <section className="apg__sheet">
           <div className="apg__actions">
             <div className="apg__filters">
-              {/* 📅 Fecha */}
+              {/* 📅 Filtro por fecha */}
               <div className="apg__chip">
                 <input
                   type="date"
                   value={searchDate}
-                  max={new Date().toISOString().split("T")[0]} // ⛔ no permite fechas futuras
+                  max={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setSearchDate(e.target.value)}
                   className="apg__input"
                   aria-label="Buscar por fecha"
                 />
               </div>
 
-              {/* 🟡 Estado */}
+              {/* 🟡 Filtro por estado */}
               <div className="apg__chip">
                 <select
                   value={filterStatus}
@@ -151,6 +190,18 @@ export default function AdminPermissions() {
                   <option value="Aprobado">Aprobado</option>
                 </select>
               </div>
+
+              <div className="pgp__chip">
+            <select
+              value={permissionScope}
+              onChange={handleScopeChange}
+              className="apg__select"
+              aria-label="Filtro de tipo de permisos"
+            >
+              <option value="area">Permisos del área</option>
+              <option value="mine">Mis permisos</option>
+            </select>
+          </div>
             </div>
           </div>
 
@@ -189,14 +240,23 @@ export default function AdminPermissions() {
         </section>
       </div>
 
-      {/* 🪟 Modal */}
-      <AdminViewPermissionModal
+      {/* 🪟 Modal para crear nuevo permiso */}
+      <NewPermissionModal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        onSaved={refresh}
+        postPermissionMultipart={postPermissionMultipart}
+      />
+
+      {/* 🪟 Modal para ver y gestionar permiso */}
+      <ViewPermissionModal
         isOpen={viewOpen}
         onClose={closeView}
         permission={selected}
         onChanged={refresh}
         updatePermissionStatus={updatePermissionStatus}
         deletePermission={deletePermission}
+        currentUserId={userInfo?._id}
       />
     </div>
   );

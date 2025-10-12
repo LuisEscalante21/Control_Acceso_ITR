@@ -119,7 +119,10 @@ export default function ViewPermissionModal({
 
     Swal.close();
 
-    if (!res.ok) return Swal.fire("Error", "No se pudo actualizar", "error");
+    if (!res || !res.ok) {
+  return Swal.fire("Error", res?.message || "No se pudo actualizar", "error");
+}
+
 
     await Swal.fire("Actualizado", "El permiso se actualizó correctamente", "success");
     onChanged?.();

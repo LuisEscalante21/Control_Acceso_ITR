@@ -45,6 +45,7 @@ export default function AdminViewPermissionModal({
     createdAt,
     updatedAt,
     Discount: savedDiscount,
+    actionBy, // ✅ agregado para historial
   } = permission;
 
   const [action, setAction] = useState("approved");
@@ -79,6 +80,10 @@ export default function AdminViewPermissionModal({
     }
   };
 
+  // 🕒 Formato para horas del historial
+  const fmtTime = (hour, min) =>
+    `${hour?.toString().padStart(2, "0")}:${min?.toString().padStart(2, "0")}`;
+
   const handleSave = async () => {
     try {
       Swal.fire({
@@ -90,14 +95,8 @@ export default function AdminViewPermissionModal({
       const payload = {
         status: action,
         supervisorComments,
+        Discount: action === "approved" ? applyDiscount : false,
       };
-
-      //Solo se envía descuento si APRUEBA
-      if (action === "approved") {
-        payload.Discount = applyDiscount;
-      } else {
-        payload.Discount = false;
-      }
 
       const res = await updatePermissionStatus(_id, payload);
       Swal.close();
@@ -212,7 +211,7 @@ export default function AdminViewPermissionModal({
             </div>
           </div>
 
-          {/* Detalle por tipo */}
+          {/* Detalles según tipo */}
           {permissionType === "minor" && (
             <>
               <h4 className="vp2-subtitle">Detalle permiso menor</h4>
@@ -305,7 +304,6 @@ export default function AdminViewPermissionModal({
                   </select>
                 </div>
 
-                {/* 🔸 Solo mostrar si aprueba */}
                 {action === "approved" && (
                   <div className="vp2-field">
                     <label>¿Aplica descuento?</label>
@@ -336,6 +334,38 @@ export default function AdminViewPermissionModal({
                   Guardar
                 </button>
               </div>
+            </>
+          )}
+
+          {/* 🧾 Historial de acciones — fuera del bloque isPending ✅ */}
+          {Array.isArray(actionBy) && actionBy.length > 0 && (
+            <>
+              <h4 className="vp2-subtitle">Historial de acciones</h4>
+              <ul className="vp2-history">
+                {actionBy
+                  .sort((a, b) => {
+                    const da = new Date(a.year, a.month - 1, a.day, a.hour, a.min);
+                    const db = new Date(b.year, b.month - 1, b.day, b.hour, b.min);
+                    return da - db;
+                  })
+                  .map((a, idx) => {
+                    const day = String(a.day ?? "").padStart(2, "0");
+                    const month = String(a.month ?? "").padStart(2, "0");
+                    const year = a.year ?? "-";
+                    const label =
+                      a.type === "approved"
+                        ? "Aprobado por"
+                        : a.type === "rejected"
+                        ? "Rechazado por"
+                        : "Gestionado por";
+                    return (
+                      <li key={a._id || idx}>
+                        <strong>{label}</strong> {a.user || "-"} {day}/{month}/{year}{" "}
+                        {fmtTime(a.hour, a.min)}
+                      </li>
+                    );
+                  })}
+              </ul>
             </>
           )}
 
