@@ -43,13 +43,12 @@ const Admins = () => {
           />
         </div>
         <button
-          className="nuevo-empleado-btn-G responsive-btn"
-          onClick={() => setShowNewAdmin(true)}
-          style={{ whiteSpace: "nowrap" }}
-        >
-          <CirclePlus size={20} />
-          Nuevo Administrador
-        </button>
+                    className="nuevo-empleado-btn-G"
+                    onClick={() => setShowNewCoordinador(true)}
+                  >
+                    <CirclePlus size={20} />
+                    Nuevo administrador
+                  </button>
       </div>
     </div>
 

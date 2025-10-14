@@ -190,9 +190,9 @@ const Accesos = () => {
 
         <div className="filters">
           {/* Filtro de docente/área */}
-          <div className="dropdown" ref={docentesRef}>
+          <div className="dropdown"  ref={docentesRef}>
             <button
-              className="filter-button docentes"
+              className="filter-button docentes" style={{maxWidth:"200px"}}
               onClick={() => handleDropdown("docentes")}
             >
               {selectedDocente} <ChevronDown size={16} />

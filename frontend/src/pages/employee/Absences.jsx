@@ -69,7 +69,7 @@ const AbsencesEmployee = () => {
       <div className="encabezado-inasistencias">
         <h1 className="titulo">Mis inasistencias</h1>
 
-        <div className="buscador">
+        <div className="buscadora">
           <Search className="search-icon" />
           <input
             type="text"
