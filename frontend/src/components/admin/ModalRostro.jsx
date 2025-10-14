@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import "../../components/styles/ModalRostro.css";
 import rostroImg1 from "../../img/Rostros-1.png";
-import rostroImg2 from "../../img/Rostros-2.png";
 import Swal from "sweetalert2";
 import useDataSchedules from "../../hooks/admin/useDataSchedule.jsx";
 import useDataTeams from "../../hooks/admin/useDataTeams.jsx";
@@ -16,10 +15,6 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
 
   const [loadingAreas, setLoadingAreas] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
 
   const { schedules } = useDataSchedules();
   const { teams, fetchTeams } = useDataTeams();
@@ -52,15 +47,6 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     }
   }, [mode, face]);
 
-  const stopCamera = () => {
-    try {
-      const stream = videoRef.current?.srcObject;
-      if (stream && typeof stream.getTracks === "function") {
-        stream.getTracks().forEach((t) => t.stop());
-      }
-    } catch (_) {}
-  };
-
   const handleClose = () => {
     setName("");
     setEmployeeCode("");
@@ -69,8 +55,6 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     setAreaId("");
     setNewFile(null);
     setIsSaving(false);
-    stopCamera();
-    setShowCamera(false);
     onClose();
   };
 
@@ -97,62 +81,9 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     });
   };
 
-  const handleOpenCamera = async () => {
-    setShowCamera(true);
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (err) {
-        Swal.fire("Error", "No se pudo acceder a la cámara.", "error");
-        setShowCamera(false);
-      }
-    } else {
-      Swal.fire("Error", "Tu navegador no soporta la cámara.", "error");
-      setShowCamera(false);
-    }
-  };
-
-  const handleTakePhoto = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          return Swal.fire("Error", "No se pudo capturar la imagen.", "error");
-        }
-        const file = new File([blob], "captura.jpg", { type: "image/jpeg" });
-        setNewFile(file);
-        Swal.fire({
-          icon: "success",
-          title: "Foto tomada",
-          text: "La foto se ha capturado correctamente.",
-          timer: 1000,
-          showConfirmButton: false,
-        });
-        stopCamera();
-        setShowCamera(false);
-      },
-      "image/jpeg",
-      0.92
-    );
-  };
-
   const handleSave = async () => {
     if (isSaving) return;
 
-    // Validación de campos requeridos
     if (
       !name.trim() ||
       !employeeCode.trim() ||
@@ -167,7 +98,6 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
       );
     }
 
-    // En modo "add" también validamos que exista una imagen
     if (mode === "add" && !newFile) {
       return Swal.fire(
         "Imagen requerida",
@@ -178,7 +108,6 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
 
     setIsSaving(true);
 
-    // Siempre incluimos todos los campos en el payload
     const formData = new FormData();
     formData.append("name", name.trim());
     formData.append("employee_code", employeeCode.trim());
@@ -187,7 +116,6 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     formData.append("gender", gender);
     formData.append("area_id", areaId);
 
-    // Solo agregamos la imagen si hay una nueva
     if (newFile) {
       formData.append("image", newFile);
     }
@@ -217,7 +145,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           &times;
         </button>
 
-        <h2>{mode === "edit" ? "Editar rostro" : "Agregar rostro"}</h2>
+        <h2>{mode === "edit" ? "Ver datos del rostro" : "Agregar rostro"}</h2>
 
         <label>Nombres y Apellidos:</label>
         <input
@@ -226,6 +154,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Nombre completo"
           autoComplete="off"
+          disabled={mode === "edit"}
         />
 
         <label>Código de empleado:</label>
@@ -235,10 +164,15 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
           onChange={(e) => setEmployeeCode(e.target.value)}
           placeholder="Código"
           autoComplete="off"
+          disabled={mode === "edit"}
         />
 
         <label>Género:</label>
-        <select value={gender} onChange={(e) => setGender(e.target.value)}>
+        <select
+          value={gender}
+          onChange={(e) => setGender(e.target.value)}
+          disabled={mode === "edit"}
+        >
           <option value="">Seleccione género</option>
           <option value="masculino">Masculino</option>
           <option value="femenino">Femenino</option>
@@ -249,6 +183,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
         <select
           value={selectedScheduleId}
           onChange={(e) => setSelectedScheduleId(e.target.value)}
+          disabled={mode === "edit"}
         >
           <option value="">Selecciona un horario</option>
           {schedules.map((sch) => (
@@ -262,7 +197,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
         <select
           value={areaId}
           onChange={(e) => setAreaId(e.target.value)}
-          disabled={loadingAreas}
+          disabled={mode === "edit" || loadingAreas}
         >
           <option value="">
             {loadingAreas ? "Cargando áreas..." : "Seleccione un área"}
@@ -275,73 +210,40 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
             ))}
         </select>
 
-        <div className="biometric-options">
-          <div className="option">
-            <label htmlFor="file-input" style={{ cursor: "pointer" }}>
-              <img src={rostroImg1} alt="Subir biométricos" />
-              <p>Subir nuevos datos biométricos</p>
-            </label>
-            <input
-              id="file-input"
-              name="image"
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              style={{ display: "none" }}
-            />
-            {newFile && (
-              <p style={{ fontSize: "12px", marginTop: "5px" }}>
-                Archivo seleccionado: {newFile.name}
-              </p>
-            )}
-          </div>
-          <div
-            className="option"
-            onClick={handleOpenCamera}
-            style={{ cursor: "pointer" }}
-          >
-            <img src={rostroImg2} alt="Abrir cámara" />
-            <p>Abrir cámara</p>
-          </div>
-        </div>
-
-        {showCamera && (
-          <div className="camera-modal">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              style={{ width: "100%" }}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <button onClick={handleTakePhoto}>Tomar foto</button>
-              <button
-                onClick={() => {
-                  stopCamera();
-                  setShowCamera(false);
-                }}
-              >
-                Cancelar
-              </button>
+        {mode !== "edit" && (
+          <div className="biometric-options">
+            <div className="option">
+              <label htmlFor="file-input" style={{ cursor: "pointer" }}>
+                <img src={rostroImg1} alt="Subir biométricos" />
+                <p>Subir nuevos datos biométricos</p>
+              </label>
+              <input
+                id="file-input"
+                name="image"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+              />
+              {newFile && (
+                <p style={{ fontSize: "12px", marginTop: "5px" }}>
+                  Archivo seleccionado: {newFile.name}
+                </p>
+              )}
             </div>
-            <canvas ref={canvasRef} style={{ display: "none" }} />
           </div>
         )}
 
-        <button
-          type="button"
-          className="save-btn"
-          onClick={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving
-            ? mode === "edit"
-              ? "Actualizando..."
-              : "Agregando..."
-            : mode === "edit"
-            ? "Actualizar"
-            : "Agregar"}
-        </button>
+        {mode !== "edit" && (
+          <button
+            type="button"
+            className="save-btn"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? "Agregando..." : "Agregar"}
+          </button>
+        )}
       </div>
     </div>
   );

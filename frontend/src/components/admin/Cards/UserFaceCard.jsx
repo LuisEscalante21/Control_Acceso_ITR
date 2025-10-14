@@ -1,6 +1,6 @@
 import React from "react";
 import "../../../components/styles/UserFaceCard.css";
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, Trash2 } from "lucide-react";
 
 const UserFaceCard = ({ name, photo, onDelete, onEdit }) => {
   return (
@@ -21,7 +21,7 @@ const UserFaceCard = ({ name, photo, onDelete, onEdit }) => {
             onEdit();
           }}
         >
-          <Pencil size={16} />
+          <Eye size={16} />
         </button>
 
         <button
