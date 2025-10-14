@@ -19,9 +19,7 @@ const useDataAccess = (userId = null) => {
   const [teams, setTeams] = useState([]);
   const navigate = useNavigate();
 
-  // ------------------------------
   // Config Axios
-  // ------------------------------
   const axiosConfigFlask = {
     headers: {
       Authorization: `Bearer ${API_ACCESS_KEY}`,
@@ -31,18 +29,20 @@ const useDataAccess = (userId = null) => {
   };
 
   const axiosConfigNode = {
-    withCredentials: true, //envía cookies de sesión
+    withCredentials: true,
     headers: {
       "Content-Type": "application/json",
     },
     timeout: 10000,
   };
 
-  // ------------------------------
   // Manejo de errores
-  // ------------------------------
   const handleNetworkError = (err) => {
-    if (!err.response || err.code === "ERR_NETWORK" || err.response?.status === 503) {
+    if (
+      !err.response ||
+      err.code === "ERR_NETWORK" ||
+      err.response?.status === 503
+    ) {
       navigate("/503");
     } else if (err.response?.status === 401 || err.response?.status === 403) {
       Swal.fire("Error", "No autorizado. Inicia sesión nuevamente.", "error");
@@ -51,9 +51,7 @@ const useDataAccess = (userId = null) => {
     }
   };
 
-  // ------------------------------
   // Obtener usuario por ID (Node)
-  // ------------------------------
   const fetchUserById = async (id) => {
     try {
       const res = await axios.get(`${USERS_API_URL}/${id}`, axiosConfigNode);
@@ -63,7 +61,8 @@ const useDataAccess = (userId = null) => {
       if (user?.collectionName) {
         if (user.collectionName === "employees") userType = "Empleado";
         if (user.collectionName === "coordinators") userType = "Coordinador";
-        if (user.collectionName === "administrators") userType = "Administrador";
+        if (user.collectionName === "administrators")
+          userType = "Administrador";
       }
 
       return { ...user, userType };
@@ -73,9 +72,7 @@ const useDataAccess = (userId = null) => {
     }
   };
 
-  // ------------------------------
   // Obtener áreas / teams (Node)
-  // ------------------------------
   const fetchTeams = async () => {
     try {
       const res = await axios.get(TEAM_API_URL, axiosConfigNode);
@@ -86,9 +83,7 @@ const useDataAccess = (userId = null) => {
     }
   };
 
-  // ------------------------------
   // Obtener justificaciones (Node)
-  // ------------------------------
   const fetchJustifications = async () => {
     try {
       const res = await axios.get(API_URL_JUSTIFICATIONS, axiosConfigNode);
@@ -104,23 +99,42 @@ const useDataAccess = (userId = null) => {
     }
   };
 
-  // ------------------------------
-  // Obtener registros de acceso (Flask)
-  // ------------------------------
+  // 🔹 ACTUALIZADO: Obtener registros de acceso con soporte para filtros de fecha
   const fetchAccessRecords = async (options = {}) => {
     try {
       let url = `${API_URL}/access`;
       const params = {};
 
       if (options.onlyMine && userId) params.onlyEmployeeId = userId;
-      if (options.excludeEmployeeId) params.excludeEmployeeId = options.excludeEmployeeId;
+      if (options.excludeEmployeeId)
+        params.excludeEmployeeId = options.excludeEmployeeId;
       if (options.teamId) params.teamId = options.teamId;
+
+      // 🔹 NUEVO: Filtros de fecha dinámica
+      if (options.filterType && options.selectedDate) {
+        switch (options.filterType) {
+          case "año":
+            params.year = options.selectedDate;
+            break;
+          case "mes":
+            params.month = options.selectedDate;
+            break;
+          case "semana":
+            params.week = options.selectedDate;
+            break;
+          case "día":
+            params.day = options.selectedDate;
+            break;
+        }
+      }
 
       const res = await axios.get(url, { ...axiosConfigFlask, params });
       const registros = res.data;
 
       // Traer datos de usuarios involucrados (Node)
-      const uniqueUserIds = [...new Set(registros.map((reg) => reg.id_Employee))];
+      const uniqueUserIds = [
+        ...new Set(registros.map((reg) => reg.id_Employee)),
+      ];
       const usersMap = {};
 
       await Promise.all(
@@ -134,11 +148,19 @@ const useDataAccess = (userId = null) => {
 
       const registrosConUsuario = registros.map((reg) => {
         const user = usersMap[reg.id_Employee];
+
+        // 🔹 Normalizar status para filtro de justificación
+        const statusNorm = (reg.status || "").toLowerCase().trim();
+
         return {
           ...reg,
-          employeeName: user ? `${user.names} ${user.surnames}` : "Usuario no encontrado",
+          _id: reg._id || reg.id,
+          employeeName: user
+            ? `${user.names} ${user.surnames}`
+            : "Usuario no encontrado",
           employeeAvatar: user?.photo || null,
           employeeType: user?.userType || "Sin definir",
+          status: statusNorm, // ✅ Campo status normalizado
         };
       });
 
@@ -149,13 +171,15 @@ const useDataAccess = (userId = null) => {
     }
   };
 
-  // ------------------------------
   // Guardar, editar, eliminar registros (Flask)
-  // ------------------------------
   const saveAccessRecord = async (data) => {
     try {
       await axios.post(`${API_URL}/access`, data, axiosConfigFlask);
-      Swal.fire("¡Guardado!", "El registro de acceso ha sido guardado.", "success");
+      Swal.fire(
+        "¡Guardado!",
+        "El registro de acceso ha sido guardado.",
+        "success"
+      );
       await fetchAccessRecords();
       handleCloseForm();
     } catch (error) {
@@ -167,11 +191,19 @@ const useDataAccess = (userId = null) => {
   const editAccessRecord = async (id, data) => {
     try {
       await axios.patch(`${API_URL}/access/${id}`, data, axiosConfigFlask);
-      Swal.fire("¡Actualizado!", "El registro de acceso ha sido actualizado.", "success");
+      Swal.fire(
+        "¡Actualizado!",
+        "El registro de acceso ha sido actualizado.",
+        "success"
+      );
       await fetchAccessRecords();
     } catch (error) {
       handleNetworkError(error);
-      Swal.fire("Error", "No se pudo actualizar el registro de acceso.", "error");
+      Swal.fire(
+        "Error",
+        "No se pudo actualizar el registro de acceso.",
+        "error"
+      );
     }
   };
 
@@ -189,7 +221,11 @@ const useDataAccess = (userId = null) => {
 
     try {
       await axios.delete(`${API_URL}/access/${id}`, axiosConfigFlask);
-      Swal.fire("¡Eliminado!", "El registro de acceso ha sido eliminado.", "success");
+      Swal.fire(
+        "¡Eliminado!",
+        "El registro de acceso ha sido eliminado.",
+        "success"
+      );
       await fetchAccessRecords();
     } catch (error) {
       handleNetworkError(error);
@@ -211,7 +247,11 @@ const useDataAccess = (userId = null) => {
 
     try {
       await axios.delete(`${API_URL}/access`, axiosConfigFlask);
-      Swal.fire("¡Eliminado!", "Todos los registros de acceso han sido eliminados.", "success");
+      Swal.fire(
+        "¡Eliminado!",
+        "Todos los registros de acceso han sido eliminados.",
+        "success"
+      );
       await fetchAccessRecords();
     } catch (error) {
       handleNetworkError(error);

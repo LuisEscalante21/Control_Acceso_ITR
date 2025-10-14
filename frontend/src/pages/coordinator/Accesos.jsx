@@ -6,7 +6,7 @@ import "../../styles/coordinators/Accesos.css";
 import useDataAccess from "../../hooks/coordinators/useDataAccess.jsx";
 import AccessCard from "../../components/coordinator/Cards/AccessCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
-import JustifyModal from "../../components/employee/PageModals/justifictions.jsx"; // <-- import del modal de justificar
+import JustifyModal from "../../components/employee/PageModals/justifictions.jsx";
 
 // Opciones de filtros
 const HorarioOptions = ["Entrada", "Salida"];
@@ -17,21 +17,30 @@ const MainFilterOptions = [
 ];
 
 const Accesos = () => {
+  // Dropdowns
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [mainFilter, setMainFilter] = useState("todos");
   const [selectedJustificationFilter, setSelectedJustificationFilter] =
     useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
   const [searchText, setSearchText] = useState("");
-  const [mainFilter, setMainFilter] = useState("todos");
-  const [viewJustify, setViewJustify] = useState(null);
 
-  // Estados nuevos para justificar
+  // Modales
+  const [viewJustify, setViewJustify] = useState(null);
   const [isJustifyModalOpen, setIsJustifyModalOpen] = useState(false);
   const [justificarInfo, setJustificarInfo] = useState(null);
 
+  // Filtro fecha
+  const [dateFilterType, setDateFilterType] = useState("todas");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedDay, setSelectedDay] = useState("");
+
+  // Refs dropdown
+  const mainFilterRef = useRef(null);
   const justificationFilterRef = useRef(null);
   const salidasRef = useRef(null);
-  const mainFilterRef = useRef(null);
+  const dateRef = useRef(null);
 
   // Leer cookie y descifrar info usuario
   const secretKey = import.meta.env.VITE_JWT_SECRET;
@@ -47,30 +56,28 @@ const Accesos = () => {
       userInfo = null;
     }
   }
-
   const empleadoId = userInfo?._id || null;
 
-  // Hook personalizado
+  // Hooks
   const {
     accessRecords,
     justificationMap = {},
     fetchAccessRecords,
     fetchJustifications,
-    saveJustification, // <-- ideal: función añadida en useDataAccess para enviar FormData con axios
+    saveJustification,
     userTeamId,
   } = useDataAccess(empleadoId);
 
-  // Refrescar registros y justificaciones
+  // Inicializar datos
+  useEffect(() => {
+    fetchAccessRecords();
+    fetchJustifications();
+  }, []);
+
   const refreshAccessData = async () => {
     await fetchAccessRecords();
     await fetchJustifications();
   };
-
-  useEffect(() => {
-    if (empleadoId) {
-      refreshAccessData();
-    }
-  }, [empleadoId]);
 
   // Cerrar dropdowns al hacer clic fuera
   useEffect(() => {
@@ -84,27 +91,22 @@ const Accesos = () => {
           !justificationFilterRef.current.contains(event.target)) ||
         (openDropdown === "salidas" &&
           salidasRef.current &&
-          !salidasRef.current.contains(event.target))
+          !salidasRef.current.contains(event.target)) ||
+        (openDropdown === "date" &&
+          dateRef.current &&
+          !dateRef.current.contains(event.target))
       ) {
         setOpenDropdown(null);
       }
     }
 
-    if (openDropdown) {
-      document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openDropdown]);
 
-  // Funciones de control
-  const handleDropdown = (dropdown) => {
+  // Dropdowns
+  const handleDropdown = (dropdown) =>
     setOpenDropdown(openDropdown === dropdown ? null : dropdown);
-  };
 
   const handleSelectMainFilter = (value) => {
     setMainFilter(value);
@@ -121,12 +123,11 @@ const Accesos = () => {
     setOpenDropdown(null);
   };
 
-  // Abrir modal de justificar (recibe el registro de acceso)
+  // Modal de justificar
   const handleOpenJustifyModal = (record) => {
     setJustificarInfo(record);
     setIsJustifyModalOpen(true);
   };
-
   const handleCloseJustifyModal = () => {
     setJustificarInfo(null);
     setIsJustifyModalOpen(false);
@@ -136,7 +137,6 @@ const Accesos = () => {
   const filteredAccess = (accessRecords || [])
     .filter((person) => {
       if (mainFilter === "mios") return person.id_Employee === empleadoId;
-      if (mainFilter === "todos") return person.id_Employee !== empleadoId;
       return true;
     })
     .filter((person) => {
@@ -160,9 +160,44 @@ const Accesos = () => {
     })
     .filter((person) => {
       if (!searchText.trim()) return true;
-      const nombre = person.employeeName?.toLowerCase() || "";
-      return nombre.includes(searchText.toLowerCase());
+      return person.employeeName
+        ?.toLowerCase()
+        .includes(searchText.toLowerCase());
+    })
+    .filter((person) => {
+      if (dateFilterType === "todas") return true;
+      const recordDate = new Date(person.date);
+      if (dateFilterType === "año")
+        return recordDate.getFullYear() === +selectedYear;
+      if (dateFilterType === "mes")
+        return (
+          recordDate.getFullYear() === +selectedYear &&
+          recordDate.getMonth() + 1 === +selectedMonth
+        );
+      if (dateFilterType === "día")
+        return recordDate.toISOString().split("T")[0] === selectedDay;
+      return true;
     });
+
+  // Opciones año y mes
+  const yearOptions = Array.from(
+    { length: new Date().getFullYear() - 1999 },
+    (_, i) => 2000 + i
+  );
+  const monthOptions = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
 
   return (
     <div className="access-history-container">
@@ -182,7 +217,7 @@ const Accesos = () => {
 
         {/* Filtros */}
         <div className="filters">
-          {/* Filtro principal (custom dropdown) */}
+          {/* Filtro principal */}
           <div className="dropdown" ref={mainFilterRef}>
             <button
               className="filter-button"
@@ -206,7 +241,30 @@ const Accesos = () => {
             )}
           </div>
 
-          {/* Filtro por justificación */}
+          {/* Filtro salida */}
+          <div className="dropdown" ref={salidasRef}>
+            <button
+              className="filter-button"
+              onClick={() => handleDropdown("salidas")}
+            >
+              {selectedSalida} <ChevronDown size={16} />
+            </button>
+            {openDropdown === "salidas" && (
+              <div className="dropdown-menu">
+                {HorarioOptions.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => handleSelectSalida(option)}
+                    className={selectedSalida === option ? "selected" : ""}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Filtro justificación */}
           <div className="dropdown" ref={justificationFilterRef}>
             <button
               className="filter-button"
@@ -231,26 +289,79 @@ const Accesos = () => {
             )}
           </div>
 
-          {/* Filtro por entrada/salida */}
-          <div className="dropdown" ref={salidasRef}>
+          {/* Filtro fecha */}
+          <div className="dropdown" ref={dateRef}>
             <button
-              className="filter-button salidas"
-              onClick={() => handleDropdown("salidas")}
+              className="filter-button"
+              onClick={() => handleDropdown("date")}
             >
-              {selectedSalida} <ChevronDown size={16} />
+              {dateFilterType.charAt(0).toUpperCase() + dateFilterType.slice(1)}{" "}
+              <ChevronDown size={16} />
             </button>
-            {openDropdown === "salidas" && (
-              <div className="dropdown-menu salidas">
-                {HorarioOptions.map((option) => (
+            {openDropdown === "date" && (
+              <div className="dropdown-menu">
+                {["todas", "año", "mes", "día"].map((type) => (
                   <button
-                    key={option}
-                    onClick={() => handleSelectSalida(option)}
-                    className={selectedSalida === option ? "selected" : ""}
+                    key={type}
+                    onClick={() => {
+                      setDateFilterType(type);
+                      setOpenDropdown(null);
+                    }}
+                    className={dateFilterType === type ? "selected" : ""}
                   >
-                    {option}
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
                   </button>
                 ))}
               </div>
+            )}
+
+            {dateFilterType === "año" && (
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+              >
+                <option value="">Año</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {dateFilterType === "mes" && (
+              <>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                >
+                  <option value="">Año</option>
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  <option value="">Mes</option>
+                  {monthOptions.map((m, idx) => (
+                    <option key={m} value={idx + 1}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {dateFilterType === "día" && (
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+              />
             )}
           </div>
         </div>
@@ -262,17 +373,16 @@ const Accesos = () => {
           {filteredAccess.length === 0 ? (
             <p>No hay registros de acceso para mostrar.</p>
           ) : (
-            filteredAccess.map((person, index) => {
+            filteredAccess.map((person, idx) => {
               const time =
                 selectedSalida === "Entrada"
                   ? person.entry_time
                   : person.exit_time;
-
               if (!time) return null;
 
               return (
                 <AccessCard
-                  key={person._id || index}
+                  key={person._id || idx}
                   name={person.employeeName}
                   avatar={person.employeeAvatar}
                   timeLabel={selectedSalida}
@@ -284,7 +394,6 @@ const Accesos = () => {
                   onViewJustification={() =>
                     setViewJustify(justificationMap?.[person._id])
                   }
-                  // Mostrar botón de justificar SOLO para los accesos del coordinador (no para empleados del area)
                   showJustifyButton={
                     person.id_Employee === empleadoId &&
                     !justificationMap?.[person._id]
@@ -297,7 +406,7 @@ const Accesos = () => {
         </div>
       </div>
 
-      {/* Modal para ver justificación */}
+      {/* Modal de visualización */}
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}
@@ -306,7 +415,7 @@ const Accesos = () => {
         />
       )}
 
-      {/* Modal para crear justificación (coordinador) */}
+      {/* Modal de justificación */}
       {isJustifyModalOpen && justificarInfo && (
         <JustifyModal
           isOpen={isJustifyModalOpen}

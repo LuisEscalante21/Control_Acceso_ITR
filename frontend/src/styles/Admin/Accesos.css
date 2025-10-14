@@ -21,7 +21,16 @@
 .search-icon{ color:gray; }
 
 /* ---------- filtros y botones principales ---------- */
-.filters{ display:flex; gap:16px; flex-wrap:wrap; padding-top:3%; width:100%; max-width:1000px; }
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 0.8%; /* 🔻 Redúcelo para eliminar el espacio superior */
+  margin-bottom: -20px; /* 🔹 Añade si quieres acercar más la lista */
+  width: 100%;
+  max-width: 1000px;
+}
+
 
 .filter-button{
   padding:0.5rem 0.75rem;
@@ -64,7 +73,7 @@
   z-index:20;
   box-shadow:0 2px 8px rgba(0,0,0,0.12);
   border-radius:8px;
-  padding:0;                /* quitamos padding del contenedor */
+  padding:10;                /* quitamos padding del contenedor */
   box-sizing:border-box;
   overflow:hidden;
 }
@@ -91,7 +100,7 @@
 
 /* Estado hover / seleccionado */
 .dropdown-menu button:hover,
-.dropdown-menu button.selected{
+.dropdown-menu button.selected{ 
   background:#f4f4f4;
 }
 

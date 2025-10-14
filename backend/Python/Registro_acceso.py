@@ -242,6 +242,12 @@ def obtener_todos_registros():
         team_id = request.args.get("teamId")
         exclude_employee_id = request.args.get("excludeEmployeeId")
         only_employee_id = request.args.get("onlyEmployeeId")
+        
+        # 🔹 NUEVO: Parámetros de filtro de fecha
+        year = request.args.get("year")
+        month = request.args.get("month")
+        week = request.args.get("week")
+        day = request.args.get("day")
 
         pipeline = []
         pre_match = {}
@@ -250,6 +256,21 @@ def obtener_todos_registros():
             pre_match["id_Employee"] = only_employee_id
         if exclude_employee_id:
             pre_match["id_Employee"] = {"$ne": exclude_employee_id}
+        
+        # 🔹 NUEVO: Agregar filtros de fecha al match
+        if day:
+            # Búsqueda exacta por día: "2025-10-06"
+            pre_match["date"] = day
+        elif week:
+            # Ej: "2025-W41" -> buscar registros en esa semana (usando regex)
+            pre_match["date"] = {"$regex": f"^{week}".replace("-W", "-W")}
+        elif month:
+            # Ej: "2025-10" -> buscar "2025-10"
+            pre_match["date"] = {"$regex": f"^{month}"}
+        elif year:
+            # Ej: "2025" -> buscar "2025"
+            pre_match["date"] = {"$regex": f"^{year}"}
+
         if pre_match:
             pipeline.append({"$match": pre_match})
 
@@ -289,14 +310,13 @@ def obtener_todos_registros():
             emp_ids = [e["_id"] for e in empleados_list]
             
             if empleados_list:
-                for emp in empleados_list[:3]:  # Mostrar solo los primeros 3
+                for emp in empleados_list[:3]:
                     print(f"   - {emp.get('names', 'N/A')} {emp.get('surnames', 'N/A')}")
                     print(f"     ID: {emp['_id']}")
                     print(f"     id_team: {emp.get('id_team', 'NO EXISTE')}")
                     print(f"     IdTeam: {emp.get('IdTeam', 'NO EXISTE')}")
                     print(f"     teamId: {emp.get('teamId', 'NO EXISTE')}")
             else:
-                # Mostrar cuántos empleados hay en total
                 total_employees = employee_collection.count_documents({})
 
             if not emp_ids:
@@ -327,6 +347,15 @@ def obtener_todos_registros():
                     "exit_time": 1,
                     "id_Employee": 1,
                     "tipo_registro": 1,
+                    "user_type": 1,
+                    # 🔹 NUEVO: Agregar campo status basado en entry_result
+                    "status": {
+                        "$cond": [
+                            {"$eq": ["$entry_result", "Tarde"]},
+                            "pendiente",
+                            "justificada"
+                        ]
+                    },
                     "employeeName": {
                         "$trim": {
                             "input": {
@@ -339,6 +368,17 @@ def obtener_todos_registros():
                         }
                     },
                     "employeeAvatar": "$employee.photo",
+                    "employeeType": {
+                        "$cond": [
+                            {"$eq": ["$user_type", "Employee"]},
+                            "Empleado",
+                            {"$cond": [
+                                {"$eq": ["$user_type", "Coordinator"]},
+                                "Coordinador",
+                                "Administrador"
+                            ]}
+                        ]
+                    }
                 }
             },
         ]
@@ -346,7 +386,6 @@ def obtener_todos_registros():
         cursor = access_collection.aggregate(pipeline)
         registros = [limpiar_registro(reg) for reg in cursor]
 
-        
         return jsonify(registros)
 
     except Exception as e:
@@ -414,6 +453,16 @@ def eliminar_registro(id):
         if result.deleted_count == 0:
             return jsonify({"error": "Registro no encontrado"}), 404
         return jsonify({"message": "Registro eliminado correctamente"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/access", methods=["DELETE"])
+@require_api_key
+def eliminar_todos_registros():
+    try:
+        result = access_collection.delete_many({})
+        return jsonify({"message": f"Se eliminaron {result.deleted_count} registros"})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 

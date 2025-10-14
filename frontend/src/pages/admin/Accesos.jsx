@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { Search, ChevronDown } from "lucide-react";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
-import Swal from "sweetalert2";
-import axios from "axios";
 import "../../styles/Admin/Accesos.css";
 import useDataAccess from "../../hooks/admin/useDataAccess";
 import useDataTeams from "../../hooks/admin/useDataTeams";
@@ -11,16 +9,25 @@ import AccessCard from "../../components/admin/Cards/AccessCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
 const HorarioOptions = ["Entrada", "Salida"];
+const justifyOptions = ["Todas", "Justificadas", "Sin justificar"];
 
 const Accesos = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [selectedDocente, setSelectedDocente] = useState("Todos");
   const [selectedSalida, setSelectedSalida] = useState(HorarioOptions[0]);
+  const [selectedJustify, setSelectedJustify] = useState(justifyOptions[0]);
   const [searchText, setSearchText] = useState("");
   const [viewJustify, setViewJustify] = useState(null);
 
+  // 🔹 Estados del filtro de fecha (sin semana)
+  const [dateFilterType, setDateFilterType] = useState("todas");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedDay, setSelectedDay] = useState("");
+
   const docentesRef = useRef(null);
   const salidasRef = useRef(null);
+  const justifyRef = useRef(null);
 
   // Leer y descifrar info del usuario desde cookie cifrada con AES
   const secretKey = import.meta.env.VITE_JWT_SECRET;
@@ -59,6 +66,26 @@ const Accesos = () => {
     fetchTeams();
   }, []);
 
+  // 🔸 Recargar accesos cuando cambian los filtros de fecha
+  useEffect(() => {
+    if (dateFilterType !== "todas") {
+      let selectedDate = "";
+
+      if (dateFilterType === "año") selectedDate = selectedYear;
+      if (dateFilterType === "mes") selectedDate = selectedMonth;
+      if (dateFilterType === "día") selectedDate = selectedDay;
+
+      if (selectedDate) {
+        fetchAccessRecords({
+          filterType: dateFilterType,
+          selectedDate,
+        });
+      }
+    } else {
+      fetchAccessRecords();
+    }
+  }, [dateFilterType, selectedYear, selectedMonth, selectedDay]);
+
   // Cerrar dropdowns al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event) {
@@ -68,7 +95,10 @@ const Accesos = () => {
           !docentesRef.current.contains(event.target)) ||
         (openDropdown === "salidas" &&
           salidasRef.current &&
-          !salidasRef.current.contains(event.target))
+          !salidasRef.current.contains(event.target)) ||
+        (openDropdown === "justify" &&
+          justifyRef.current &&
+          !justifyRef.current.contains(event.target))
       ) {
         setOpenDropdown(null);
       }
@@ -110,7 +140,12 @@ const Accesos = () => {
     setOpenDropdown(null);
   };
 
-  // Filtrar registros según tipo de registro, búsqueda y justificación
+  const handleSelectJustify = (option) => {
+    setSelectedJustify(option);
+    setOpenDropdown(null);
+  };
+
+  // 🔹 Filtrado de justificación, búsqueda y tipo de registro
   const filteredAccess = accessRecords
     .filter((person) => {
       if (selectedSalida === "Entrada") {
@@ -126,6 +161,13 @@ const Accesos = () => {
       }
     })
     .filter((person) => {
+      const status = person.status?.toLowerCase() || "";
+      if (selectedJustify === "Justificadas") return status === "justificada";
+      if (selectedJustify === "Sin justificar")
+        return status === "pendiente" || status === "";
+      return true;
+    })
+    .filter((person) => {
       if (!searchText.trim()) return true;
       const nombre = person.employeeName?.toLowerCase() || "";
       return nombre.includes(searchText.toLowerCase());
@@ -133,7 +175,6 @@ const Accesos = () => {
 
   return (
     <div className="access-history-container">
-
       <div className="encabezado-accesos">
         <h1 className="titulo">Historial de accesos</h1>
 
@@ -205,6 +246,95 @@ const Accesos = () => {
                   </button>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* Dropdown Justificación */}
+          <div className="dropdown" ref={justifyRef}>
+            <button
+              className="filter-button salidas"
+              style={{ width: "200px", background: "#f4f4f4" }}
+              onClick={() => handleDropdown("justify")}
+            >
+              {selectedJustify} <ChevronDown size={16} />
+            </button>
+            {openDropdown === "justify" && (
+              <div className="dropdown-menu salidas">
+                {justifyOptions.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => handleSelectJustify(option)}
+                    className={selectedJustify === option ? "selected" : ""}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 🔹 Filtro de fecha (sin semana) */}
+          <div
+            className="dropdown date-filter-horizontal"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              position: "relative",
+            }}
+          >
+            <button
+              className="filter-button salidas"
+              style={{ width: "200px", background: "#f4f4f4" }}
+              onClick={() => handleDropdown("date")}
+            >
+              {dateFilterType.charAt(0).toUpperCase() + dateFilterType.slice(1)}{" "}
+              <ChevronDown size={16} />
+            </button>
+
+            {openDropdown === "date" && (
+              <div className="dropdown-menu salidas">
+                {["todas", "año", "mes", "día"].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setDateFilterType(type);
+                      setOpenDropdown(null);
+                    }}
+                    className={dateFilterType === type ? "selected" : ""}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {dateFilterType === "año" && (
+              <input
+                type="number"
+                min="2000"
+                max="2100"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="filter-input-right"
+                placeholder="Año"
+              />
+            )}
+            {dateFilterType === "mes" && (
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="filter-input-right"
+              />
+            )}
+            {dateFilterType === "día" && (
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+                className="filter-input-right"
+              />
             )}
           </div>
         </div>

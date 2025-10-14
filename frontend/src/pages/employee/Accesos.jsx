@@ -27,7 +27,7 @@ const Accesos = () => {
   // === Perfil desde cookie AES ===
   const [userName, setUserName] = useState("Usuario");
   const [userPhoto, setUserPhoto] = useState(null);
-  const [userTeam, setUserTeam] = useState(null); // <-- nuevo: idTeam del usuario
+  const [userTeam, setUserTeam] = useState(null);
   const secretKey = import.meta.env.VITE_JWT_SECRET;
   const [empleadoId, setEmpleadoId] = useState(null);
 
@@ -43,8 +43,6 @@ const Accesos = () => {
           setUserName(userInfo.fullName || "Usuario");
           setUserPhoto(userInfo.photoUrl || null);
           setEmpleadoId(userInfo._id || null);
-
-          // Intentar capturar idTeam bajo varios nombres posibles
           setUserTeam(
             userInfo.idTeam || userInfo.IdTeam || userInfo.teamId || null
           );
@@ -55,7 +53,6 @@ const Accesos = () => {
     }
   }, [secretKey]);
 
-  // Extraemos datos del hook (incluimos saveJustification si existe)
   const {
     accessRecords,
     fetchAccessRecords,
@@ -63,7 +60,6 @@ const Accesos = () => {
     saveJustification,
   } = useDataAccess(empleadoId);
 
-  // Refrescar registros y justificaciones
   const refreshAccessData = async () => {
     await fetchAccessRecords();
     await fetchJustifications();
@@ -122,7 +118,9 @@ const Accesos = () => {
     setJustificarInfo(null);
   };
 
-  // Filtrar accesos
+  // ===============================
+  // Filtrado por fecha (día, mes o año)
+  // ===============================
   const filteredAccess = (accessRecords || [])
     .filter((person) => person.id_Employee === empleadoId)
     .filter((person) => {
@@ -146,8 +144,19 @@ const Accesos = () => {
     })
     .filter((person) => {
       if (!searchText.trim()) return true;
-      const nombre = person.employeeName.toLowerCase();
-      return nombre.includes(searchText.toLowerCase());
+      const recordDate = new Date(person.date);
+      const searchLower = searchText.toLowerCase();
+
+      // Buscar por año
+      if (recordDate.getFullYear().toString().includes(searchLower))
+        return true;
+      // Buscar por mes (1-12)
+      if ((recordDate.getMonth() + 1).toString().includes(searchLower))
+        return true;
+      // Buscar por día
+      if (recordDate.getDate().toString().includes(searchLower)) return true;
+
+      return false;
     });
 
   return (
@@ -159,7 +168,7 @@ const Accesos = () => {
           <Search className="search-icon" />
           <input
             type="text"
-            placeholder="Buscar"
+            placeholder="Buscar por año, mes o día"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
@@ -224,19 +233,7 @@ const Accesos = () => {
                 selectedSalida === "Entrada"
                   ? person.entry_time
                   : person.exit_time;
-
               if (!time) return null;
-
-              const horaActual = new Date(time);
-              const horaEsperada = new Date(time);
-              horaEsperada.setHours(selectedSalida === "Entrada" ? 7 : 15);
-              horaEsperada.setMinutes(30);
-              horaEsperada.setSeconds(0);
-
-              const isLateOrEarly =
-                selectedSalida === "Entrada"
-                  ? horaActual > horaEsperada
-                  : horaActual < horaEsperada;
 
               return (
                 <AccessCard
@@ -247,17 +244,10 @@ const Accesos = () => {
                   time={time}
                   tipoRegistro={person.tipo_registro}
                   docente={person.docente}
-                  showJustifyButton={isLateOrEarly && !person.justification}
+                  showJustifyButton={!person.justification}
                   isJustified={!!person.justification}
                   justification={person.justification}
-                  onJustifyClick={() => {
-                    if (person.justification) {
-                      // pasar el objeto de justificación, no todo el registro de acceso
-                      setViewJustify(person.justification);
-                    } else {
-                      handleOpenJustifyModal(person);
-                    }
-                  }}
+                  onJustifyClick={() => handleOpenJustifyModal(person)}
                 />
               );
             })
@@ -274,10 +264,10 @@ const Accesos = () => {
             name: userName,
             photo: userPhoto,
             id: empleadoId,
-            idTeam: userTeam, // <-- pasamos idTeam para evitar IdTeam vacío
+            idTeam: userTeam,
           }}
           refreshAccessRecords={refreshAccessData}
-          onSave={saveJustification} // function from hook, may be undefined (fallback en modal lo maneja)
+          onSave={saveJustification}
         />
       )}
 

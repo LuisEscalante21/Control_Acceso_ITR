@@ -19,7 +19,7 @@ const AbsencesEmployee = () => {
     absenceRecords,
     justificationMap,
     loading,
-    saveAbsenceJustification, // 🔹 Función específica para inasistencias
+    saveAbsenceJustification,
     userId,
     fetchAbsenceRecords,
     fetchJustifications,
@@ -40,7 +40,7 @@ const AbsencesEmployee = () => {
     await fetchJustifications();
   };
 
-  // 🔹 Filtrado de inasistencias
+  // 🔹 Filtrado de inasistencias por estado y buscador (año, mes o día)
   const filteredAbsences = (absenceRecords || [])
     .filter((absence) => {
       const status = (absence.status || "pendiente").toLowerCase().trim();
@@ -51,8 +51,17 @@ const AbsencesEmployee = () => {
     })
     .filter((absence) => {
       if (!searchText.trim()) return true;
-      const fecha = absence.date?.toLowerCase() || "";
-      return fecha.includes(searchText.toLowerCase());
+
+      const recordDate = new Date(absence.date);
+      const year = recordDate.getFullYear().toString();
+      const month = String(recordDate.getMonth() + 1).padStart(2, "0");
+      const day = String(recordDate.getDate()).padStart(2, "0");
+
+      const search = searchText.trim();
+
+      return (
+        year.includes(search) || month.includes(search) || day.includes(search)
+      );
     });
 
   return (
@@ -64,7 +73,7 @@ const AbsencesEmployee = () => {
           <Search className="search-icon" />
           <input
             type="text"
-            placeholder="Buscar por fecha (AAAA-MM-DD)"
+            placeholder="Buscar por año, mes o día"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
@@ -93,12 +102,10 @@ const AbsencesEmployee = () => {
             <p>No hay inasistencias para mostrar.</p>
           ) : (
             filteredAbsences.map((absence, index) => {
-              // 🔹 Normalizar estado para validación
               const statusNormalized = (absence.status || "pendiente")
                 .toLowerCase()
                 .trim();
 
-              // 🔹 Determinar si debe mostrar el botón de justificar
               const isPending =
                 statusNormalized === "pendiente" ||
                 statusNormalized === "sin justificar" ||
@@ -113,10 +120,10 @@ const AbsencesEmployee = () => {
                     absence.employeeAvatar || "/images/default-avatar.png"
                   }
                   date={absence.date}
-                  status={absence.status || "pendiente"} // 🔹 Valor por defecto
+                  status={absence.status || "pendiente"}
                   isJustified={statusNormalized === "justificada"}
                   justification={justificationMap?.[absence._id]}
-                  showJustifyButton={isPending} // 🔹 Debe ser true para "pendiente"
+                  showJustifyButton={isPending}
                   onJustifyClick={() => handleOpenJustifyModal(absence)}
                   onViewJustification={() =>
                     setViewJustify(justificationMap?.[absence._id])
@@ -128,20 +135,18 @@ const AbsencesEmployee = () => {
         </div>
       </div>
 
-      {/* 🔹 Modal de justificación con flag isAbsence=true */}
       {isModalOpen && (
         <JustifyModal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           record={justificarInfo}
           currentUser={{ id: userId }}
-          onSave={saveAbsenceJustification} // 🔹 Función específica para inasistencias
+          onSave={saveAbsenceJustification}
           refreshAccessRecords={refreshData}
-          isAbsence={true} // 🔹 Flag para identificar que es una inasistencia
+          isAbsence={true}
         />
       )}
 
-      {/* Modal de visualización de justificación */}
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}

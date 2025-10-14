@@ -8,7 +8,12 @@ import useDataTeams from "../../hooks/admin/useDataTeams";
 import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
-const justifyOptions = ["Todas", "Justificadas", "Sin justificar", "Con permiso"];
+const justifyOptions = [
+  "Todas",
+  "Justificadas",
+  "Sin justificar",
+  "Con permiso",
+];
 
 const Absences = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -216,7 +221,7 @@ const Absences = () => {
             )}
           </div>
 
-          {/* 🔹 Filtro de fecha alineado horizontalmente */}
+          {/* 🔹 Filtro de fecha con selectores */}
           <div
             className="dropdown date-filter-horizontal"
             style={{
@@ -237,7 +242,7 @@ const Absences = () => {
 
             {openDropdown === "date" && (
               <div className="dropdown-menu salidas">
-                {["todas", "año", "mes", "semana", "día"].map((type) => (
+                {["todas", "año", "mes", "día"].map((type) => (
                   <button
                     key={type}
                     onClick={() => {
@@ -253,31 +258,54 @@ const Absences = () => {
             )}
 
             {dateFilterType === "año" && (
-              <input
-                type="number"
-                min="2000"
-                max="2100"
+              <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
                 className="filter-input-right"
-                placeholder="Año"
-              />
+              >
+                <option value="">Selecciona un año</option>
+                {Array.from(
+                  { length: new Date().getFullYear() - 2019 + 2 },
+                  (_, i) => 2020 + i
+                ).map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
             )}
+
             {dateFilterType === "mes" && (
-              <input
-                type="month"
+              <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 className="filter-input-right"
-              />
-            )}
-            {dateFilterType === "semana" && (
-              <input
-                type="week"
-                value={selectedWeek}
-                onChange={(e) => setSelectedWeek(e.target.value)}
-                className="filter-input-right"
-              />
+              >
+                <option value="">Selecciona un mes</option>
+                {[
+                  "Enero",
+                  "Febrero",
+                  "Marzo",
+                  "Abril",
+                  "Mayo",
+                  "Junio",
+                  "Julio",
+                  "Agosto",
+                  "Septiembre",
+                  "Octubre",
+                  "Noviembre",
+                  "Diciembre",
+                ].map((month, index) => {
+                  const monthValue = `${new Date().getFullYear()}-${String(
+                    index + 1
+                  ).padStart(2, "0")}`;
+                  return (
+                    <option key={month} value={monthValue}>
+                      {month}
+                    </option>
+                  );
+                })}
+              </select>
             )}
             {dateFilterType === "día" && (
               <input

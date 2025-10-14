@@ -5,13 +5,14 @@ import CryptoJS from "crypto-js";
 import "../../styles/coordinators/Inasistencias.css";
 import useDataAbsences from "../../hooks/coordinators/useDataAbsences.jsx";
 import AbsenceCard from "../../components/admin/Cards/AbsenceCard.jsx";
-import JustifyModal from "../../components/employee/PageModals/justifictions.jsx"; // 🔹 NUEVO: Modal de justificación
+import JustifyModal from "../../components/employee/PageModals/justifictions.jsx";
 import ViewJustifyModal from "../../components/Tools/PageModals/ViewJustifyModal.jsx";
 
 const MainFilterOptions = [
   { value: "todos", label: "Todas" },
   { value: "mios", label: "Mis Inasistencias" },
 ];
+
 const JustificationFilterOptions = [
   "Todas",
   "Justificadas",
@@ -24,8 +25,8 @@ const Absences = () => {
   const [selectedJustify, setSelectedJustify] = useState("Todas");
   const [searchText, setSearchText] = useState("");
   const [viewJustify, setViewJustify] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false); // 🔹 NUEVO: Estado del modal de justificación
-  const [justificarInfo, setJustificarInfo] = useState(null); // 🔹 NUEVO: Info de la inasistencia a justificar
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [justificarInfo, setJustificarInfo] = useState(null);
 
   // 🔹 Estados del filtro de fecha
   const [dateFilterType, setDateFilterType] = useState("todas");
@@ -61,12 +62,11 @@ const Absences = () => {
     userId,
     fetchAbsenceRecords,
     fetchJustifications,
-    saveAbsenceJustification, // 🔹 NUEVO: Función para justificar
+    saveAbsenceJustification,
   } = useDataAbsences();
 
   // 🔹 Abrir modal de justificación
   const handleOpenJustifyModal = (absence) => {
-    console.log("📝 Abriendo modal para justificar:", absence);
     setJustificarInfo(absence);
     setIsModalOpen(true);
   };
@@ -83,7 +83,7 @@ const Absences = () => {
     await fetchJustifications();
   };
 
-  // 🔸 Cargar datos al cambiar filtros de fecha
+  // 🔸 Cargar datos al cambiar filtros
   useEffect(() => {
     const options = {};
     if (dateFilterType !== "todas") {
@@ -131,9 +131,7 @@ const Absences = () => {
   // 🔹 Filtrado de inasistencias
   const filteredAbsences = (absenceRecords || [])
     .filter((absence) => {
-      if (mainFilter === "mios") {
-        return absence.id_Employee === coordinatorId;
-      }
+      if (mainFilter === "mios") return absence.id_Employee === coordinatorId;
       return true;
     })
     .filter((absence) => {
@@ -149,6 +147,12 @@ const Absences = () => {
       const nombre = absence.employeeName?.toLowerCase() || "";
       return nombre.includes(searchText.toLowerCase());
     });
+
+  // 🔹 Crear opciones de año (2000 - año actual)
+  const yearOptions = Array.from(
+    { length: new Date().getFullYear() - 1999 },
+    (_, i) => 2000 + i
+  );
 
   return (
     <div className="absence-history-container">
@@ -221,7 +225,7 @@ const Absences = () => {
             )}
           </div>
 
-          {/* 🔹 Filtro de fecha alineado */}
+          {/* 🔹 Filtro de fecha */}
           <div
             className="dropdown date-filter-horizontal"
             ref={dateRef}
@@ -242,7 +246,7 @@ const Absences = () => {
 
             {openDropdown === "date" && (
               <div className="dropdown-menu">
-                {["todas", "año", "mes", "semana", "día"].map((type) => (
+                {["todas", "año", "mes", "día"].map((type) => (
                   <button
                     key={type}
                     onClick={() => {
@@ -257,17 +261,23 @@ const Absences = () => {
               </div>
             )}
 
+            {/* Año con selector */}
             {dateFilterType === "año" && (
-              <input
-                type="number"
-                min="2000"
-                max="2100"
+              <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
                 className="filter-input-right"
-                placeholder="Año"
-              />
+              >
+                <option value="">Seleccionar año</option>
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
             )}
+
+            {/* Selector nativo de mes */}
             {dateFilterType === "mes" && (
               <input
                 type="month"
@@ -276,14 +286,8 @@ const Absences = () => {
                 className="filter-input-right"
               />
             )}
-            {dateFilterType === "semana" && (
-              <input
-                type="week"
-                value={selectedWeek}
-                onChange={(e) => setSelectedWeek(e.target.value)}
-                className="filter-input-right"
-              />
-            )}
+
+            {/* Selector nativo de día */}
             {dateFilterType === "día" && (
               <input
                 type="date"
@@ -303,7 +307,6 @@ const Absences = () => {
             <p>No hay inasistencias para mostrar.</p>
           ) : (
             filteredAbsences.map((absence, index) => {
-              // 🔹 Determinar si el coordinador puede justificar esta inasistencia
               const isOwnAbsence = absence.id_Employee === coordinatorId;
               const statusNormalized = (absence.status || "pendiente")
                 .toLowerCase()
@@ -313,19 +316,7 @@ const Absences = () => {
                 statusNormalized === "sin justificar" ||
                 !absence.status;
 
-              // 🔹 Solo mostrar botón de justificar si:
-              // 1. Es su propia inasistencia
-              // 2. Está pendiente
               const showJustifyButton = isOwnAbsence && isPending;
-
-              console.log("🔍 Debug Card (Coordinador):", {
-                nombre: absence.employeeName,
-                employeeId: absence.id_Employee,
-                coordinatorId,
-                isOwnAbsence,
-                isPending,
-                showJustifyButton,
-              });
 
               return (
                 <AbsenceCard
@@ -337,7 +328,7 @@ const Absences = () => {
                   status={absence.status || "pendiente"}
                   isJustified={statusNormalized === "justificada"}
                   justification={justificationMap?.[absence._id]}
-                  showJustifyButton={showJustifyButton} // 🔹 Solo si es suya y está pendiente
+                  showJustifyButton={showJustifyButton}
                   onJustifyClick={() => handleOpenJustifyModal(absence)}
                   onViewJustification={() =>
                     setViewJustify(justificationMap?.[absence._id])
@@ -349,7 +340,7 @@ const Absences = () => {
         </div>
       </div>
 
-      {/* 🔹 Modal de justificación (solo para inasistencias del coordinador) */}
+      {/* Modal de justificación */}
       {isModalOpen && (
         <JustifyModal
           isOpen={isModalOpen}
@@ -358,11 +349,11 @@ const Absences = () => {
           currentUser={{ id: userId }}
           onSave={saveAbsenceJustification}
           refreshAccessRecords={refreshData}
-          isAbsence={true} // 🔹 Flag para identificar que es una inasistencia
+          isAbsence={true}
         />
       )}
 
-      {/* Modal de visualización de justificación */}
+      {/* Modal de visualización */}
       {viewJustify && (
         <ViewJustifyModal
           isOpen={!!viewJustify}

@@ -366,133 +366,11 @@ def mapeo():
         'quality_info': info.get("quality", {})
     }), 200
 
-@app.route('/faces/<id>', methods=['PUT'])
-@require_api_key(MAPEO_API_KEY)
-def actualizar_face(id):
-    is_multipart = bool(request.files) or bool(request.form)
-    data = request.form if is_multipart else (request.get_json(silent=True) or {})
-
-    name = data.get('name')
-    employee_code_new = data.get('employee_code') or data.get('code')
-    schedule_id = data.get('schedule_id')
-    gender = data.get('gender')
-    area_id = data.get('area_id')
-    image = request.files.get('image') if is_multipart else None
-
-    if not any([name, employee_code_new, schedule_id, gender, area_id, image]):
-        return jsonify({'status': 'error', 'message': 'Nada que actualizar'}), 400
-
-    try:
-        documento_anterior = coleccion_de_caras.find_one({'_id': ObjectId(id)})
-    except Exception:
-        return jsonify({'status': 'error', 'message': 'ID inválido'}), 400
-
-    if not documento_anterior:
-        return jsonify({'status': 'error', 'message': 'No encontrado'}), 404
-
-    codigo_anterior = documento_anterior.get('employee_code')
-    campos_a_actualizar = {}
-
-    if name: campos_a_actualizar['name'] = name
-    if schedule_id: campos_a_actualizar['schedule_id'] = schedule_id
-    if gender: campos_a_actualizar['gender'] = gender
-    if area_id: campos_a_actualizar['area_id'] = area_id
-
-    # Validar cambio de código
-    if employee_code_new and employee_code_new != codigo_anterior:
-        existente = coleccion_de_caras.find_one({'employee_code': employee_code_new})
-        if existente:
-            return jsonify({'status': 'duplicate', 'message': 'employee_code ya existe'}), 409
-        campos_a_actualizar['employee_code'] = employee_code_new
-
-    # Procesar nueva imagen si existe
-    nuevo_encoding = None
-    quality_info = None
-    if image and image.filename != '':
-        if not allowed_file(image.filename):
-            return jsonify({'status': 'error', 'message': 'Imagen no válida'}), 400
-        
-        try:
-            upload_result = upload(image, folder="rostros")
-            image_url = upload_result.get("secure_url")
-            if not image_url:
-                raise Exception("No se obtuvo URL de Cloudinary")
-        except Exception as e:
-            print("Error Cloudinary:", e)
-            return jsonify({'status': 'error', 'message': 'Error subiendo a Cloudinary'}), 500
-
-        temp_path = download_image_from_url(image_url)
-        if not temp_path:
-            return jsonify({'status': 'error', 'message': 'Error al descargar imagen'}), 400
-
-        nuevo_encoding, info = Mapeo_cara(temp_path)
-        os.remove(temp_path)
-        
-        if nuevo_encoding is None:
-            motivo = info.get("reason", "unknown")
-            return jsonify({'status': 'error', 'message': f'No se pudo mapear rostro ({motivo})', 'detail': info}), 400
-
-        quality_info = info.get("quality", {})
-        campos_a_actualizar['image_url'] = image_url
-        campos_a_actualizar['encoding'] = nuevo_encoding.tolist()
-
-    if not campos_a_actualizar:
-        return jsonify({'status': 'error', 'message': 'Sin cambios'}), 400
-
-    # Actualizar en MongoDB
-    try:
-        resultado = coleccion_de_caras.update_one(
-            {'_id': ObjectId(id)},
-            {'$set': campos_a_actualizar}
-        )
-    except Exception as e:
-        print("Error MongoDB:", e)
-        msg = str(e)
-        if '11000' in msg or 'duplicate key' in msg.lower():
-            return jsonify({'status': 'duplicate', 'message': 'employee_code ya existe'}), 409
-        return jsonify({'status': 'error', 'message': 'Error al actualizar'}), 500
-
-    if resultado.matched_count != 1:
-        return jsonify({'status': 'error', 'message': 'No encontrado'}), 404
-
-    # ACTUALIZACIÓN CRÍTICA: Sincronizar FAISS solo cuando hay cambio
-    codigo_final = campos_a_actualizar.get('employee_code', codigo_anterior)
-    gender_final = campos_a_actualizar.get('gender', documento_anterior.get('gender'))
-    area_final = campos_a_actualizar.get('area_id', documento_anterior.get('area_id'))
-    
-    # Determinar el encoding a usar
-    encoding_final = None
-    if nuevo_encoding is not None:
-        encoding_final = nuevo_encoding
-    elif 'encoding' not in campos_a_actualizar:
-        # Si no hay nuevo encoding, usar el anterior de la DB
-        enc_list = documento_anterior.get('encoding')
-        if enc_list:
-            encoding_final = np.array(enc_list, dtype=np.float32)
-    
-    # Solo actualizar FAISS si hubo cambios relevantes
-    if (employee_code_new and employee_code_new != codigo_anterior) or \
-       nuevo_encoding is not None or \
-       'gender' in campos_a_actualizar or \
-       'area_id' in campos_a_actualizar:
-        
-        actualizar_faiss_local_y_notificar(
-            'update', 
-            codigo_anterior,  # Usar el código anterior para eliminar
-            encoding_final,
-            gender_final,
-            area_final
-        )
-
-    return jsonify({
-        'status': 'success',
-        'message': 'Rostro actualizado',
-        'quality_info': quality_info or {}
-    }), 200
 
 @app.route('/faces', methods=['GET'])
 @require_api_key(MAPEO_API_KEY)
 def listar_faces():
+    """Obtiene todos los rostros registrados"""
     faces = list(coleccion_de_caras.find({}))
     for face in faces:
         face['_id'] = str(face['_id'])
@@ -501,26 +379,28 @@ def listar_faces():
 @app.route('/faces/<id>', methods=['DELETE'])
 @require_api_key(MAPEO_API_KEY)
 def eliminar_face(id):
+    """Elimina un rostro por su ID"""
     try:
         documento = coleccion_de_caras.find_one({'_id': ObjectId(id)})
     except Exception:
         return jsonify({'status': 'error', 'message': 'ID inválido'}), 400
         
     if not documento:
-        return jsonify({'status': 'error', 'message': 'No encontrado'}), 404
+        return jsonify({'status': 'error', 'message': 'Rostro no encontrado'}), 404
 
     employee_code = documento.get("employee_code")
     
     resultado = coleccion_de_caras.delete_one({'_id': ObjectId(id)})
 
     if resultado.deleted_count == 1:
-        # ACTUALIZACIÓN CRÍTICA: Sincronizar FAISS solo cuando hay cambio
+        # Eliminar de FAISS
         if employee_code:
+            print(f"[MAPEO] Eliminando de FAISS: {employee_code}")
             actualizar_faiss_local_y_notificar('delete', employee_code)
         
-        return jsonify({'status': 'success', 'message': 'Eliminado'}), 200
+        return jsonify({'status': 'success', 'message': 'Rostro eliminado correctamente'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'No encontrado'}), 404
+        return jsonify({'status': 'error', 'message': 'No se pudo eliminar'}), 404
 
 # ============================
 # Endpoint para recargar FAISS manualmente (útil para debug)
@@ -535,7 +415,7 @@ def reload_faiss_local():
             faiss_index.load_encodings()
             return jsonify({
                 'status': 'success',
-                'message': 'Índice FAISS recargado',
+                'message': 'Índice FAISS recargado correctamente',
                 'total_indexed': faiss_index.index.ntotal
             }), 200
         except Exception as e:
