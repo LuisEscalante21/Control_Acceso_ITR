@@ -54,42 +54,48 @@ export default function AdminPermissions() {
 
   // 🧮 Filtrado + orden urgentes primero
   const filtered = useMemo(() => {
-    let list = permissions || [];
+  let list = permissions || [];
 
-    // 📅 Filtrar por fecha seleccionada y días anteriores
-    if (searchDate) {
-      const selectedDate = new Date(searchDate);
-      list = list.filter((p) => {
-        const permDate = new Date(p.applicationDay);
-        return permDate <= selectedDate;
-      });
-    }
-
-    // 🟡 Filtrar por estado
-    if (filterStatus !== "Todos") {
-      if (filterStatus === "Urgente") {
-        list = list.filter(isUrgent);
-      } else {
-        const desired = {
-          Rechazado: "rejected",
-          Pendiente: "pending",
-          Aprobado: "approved",
-        }[filterStatus];
-        list = list.filter(
-          (p) => (p.status || "").toLowerCase() === desired && !isUrgent(p)
-        );
-      }
-    }
-
-    // 🚨 Urgentes al inicio de la lista
-    list = [...list].sort((a, b) => {
-      if (isUrgent(a) && !isUrgent(b)) return -1;
-      if (!isUrgent(a) && isUrgent(b)) return 1;
-      return 0;
+  if (searchDate) {
+    const selectedDate = new Date(searchDate);
+    list = list.filter((p) => {
+      const permDate = new Date(p.applicationDay);
+      return permDate <= selectedDate;
     });
+  }
 
-    return list;
-  }, [permissions, filterStatus, searchDate]);
+  if (filterStatus !== "Todos") {
+    if (filterStatus === "Urgente") {
+      list = list.filter(isUrgent);
+    } else {
+      const desired = {
+        Rechazado: "rejected",
+        Pendiente: "pending",
+        Aprobado: "approved",
+      }[filterStatus];
+      list = list.filter(
+        (p) => (p.status || "").toLowerCase() === desired && !isUrgent(p)
+      );
+    }
+  }
+
+  // ✅ Urgente → Pendiente → Aprobado → Rechazado
+  list = [...list].sort((a, b) => {
+    const getPriority = (p) => {
+      if (isUrgent(p)) return 0;
+      const status = (p.status || "").toLowerCase();
+      if (status === "pending") return 1;
+      if (status === "approved") return 2;
+      if (status === "rejected") return 3;
+      return 4;
+    };
+
+    return getPriority(a) - getPriority(b);
+  });
+
+  return list;
+}, [permissions, filterStatus, searchDate]);
+
 
   // 📌 Abrir y cerrar modal
   const openView = (p) => {

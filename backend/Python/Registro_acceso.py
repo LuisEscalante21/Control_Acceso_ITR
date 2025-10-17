@@ -101,6 +101,31 @@ def parse_hora(hora_str):
     raise ValueError(f"Formato de hora inválido: {hora_str}")
 
 
+def parse_iso_datetime(iso_string):
+    """
+    Parsea timestamps ISO flexibles.
+    Acepta: 2025-10-16T14:34:33 o 2025-10-16T14:34:33.709Z
+    Elimina automáticamente milisegundos y zona horaria Z
+    """
+    if not iso_string:
+        return None
+    
+    iso_string = str(iso_string).strip()
+    
+    # Eliminar la Z si existe
+    if iso_string.endswith('Z'):
+        iso_string = iso_string[:-1]
+    
+    # Si tiene milisegundos, eliminarlos
+    if '.' in iso_string:
+        iso_string = iso_string.split('.')[0]
+    
+    try:
+        return datetime.fromisoformat(iso_string)
+    except ValueError as e:
+        raise ValueError(f"No se puede parsear timestamp: {iso_string}. Error: {str(e)}")
+
+
 def validar_horario(schedule, ahora: datetime, tipo: str):
     ahora = convert_to_sv_time(ahora)
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -191,7 +216,7 @@ def crear_o_actualizar_acceso():
 
     if "entry_time" in data:
         try:
-            entry_time = convert_to_sv_time(datetime.fromisoformat(data["entry_time"]))
+            entry_time = convert_to_sv_time(parse_iso_datetime(data["entry_time"]))
             update_data["entry_time"] = entry_time
             update_data["entry_result"] = validar_horario(horario, entry_time, "entrada")
             tiene_entrada = True
@@ -204,7 +229,7 @@ def crear_o_actualizar_acceso():
 
     if "exit_time" in data:
         try:
-            exit_time = convert_to_sv_time(datetime.fromisoformat(data["exit_time"]))
+            exit_time = convert_to_sv_time(parse_iso_datetime(data["exit_time"]))
             update_data["exit_time"] = exit_time
             update_data["exit_result"] = validar_horario(horario, exit_time, "salida")
             tiene_salida = True
@@ -413,9 +438,9 @@ def editar_registro(id):
 
     if "entry_time" in data:
         try:
-            update_data["entry_time"] = convert_to_sv_time(datetime.fromisoformat(data["entry_time"]))
-        except Exception:
-            return jsonify({"error": "Formato inválido para entry_time"}), 400
+            update_data["entry_time"] = convert_to_sv_time(parse_iso_datetime(data["entry_time"]))
+        except Exception as e:
+            return jsonify({"error": f"Formato inválido para entry_time: {str(e)}"}), 400
 
     if "entry_result" in data:
         update_data["entry_result"] = data["entry_result"]
@@ -423,9 +448,9 @@ def editar_registro(id):
         update_data["entry_photo"] = data["entry_photo"]
     if "exit_time" in data:
         try:
-            update_data["exit_time"] = convert_to_sv_time(datetime.fromisoformat(data["exit_time"]))
-        except Exception:
-            return jsonify({"error": "Formato inválido para exit_time"}), 400
+            update_data["exit_time"] = convert_to_sv_time(parse_iso_datetime(data["exit_time"]))
+        except Exception as e:
+            return jsonify({"error": f"Formato inválido para exit_time: {str(e)}"}), 400
     if "exit_result" in data:
         update_data["exit_result"] = data["exit_result"]
     if "exit_photo" in data:

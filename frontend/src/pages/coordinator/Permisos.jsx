@@ -69,43 +69,56 @@ export default function CoordinatorPermissions() {
 
   // 🧮 Filtrar permisos
   const filteredPermissions = useMemo(() => {
-    let list = permissions || [];
+  let list = permissions || [];
 
-    // 📅 Filtro por fecha
-    if (searchDate) {
-      const selectedDate = new Date(searchDate);
-      list = list.filter((p) => {
-        if (!p.applicationDay) return false;
-        const permDate = new Date(p.applicationDay);
-        return permDate <= selectedDate;
-      });
-    }
-
-    // 🟡 Filtro por estado
-    if (filterStatus !== "Todos") {
-      if (filterStatus === "Urgente") {
-        list = list.filter(isUrgent);
-      } else {
-        const desired = {
-          Rechazado: "rejected",
-          Pendiente: "pending",
-          Aprobado: "approved",
-        }[filterStatus];
-        list = list.filter(
-          (p) => (p.status || "").toLowerCase() === desired && !isUrgent(p)
-        );
-      }
-    }
-
-    // 🚨 Urgentes primero
-    list = [...list].sort((a, b) => {
-      if (isUrgent(a) && !isUrgent(b)) return -1;
-      if (!isUrgent(a) && isUrgent(b)) return 1;
-      return 0;
+  // 📅 Filtro por fecha
+  if (searchDate) {
+    const selectedDate = new Date(searchDate);
+    list = list.filter((p) => {
+      if (!p.applicationDay) return false;
+      const permDate = new Date(p.applicationDay);
+      return permDate <= selectedDate;
     });
+  }
 
-    return list;
-  }, [permissions, filterStatus, searchDate]);
+  // 🟡 Filtro por estado
+  if (filterStatus !== "Todos") {
+    if (filterStatus === "Urgente") {
+      list = list.filter(isUrgent);
+    } else {
+      const desired = {
+        Rechazado: "rejected",
+        Pendiente: "pending",
+        Aprobado: "approved",
+      }[filterStatus];
+      list = list.filter(
+        (p) => (p.status || "").toLowerCase() === desired && !isUrgent(p)
+      );
+    }
+  }
+
+  // 🚦 Orden personalizado: Urgente > Pendiente > Aprobado > Rechazado
+  const statusOrder = {
+    urgent: 0,
+    pending: 1,
+    approved: 2,
+    rejected: 3,
+    other: 4,
+  };
+
+  list = [...list].sort((a, b) => {
+    const getOrder = (p) => {
+      if (isUrgent(p)) return statusOrder.urgent;
+      const status = (p.status || "").toLowerCase();
+      return statusOrder[status] ?? statusOrder.other;
+    };
+
+    return getOrder(a) - getOrder(b);
+  });
+
+  return list;
+}, [permissions, filterStatus, searchDate]);
+
 
   // 📌 Modal handlers
   const openView = (p) => {

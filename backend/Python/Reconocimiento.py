@@ -145,11 +145,15 @@ def registrar_acceso_via_api(id_employee, tipo, area="Sin área"):
         "date": ahora.strftime("%Y-%m-%d"),
         "employeeArea": area
     }
+    
+    # Formato correcto: sin milisegundos, sin Z
+    timestamp_str = ahora.strftime("%Y-%m-%dT%H:%M:%S")
+    
     if tipo == "entrada":
-        data["entry_time"] = ahora.isoformat()
+        data["entry_time"] = timestamp_str
         data["entry_result"] = "Reconocido"
     elif tipo == "salida":
-        data["exit_time"] = ahora.isoformat()
+        data["exit_time"] = timestamp_str
         data["exit_result"] = "Reconocido"
     else:
         return False
@@ -222,7 +226,7 @@ def generar_frames():
             return empty_gen()
         webcam_en_uso = True
 
-    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     cap.set(cv2.CAP_PROP_FPS, 20)

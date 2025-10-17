@@ -32,7 +32,10 @@ const app = express();
 
 // Configurar CORS
 const corsOptions = {
-  origin: "http://localhost:5173", 
+  origin: [
+    "http://localhost:5173",
+    "http://10.10.3.205", 
+  ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],

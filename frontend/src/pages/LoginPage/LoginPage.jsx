@@ -205,7 +205,7 @@ const LoginPage = () => {
 
         <div className="footer">
           <b>
-            <p>Desarrollado por el departamento de Desarrollo de Software</p>
+            <p>Desarrollado por estudiantes de 3° de Desarrollo de Software</p>
           </b>
           <b>
             <p>

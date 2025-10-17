@@ -43,12 +43,13 @@ const Admins = () => {
           />
         </div>
         <button
-                    className="nuevo-empleado-btn-G"
-                    onClick={() => setShowNewCoordinador(true)}
-                  >
-                    <CirclePlus size={20} />
-                    Nuevo administrador
-                  </button>
+  className="nuevo-empleado-btn-G"
+  onClick={() => setShowNewAdmin(true)}
+>
+  <CirclePlus size={20} />
+  Nuevo administrador
+</button>
+
       </div>
     </div>
 

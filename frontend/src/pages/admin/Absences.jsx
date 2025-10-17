@@ -169,8 +169,8 @@ const Absences = () => {
         {/* 🔹 Filtros */}
         <div className="filters">
           {/* Dropdown Área */}
-          <div className="dropdown" ref={areaRef}>
-            <button
+          <div className="dropdown" ref={areaRef}> 
+            <button style={{maxWidth:"200px"}}
               className="filter-button docentes"
               onClick={() => handleDropdown("area")}
             >

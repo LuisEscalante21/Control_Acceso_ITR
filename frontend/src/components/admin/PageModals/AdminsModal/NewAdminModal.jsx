@@ -9,6 +9,9 @@ const API_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const BASE_URL = `${API_URL}${PORT}`; 
 
+// Expresión regular mejorada para validar nombres con ñ
+const SPANISH_NAME_PATTERN = /^[A-Za-zÁÉÍÓÚáéíóúñÑ\s]+$/;
+
 // Componente reutilizable para inputs
 const FormInput = ({ label, id, register, errors, validation, required, ...props }) => (
   <div className="form-field">
@@ -244,8 +247,8 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         validation={{
           required: "Los nombres son obligatorios",
           pattern: {
-            value: /^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$/,
-            message: "Solo se permiten letras",
+            value: SPANISH_NAME_PATTERN,
+            message: "Solo se permiten letras y espacios (incluyendo ñ y acentos)",
           },
         }}
         required
@@ -259,8 +262,8 @@ export default function NewCoordinatorsModal({ onSaved, onClose }) {
         validation={{
           required: "Los apellidos son obligatorios",
           pattern: {
-            value: /^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$/,
-            message: "Solo se permiten letras",
+            value: SPANISH_NAME_PATTERN,
+            message: "Solo se permiten letras y espacios (incluyendo ñ y acentos)",
           },
         }}
         required
