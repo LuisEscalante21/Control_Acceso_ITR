@@ -52,8 +52,104 @@ employeesController.getEmployee = async (req, res) => {
     res.status(500).json({ message: "Error obteniendo empleado(s)", error });
   }
 };
-;
 
+// C R E A T E - Crear nuevo empleado
+employeesController.createEmployees = async (req, res) => {
+  try {
+    const {
+      numEmpleado,
+      names,
+      surnames,
+      DUI,
+      birthday,
+      telephone,
+      email,
+      password,
+      hireDate,
+      IdTeam,
+      status,
+      address,
+    } = req.body;
+
+    // Validar que los campos requeridos estén presentes
+    if (!numEmpleado || !names || !surnames || !DUI || !email || !password) {
+      return res.status(400).json({ message: "Faltan campos requeridos" });
+    }
+
+    // Validar formatos
+    const phoneRegex = /^\d{4}-\d{4}$/;
+    const duiRegex = /^\d{8}-\d$/;
+
+    if (telephone && !phoneRegex.test(telephone)) {
+      return res.status(400).json({ message: "Formato de teléfono inválido. Use ####-####." });
+    }
+
+    if (!duiRegex.test(DUI)) {
+      return res.status(400).json({ message: "Formato de DUI inválido. Use ########-#." });
+    }
+
+    // ✅ Validar que el número de empleado no exista
+    const existingNumEmpleado = await employeesModel.findOne({ numEmpleado });
+    if (existingNumEmpleado) {
+      return res.status(400).json({ message: "El número de empleado ya está registrado" });
+    }
+
+    // ✅ Validar que el DUI no exista
+    const existingDUI = await employeesModel.findOne({ DUI });
+    if (existingDUI) {
+      return res.status(400).json({ message: "El DUI ya está registrado" });
+    }
+
+    // ✅ Validar que el correo electrónico no exista
+    const existingEmail = await employeesModel.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({ message: "El correo electrónico ya está registrado" });
+    }
+
+    // Preparar datos del empleado
+    const newEmployeeData = {
+      numEmpleado,
+      names,
+      surnames,
+      DUI,
+      birthday,
+      telephone,
+      email,
+      hireDate,
+      status,
+      address,
+    };
+
+    // Agregar IdTeam si viene
+    if (IdTeam) {
+      if (typeof IdTeam === "string") {
+        newEmployeeData.IdTeam = IdTeam;
+      } else if (typeof IdTeam === "object" && IdTeam._id) {
+        newEmployeeData.IdTeam = IdTeam._id;
+      }
+    }
+
+    // Hashear la contraseña
+    newEmployeeData.password = await bcryptjs.hash(password, 10);
+
+    // 📸 Subir imagen si viene en el request
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "employees",
+        allowed_formats: ["jpg", "png", "jpeg"],
+      });
+      newEmployeeData.photo = result.secure_url;
+    }
+
+    // Crear el empleado
+    const newEmployee = await employeesModel.create(newEmployeeData);
+
+    res.status(201).json({ message: "Empleado creado exitosamente", employee: newEmployee });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al crear empleado", error: error.message });
+  }
+};
 
 // D E L E T E - Eliminar empleado por ID
 employeesController.deleteEmployees = async (req, res) => {
@@ -86,6 +182,12 @@ employeesController.updateEmployees = async (req, res) => {
       address,
     } = req.body;
 
+    // Obtener el empleado actual para comparar
+    const currentEmployee = await employeesModel.findById(req.params.id);
+    if (!currentEmployee) {
+      return res.status(404).json({ message: "Empleado no encontrado" });
+    }
+
     const updatedData = {
       numEmpleado,
       names,
@@ -99,16 +201,6 @@ employeesController.updateEmployees = async (req, res) => {
       address,
     };
 
-     // Solo agregar IdTeam si viene como string
-    if (IdTeam) {
-      if (typeof IdTeam === "string") {
-        updatedData.IdTeam = IdTeam;
-      } else if (typeof IdTeam === "object" && IdTeam._id) {
-        updatedData.IdTeam = IdTeam._id;
-      }
-      // Si no es string ni objeto con _id, no lo agregamos
-    }
-
     // Validar formatos
     const phoneRegex = /^\d{4}-\d{4}$/;
     const duiRegex = /^\d{8}-\d$/;
@@ -119,6 +211,40 @@ employeesController.updateEmployees = async (req, res) => {
 
     if (DUI && !duiRegex.test(DUI)) {
       return res.status(400).json({ message: "Formato de DUI inválido. Use ########-#." });
+    }
+
+    // ✅ Validar que el número de empleado no exista (si es diferente al actual)
+    if (numEmpleado && numEmpleado !== currentEmployee.numEmpleado) {
+      const existingNumEmpleado = await employeesModel.findOne({ numEmpleado });
+      if (existingNumEmpleado) {
+        return res.status(400).json({ message: "El número de empleado ya está registrado" });
+      }
+    }
+
+    // ✅ Validar que el DUI no exista (si es diferente al actual)
+    if (DUI && DUI !== currentEmployee.DUI) {
+      const existingDUI = await employeesModel.findOne({ DUI });
+      if (existingDUI) {
+        return res.status(400).json({ message: "El DUI ya está registrado" });
+      }
+    }
+
+    // ✅ Validar que el correo electrónico no exista (si es diferente al actual)
+    if (email && email !== currentEmployee.email) {
+      const existingEmail = await employeesModel.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({ message: "El correo electrónico ya está registrado" });
+      }
+    }
+
+    // Solo agregar IdTeam si viene como string
+    if (IdTeam) {
+      if (typeof IdTeam === "string") {
+        updatedData.IdTeam = IdTeam;
+      } else if (typeof IdTeam === "object" && IdTeam._id) {
+        updatedData.IdTeam = IdTeam._id;
+      }
+      // Si no es string ni objeto con _id, no lo agregamos
     }
 
     // Hashear la contraseña si se proporciona
@@ -151,6 +277,5 @@ employeesController.updateEmployees = async (req, res) => {
     res.status(500).json({ message: "Error al actualizar empleado", error: error.message });
   }
 };
-
 
 export default employeesController;

@@ -29,7 +29,7 @@ const getActionData = (type) => {
     year: now.getFullYear(),
     hour: now.getHours(),
     min: now.getMinutes(),
-    type, // 🆕 guardamos si fue aprobado o rechazado
+    type,
   };
 };
 
@@ -120,9 +120,8 @@ export default function ViewPermissionModal({
     Swal.close();
 
     if (!res || !res.ok) {
-  return Swal.fire("Error", res?.message || "No se pudo actualizar", "error");
-}
-
+      return Swal.fire("Error", res?.message || "No se pudo actualizar", "error");
+    }
 
     await Swal.fire("Actualizado", "El permiso se actualizó correctamente", "success");
     onChanged?.();
@@ -180,7 +179,15 @@ export default function ViewPermissionModal({
             </div>
           </div>
 
-          
+          {/* Razón */}
+          {reason && (
+            <div className="vp2-notes">
+              <div className="vp2-note">
+                <label>Razón</label>
+                <p>{reason}</p>
+              </div>
+            </div>
+          )}
 
           {/* Detalles según tipo */}
           {permissionType === "minor" && (
@@ -230,16 +237,6 @@ export default function ViewPermissionModal({
               <div className="vp2-field">
                 <label>Tipo enfermedad</label>
                 <div>{illnessType}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Comentario */}
-          {reason && (
-            <div className="vp2-notes">
-              <div className="vp2-note">
-                <label>Razón</label>
-                <p>{reason}</p>
               </div>
             </div>
           )}
@@ -329,7 +326,7 @@ export default function ViewPermissionModal({
                         : "Gestionado por";
                     return (
                       <li key={a._id || idx}>
-                        <strong>{label}</strong> {a.user || "-"}   {day}/{month}/{year}{" "}
+                        <strong>{label}</strong> {a.user || "-"} {day}/{month}/{year}{" "}
                         {fmtTime(a.hour, a.min)}
                       </li>
                     );

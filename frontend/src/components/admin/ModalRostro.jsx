@@ -4,6 +4,7 @@ import rostroImg1 from "../../img/Rostros-1.png";
 import Swal from "sweetalert2";
 import useDataSchedules from "../../hooks/admin/useDataSchedule.jsx";
 import useDataTeams from "../../hooks/admin/useDataTeams.jsx";
+import axios from "axios";
 
 function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   const [newFile, setNewFile] = useState(null);
@@ -15,6 +16,8 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
 
   const [loadingAreas, setLoadingAreas] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [userFound, setUserFound] = useState(false);
 
   const { schedules } = useDataSchedules();
   const { teams, fetchTeams } = useDataTeams();
@@ -37,6 +40,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
       setGender(face.gender || "");
       setAreaId(face.area_id || face?.area?._id || "");
       setNewFile(null);
+      setUserFound(false);
     } else {
       setName("");
       setEmployeeCode("");
@@ -44,6 +48,7 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
       setGender("");
       setAreaId("");
       setNewFile(null);
+      setUserFound(false);
     }
   }, [mode, face]);
 
@@ -55,7 +60,90 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     setAreaId("");
     setNewFile(null);
     setIsSaving(false);
+    setUserFound(false);
     onClose();
+  };
+
+  // Función para buscar usuario por código de empleado
+  const searchUserByCode = async (code) => {
+    if (!code || code.trim().length < 1) {
+      return;
+    }
+
+    setIsSearching(true);
+
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/users/search/code/${code.trim()}`
+      );
+
+      if (response.data.found) {
+        const userData = response.data.user;
+
+        // Rellenar los campos automáticamente
+        setName(userData.name);
+        setGender(userData.gender);
+        setAreaId(userData.area_id);
+        setUserFound(true);
+
+        Swal.fire({
+          icon: "success",
+          title: "Usuario encontrado",
+          text: `Datos de ${userData.name} cargados exitosamente`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      }
+    } catch (error) {
+      console.error("Error al buscar usuario:", error);
+      setUserFound(false);
+      
+      if (error.response?.status === 404) {
+        // Usuario no encontrado - limpiar campos
+        setName("");
+        setGender("");
+        setAreaId("");
+
+        Swal.fire({
+          icon: "info",
+          title: "Usuario no encontrado",
+          text: "No se encontró un usuario con ese código. Puedes ingresar los datos manualmente.",
+          timer: 2500,
+          showConfirmButton: false,
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Error al buscar el usuario. Intenta nuevamente.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Manejador para el cambio del código de empleado
+  const handleEmployeeCodeChange = (e) => {
+    const value = e.target.value;
+    setEmployeeCode(value);
+  };
+
+  // Buscar cuando se pierde el foco del campo
+  const handleEmployeeCodeBlur = () => {
+    if (employeeCode && mode === "add") {
+      searchUserByCode(employeeCode);
+    }
+  };
+
+  // También puedes agregar búsqueda al presionar Enter
+  const handleEmployeeCodeKeyPress = (e) => {
+    if (e.key === "Enter" && employeeCode && mode === "add") {
+      e.preventDefault();
+      searchUserByCode(employeeCode);
+    }
   };
 
   const handleFileChange = (e) => {
@@ -147,22 +235,43 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
 
         <h2>{mode === "edit" ? "Ver datos del rostro" : "Agregar rostro"}</h2>
 
+        <label>Código de empleado:</label>
+        <div style={{ position: "relative" }}>
+          <input
+            type="text"
+            value={employeeCode}
+            onChange={handleEmployeeCodeChange}
+            onBlur={handleEmployeeCodeBlur}
+            onKeyPress={handleEmployeeCodeKeyPress}
+            placeholder="Ingrese código de empleado"
+            autoComplete="off"
+            disabled={mode === "edit" || isSearching}
+            style={{ paddingRight: isSearching ? "40px" : "10px" }}
+          />
+          {isSearching && (
+            <span style={{
+              position: "absolute",
+              right: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              fontSize: "12px"
+            }}>
+              🔍 Buscando...
+            </span>
+          )}
+        </div>
+        {mode === "add" && (
+          <p style={{ fontSize: "11px", color: "#666", marginTop: "2px" }}>
+            Los datos se cargarán automáticamente si el código existe
+          </p>
+        )}
+
         <label>Nombres y Apellidos:</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nombre completo"
-          autoComplete="off"
-          disabled={mode === "edit"}
-        />
-
-        <label>Código de empleado:</label>
-        <input
-          type="text"
-          value={employeeCode}
-          onChange={(e) => setEmployeeCode(e.target.value)}
-          placeholder="Código"
           autoComplete="off"
           disabled={mode === "edit"}
         />

@@ -42,3 +42,81 @@ export const getUserById = async (req, res) => {
     res.status(500).json({ message: "Error al obtener usuario", error: error.message });
   }
 };
+
+// 🔹 NUEVA FUNCIÓN: Buscar usuario por código de empleado
+export const getUserByEmployeeCode = async (req, res) => {
+  const { employeeCode } = req.params;
+
+  try {
+    if (!employeeCode || !employeeCode.trim()) {
+      return res.status(400).json({ 
+        found: false, 
+        message: "Código de empleado requerido" 
+      });
+    }
+
+    const code = employeeCode.trim();
+    let user = null;
+    let userType = null;
+
+    // 🔹 Buscar en empleados
+    user = await EmployeesModel.findOne({ numEmpleado: code }).populate("IdTeam").lean();
+    if (user) {
+      userType = "employee";
+    }
+
+    // 🔹 Si no se encontró, buscar en coordinadores
+    if (!user) {
+      user = await CoordinatorsModel.findOne({ numEmpleado: code }).populate("IdTeam").lean();
+      if (user) {
+        userType = "coordinator";
+      }
+    }
+
+    // 🔹 Si no se encontró, buscar en administradores
+    if (!user) {
+      user = await AdministratorsModel.findOne({ numEmpleado: code }).populate("IdTeam").lean();
+      if (user) {
+        userType = "administrator";
+      }
+    }
+
+    // 🔹 Si no se encontró en ninguna colección
+    if (!user) {
+      return res.status(404).json({
+        found: false,
+        message: "No se encontró un usuario con ese código de empleado",
+      });
+    }
+
+    // 🔹 Formatear respuesta con los datos del usuario
+    return res.status(200).json({
+      found: true,
+      userType: userType,
+      user: {
+        id: user._id,
+        name: `${user.names} ${user.surnames}`,
+        names: user.names,
+        surnames: user.surnames,
+        employee_code: user.numEmpleado,
+        email: user.email,
+        telephone: user.telephone,
+        DUI: user.DUI,
+        birthday: user.birthday,
+        address: user.address,
+        gender: user.gender || "",
+        area_id: user.IdTeam?._id || "",
+        area_name: user.IdTeam?.name || "",
+        photo: user.photo || "",
+        status: user.status,
+      },
+    });
+  } catch (error) {
+    console.error("Error al buscar usuario por código:", error);
+    return res.status(500).json({
+      found: false,
+      message: "Error al buscar usuario",
+      error: error.message,
+    });
+  }
+};

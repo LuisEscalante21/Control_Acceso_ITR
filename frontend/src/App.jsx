@@ -15,7 +15,7 @@ import GuestRoute from "./components/GuestRoute";
 
 // Admin
 import AdminDashboard from "./pages/admin/Dashboard.jsx";
-import HomeAdmin from "../src/components/admin/Home.jsx";
+import HomeAdmin from "./components/admin/Home.jsx";
 import Empleados from "./pages/admin/Empleados.jsx";
 import Coordinators from "./pages/admin/Coordinadores.jsx";
 import Admins from "./pages/admin/Admins.jsx";

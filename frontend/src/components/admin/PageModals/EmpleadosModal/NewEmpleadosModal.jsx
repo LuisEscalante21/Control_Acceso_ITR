@@ -76,7 +76,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     },
   });
 
-  // Hook para equipos (igual que en tu otro modal)
+  // Hook para equipos
   const { teams: teamsRaw, fetchTeams } = useDataTeams();
   const [loadingTeams, setLoadingTeams] = useState(true);
 
@@ -86,9 +86,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
   // Watchers para campos con formato
   const dui = watch("DUI") || "";
   const telephone = watch("telephone") || "";
-  const email = watch("email") || ""; // (no se modifica, pero lo dejamos por consistencia)
-  const hireDate = watch("hireDate");
-  const birthday = watch("birthday");
+  const numEmpleado = watch("numEmpleado") || "";
 
   // Formatear DUI (00000000-0)
   useEffect(() => {
@@ -104,14 +102,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     setValue("telephone", value);
   }, [telephone, setValue]);
 
-  // Validar fecha de contratación
-  useEffect(() => {
-    if (hireDate && birthday && new Date(hireDate) <= new Date(birthday)) {
-      setValue("hireDate", "", { shouldValidate: true });
-    }
-  }, [hireDate, birthday, setValue]);
-
-  // Cargar equipos vía hook (igual patrón que tu ModalFace)
+  // Cargar equipos vía hook
   useEffect(() => {
     (async () => {
       try {
@@ -122,7 +113,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
     })();
   }, [fetchTeams]);
 
-  // Opciones del select de equipos mapeadas desde el hook
+  // Opciones del select de equipos
   const teamOptions = (teamsRaw || []).map((t) => ({
     value: t._id,
     label: t.name,
@@ -205,9 +196,18 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
       let errorMessage = "Verifica que los campos estén correctos.";
 
       if (error.response) {
-        errorMessage =
-          error.response.data.message ||
-          (error.response.status === 409 ? "El empleado ya existe" : errorMessage);
+        // Mensajes de error específicos del backend
+        const backendMessage = error.response.data?.message || "";
+        
+        if (backendMessage.includes("número de empleado")) {
+          errorMessage = "El número de empleado ya está registrado";
+        } else if (backendMessage.includes("DUI")) {
+          errorMessage = "El DUI ya está registrado";
+        } else if (backendMessage.includes("correo electrónico")) {
+          errorMessage = "El correo electrónico ya está registrado";
+        } else {
+          errorMessage = backendMessage || errorMessage;
+        }
       }
 
       await Swal.fire({
@@ -379,8 +379,8 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
         validation={{
           required: "Este campo es requerido",
           validate: (value) => {
-            if (!birthday) return true;
-            return new Date(value) > new Date(birthday) || "Debe ser posterior a la fecha de nacimiento";
+            if (!watch("birthday")) return true;
+            return new Date(value) > new Date(watch("birthday")) || "Debe ser posterior a la fecha de nacimiento";
           },
         }}
       />
