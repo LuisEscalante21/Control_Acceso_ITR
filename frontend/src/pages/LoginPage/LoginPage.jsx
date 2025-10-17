@@ -10,6 +10,8 @@ const BASE = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${BASE}${PORT}/api`;
 
+console.log("API URL:", API_URL);
+
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,11 +26,11 @@ const LoginPage = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem("authToken");
-      if (!token) return;
-
-      setLoading(true);
       try {
+        const token = localStorage.getItem("authToken");
+        if (!token) return;
+
+        setLoading(true);
         const response = await fetch(`${API_URL}/checkAuth`, {
           method: "GET",
           credentials: "include",
@@ -108,6 +110,11 @@ const LoginPage = () => {
           timer: 1600,
           showConfirmButton: false,
         });
+
+        // Guardar token en localStorage
+        if (data.token) {
+          localStorage.setItem("authToken", data.token);
+        }
 
         navigate(nextRoute);
       }
@@ -227,7 +234,7 @@ const LoginPage = () => {
       <RecoveryPasswordModal
         open={showRecovery}
         onClose={() => setShowRecovery(false)}
-        onVerified={() => setShowNewPass(true)} // 👉 al verificar código abre NewPass
+        onVerified={() => setShowNewPass(true)}
       />
 
       {/* Modal Nueva Contraseña */}
@@ -235,7 +242,7 @@ const LoginPage = () => {
         open={showNewPass}
         onSuccess={async () => {
           setShowNewPass(false);
-          setPassword(""); // limpia por seguridad
+          setPassword("");
           await Swal.fire({
             icon: "success",
             title: "Restablecimiento correcto",
