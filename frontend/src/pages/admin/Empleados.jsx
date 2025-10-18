@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import "../../styles/Admin/Empleados.css";
 import EmpleadoCard from "../../components/admin/Cards/DocenteCard.jsx";
-import { Search, CirclePlus } from "lucide-react";
+import { Search, CirclePlus, ChevronDown } from "lucide-react";
 import ModalEmpleado from "../../components/admin/PageModals/EmpleadosModal/NewEmpleadosModal.jsx";
 import EditEmpleadoModal from "../../components/admin/PageModals/EmpleadosModal/UpdateEmpleaods.jsx";
 import useEmployees from "../../hooks/admin/useDataEmployee.jsx";
@@ -13,6 +13,9 @@ const Empleados = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewEmpleado, setShowNewEmpleado] = useState(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
+  const [selectedArea, setSelectedArea] = useState("Todas");
+  const [openDropdown, setOpenDropdown] = useState(false);
+  const areaRef = useRef(null);
 
   const { employees, fetchEmployees, saveEmployee, deleteEmployee } = useEmployees();
   const { teams, fetchTeams } = useDataTeams();
@@ -38,18 +41,53 @@ const Empleados = () => {
     }
   }
 
-  // Filtrar empleados por nombre completo
-  const filteredEmpleados = useMemo(() => {
-    return employees.filter((empleado) => {
-      const fullName = `${empleado.names} ${empleado.surnames}`.toLowerCase();
-      return fullName.includes(searchTerm.toLowerCase());
-    });
-  }, [searchTerm, employees]);
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (areaRef.current && !areaRef.current.contains(event.target)) {
+        setOpenDropdown(false);
+      }
+    }
+
+    if (openDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openDropdown]);
 
   // Obtener nombre del equipo por su ID
   const getTeamName = (teamId) => {
     const team = teams.find((t) => t._id === teamId);
     return team ? team.name : "Sin área";
+  };
+
+  // Filtrar empleados por nombre completo y área
+  const filteredEmpleados = useMemo(() => {
+    return employees.filter((empleado) => {
+      const fullName = `${empleado.names} ${empleado.surnames}`.toLowerCase();
+      const matchesSearch = fullName.includes(searchTerm.toLowerCase());
+      
+      // Filtrar por área
+      if (selectedArea === "Todas") {
+        return matchesSearch;
+      } else if (selectedArea === "Sin área") {
+        return matchesSearch && !empleado.IdTeam;
+      } else {
+        const teamName = empleado.IdTeam ? getTeamName(empleado.IdTeam._id) : "";
+        return matchesSearch && teamName === selectedArea;
+      }
+    });
+  }, [searchTerm, selectedArea, employees, teams]);
+
+  // Manejar selección de área
+  const handleSelectArea = (area) => {
+    setSelectedArea(area);
+    setOpenDropdown(false);
   };
 
   // Guardar o actualizar empleado
@@ -70,8 +108,8 @@ const Empleados = () => {
     <>
       <div className="encabezado">
         <h1 className="titulo">Gestión de Empleados</h1>
-        <div className="busqueda-bar" >
-          <div className="buscadora" >
+        <div className="busqueda-bar">
+          <div className="buscadora">
             <Search className="search-icon" />
             <input
               type="text"
@@ -80,6 +118,7 @@ const Empleados = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
           <button
             className="nuevo-empleado-btn-G"
             onClick={() => setShowNewEmpleado(true)}
@@ -87,6 +126,44 @@ const Empleados = () => {
             <CirclePlus size={20} />
             Nuevo Empleado
           </button>
+
+          {/* Filtro por área */}
+          <div className="dropdown"  ref={areaRef}>
+            <button
+              className="filter-button docentes"
+              style={{ maxWidth: "400px" }}
+              onClick={() => setOpenDropdown(!openDropdown)}
+            >
+              {selectedArea} <ChevronDown size={16} />
+            </button>
+            {openDropdown && (
+              <div className="dropdown-menu docentes">
+                <button
+                  onClick={() => handleSelectArea("Todas")}
+                  className={selectedArea === "Todas" ? "selected" : ""}
+                >
+                  Todas
+                </button>
+                <button
+                  onClick={() => handleSelectArea("Sin área")}
+                  className={selectedArea === "Sin área" ? "selected" : ""}
+                >
+                  Sin área
+                </button>
+                {teams.map((team) => (
+                  <button
+                    key={team._id}
+                    onClick={() => handleSelectArea(team.name)}
+                    className={selectedArea === team.name ? "selected" : ""}
+                  >
+                    {team.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          
         </div>
       </div>
 
