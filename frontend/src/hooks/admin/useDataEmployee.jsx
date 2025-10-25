@@ -45,9 +45,7 @@ const useDataEmployee = () => {
       const employeeId = idToUpdate || employeeEdit?._id;
 
       if (employeeId) {
-        if (employeeData instanceof FormData) employeeData.delete("IdTeam");
-        else delete employeeData.IdTeam;
-
+        // Permitir actualizar IdTeam al editar un empleado (antes se eliminaba)
         await axios.put(`${API_URL}/employee/${employeeId}`, employeeData, config);
         Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
       } else {

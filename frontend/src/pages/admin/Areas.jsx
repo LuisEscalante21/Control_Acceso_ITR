@@ -12,11 +12,11 @@ const Areas = () => {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedArea, setSelectedArea] = useState(null);
-  const { teams, fetchTeams } = useDataTeams();
+  const { teams, loading, fetchTeams, deleteTeam } = useDataTeams();
 
   useEffect(() => {
     fetchTeams();
-  }, []);
+  }, [fetchTeams]);
 
   // Obtener userInfo descifrado (si existe cookie cifrada)
   const secretKey = import.meta.env.VITE_JWT_SECRET;
@@ -32,6 +32,24 @@ const Areas = () => {
       userInfo = null;
     }
   }
+
+  const handleSaveNew = async () => {
+    await fetchTeams(); // Refresca la lista
+    setShowModal(false);
+  };
+
+  const handleUpdate = async () => {
+    await fetchTeams(); // Refresca la lista
+    setShowEditModal(false);
+    setSelectedArea(null);
+  };
+
+  const handleDelete = async (id) => {
+    const success = await deleteTeam(id);
+    if (success) {
+      // La lista ya se refrescó en deleteTeam
+    }
+  };
 
   return (
     <>
@@ -51,7 +69,9 @@ const Areas = () => {
 
       <div className="gestion-de-empleadoss">
         <div className="empleados-list">
-          {teams.length > 0 ? (
+          {loading ? (
+            <p style={{ padding: "20px", color: "#888" }}>Cargando áreas...</p>
+          ) : teams.length > 0 ? (
             <div className="area-row">
               {teams.map((area) => (
                 <AreaCard
@@ -61,6 +81,7 @@ const Areas = () => {
                     setSelectedArea(area);
                     setShowEditModal(true);
                   }}
+                  onDelete={() => handleDelete(area._id)}
                 />
               ))}
             </div>
@@ -83,10 +104,7 @@ const Areas = () => {
             style={{ background: "none", boxShadow: "none", padding: 0 }}
           >
             <ModalNuevaArea
-              onSaved={() => {
-                fetchTeams();
-                setShowModal(false);
-              }}
+              onSaved={handleSaveNew}
               onClose={() => setShowModal(false)}
             />
           </div>
@@ -108,10 +126,10 @@ const Areas = () => {
           >
             <UpdateTeams
               area={selectedArea}
+              onSaved={handleUpdate}
               onClose={() => {
                 setShowEditModal(false);
                 setSelectedArea(null);
-                fetchTeams();
               }}
             />
           </div>

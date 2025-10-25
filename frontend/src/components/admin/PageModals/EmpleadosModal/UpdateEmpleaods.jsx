@@ -106,6 +106,18 @@ export default function UpdateEmpleaods({
     return () => controller.abort();
   }, []);
 
+  // Obtener nombre de equipo a partir del empleado o del listado de teams
+  const getTeamNameFromEmpleado = (emp) => {
+    if (!emp) return null;
+    // Si la API ya devolvió el objeto poblado
+    if (emp.IdTeam && typeof emp.IdTeam === "object" && emp.IdTeam.name) return emp.IdTeam.name;
+
+    // Si viene como id string, buscar en teams
+    const id = typeof emp.IdTeam === "string" ? emp.IdTeam : (emp.IdTeam?._id || "");
+    const found = teams.find((t) => t.value === id);
+    return found ? found.label : null;
+  };
+
   const onSubmit = async (data) => {
     const allowedFields = [
       "numEmpleado",
@@ -268,7 +280,7 @@ export default function UpdateEmpleaods({
               <div className="cvcard-info-group">
                 <span className="cvcard-label">Área de trabajo:</span>
                 <span className="cvcard-value">
-                  {empleado.IdTeam?.name || "No asignado"}
+                  {getTeamNameFromEmpleado(empleado) || "No asignado"}
                 </span>
               </div>
               {/* BOTÓN PARA GENERAR REPORTE */}

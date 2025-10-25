@@ -36,13 +36,13 @@ registerEmployeesController.register = async (req, res) => {
       address,
     } = req.body;
 
-    // Validación básica - campos requeridos
+    // Validación básica - campos requeridos (status no es obligatorio; por defecto será activo)
     if (
       !numEmpleado || !names || !surnames || !DUI || !birthday ||
-      !telephone || !email || !password || !hireDate || !IdTeam || !status || !address
+      !telephone || !email || !password || !hireDate || !IdTeam || !address
     ) {
       return res.status(400).json({
-        message: "Todos los campos son requeridos.",
+        message: "Todos los campos son requeridos (excepto status).",
         missingFields: [
           !numEmpleado && "numEmpleado",
           !names && "names",
@@ -54,7 +54,6 @@ registerEmployeesController.register = async (req, res) => {
           !password && "password",
           !hireDate && "hireDate",
           !IdTeam && "IdTeam",
-          !status && "status",
           !address && "address",
         ].filter(Boolean),
       });
@@ -148,6 +147,11 @@ registerEmployeesController.register = async (req, res) => {
       }
     }
 
+    // Determinar valor de status (por defecto activo)
+    const statusValue = (typeof status === "undefined" || status === null)
+      ? true
+      : (status === "activo" || status === true || status === "true");
+
     // Crear nuevo empleado
     const newEmployee = new Employee({
       numEmpleado: numEmpleado.trim(),
@@ -160,7 +164,7 @@ registerEmployeesController.register = async (req, res) => {
       password: passwordHash,
       hireDate: new Date(hireDate),
       IdTeam,
-      status: status === "activo" || status === true,
+      status: statusValue,
       address: address.trim(),
       photo: photoUrl,
     });

@@ -170,7 +170,10 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   };
 
   const handleSave = async () => {
-    if (isSaving) return;
+    if (isSaving) {
+      console.log("Operación en progreso, evitando doble envío");
+      return;
+    }
 
     if (
       !name.trim() ||
@@ -195,11 +198,16 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     }
 
     setIsSaving(true);
+    
+    // Deshabilitar el botón de guardado inmediatamente
+    const saveButton = document.querySelector('.save-btn');
+    if (saveButton) {
+      saveButton.disabled = true;
+    }
 
     const formData = new FormData();
     formData.append("name", name.trim());
     formData.append("employee_code", employeeCode.trim());
-    formData.append("code", employeeCode.trim());
     formData.append("schedule_id", selectedScheduleId);
     formData.append("gender", gender);
     formData.append("area_id", areaId);

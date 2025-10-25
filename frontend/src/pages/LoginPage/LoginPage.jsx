@@ -191,25 +191,6 @@ const LoginPage = () => {
           </button>
         </form>
 
-        {/* 🔗 Enlace para recuperar contraseña */}
-        <div style={{ marginTop: 12 }}>
-          <button
-            type="button"
-            onClick={() => setShowRecovery(true)}
-            className="link-button"
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#1e88e5",
-              textDecoration: "underline",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            ¿Olvidaste tu contraseña?
-          </button>
-        </div>
-
         <div className="footer">
           <b>
             <p>Desarrollado por estudiantes de 3° de Desarrollo de Software</p>

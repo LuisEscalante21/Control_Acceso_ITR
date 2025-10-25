@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
-import Employee from "../models/Employees.js";
+import EmployeesModel from "../models/Employees.js";
+import CoordinatorsModel from "../models/Coordinators.js";
 import JustificationLateArrival from "../models/Justifications.js";
 import Permissions from "../models/Permissions.js";
 import Team from "../models/Teams.js";
@@ -19,7 +20,19 @@ generateReportController.generateUserReport = async (req, res) => {
       return res.status(400).json({ message: "ID de usuario inválido" });
     }
 
-    const user = await Employee.findById(userId);
+    // Diagnostic logs: mostrar userId y validez
+    console.log("[reports] generateUserReport called for userId:", userId, "isValid:", Types.ObjectId.isValid(userId));
+
+    // Buscar primero en empleados, si no está, buscar en coordinadores
+    let user = await EmployeesModel.findById(userId);
+    let userType = "empleado";
+    console.log("[reports] EmployeesModel.findById result:", !!user);
+    if (!user) {
+      user = await CoordinatorsModel.findById(userId);
+      console.log("[reports] CoordinatorsModel.findById result:", !!user);
+      userType = user ? "coordinador" : userType;
+    }
+
     if (!user) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
@@ -30,10 +43,42 @@ generateReportController.generateUserReport = async (req, res) => {
       if (team) teamName = team.name || "No definido";
     }
 
-    const justifications = await JustificationLateArrival.find({ userId });
-    const permissions = await Permissions.find({ idUser: userId });
-    const accessRecords = await Access.find({ id_Employee: userId }).sort({ date: 1 });
-    const absences = await Absence.find({ id_Employee: userId }).sort({ date: -1 });
+    // Consultas defensivas: cada colección puede usar campos distintos según el tipo
+    let justifications = [];
+    let permissions = [];
+    let accessRecords = [];
+    let absences = [];
+
+    try {
+      justifications = await JustificationLateArrival.find({ userId });
+    } catch (err) {
+      console.error("Error consultando justificaciones:", err.message);
+      justifications = [];
+    }
+
+    try {
+      // Permissions.idUser suele ser string; intentamos con id como string y con número de empleado
+      permissions = await Permissions.find({ $or: [{ idUser: userId }, { idUser: String(userId) }, { employeeNumber: user.numEmpleado || "" }] });
+    } catch (err) {
+      console.error("Error consultando permisos:", err.message);
+      permissions = [];
+    }
+
+    try {
+      // registrationAccess puede usar id_Employee como ObjectId o string; intentamos varias opciones
+      accessRecords = await Access.find({ $or: [{ id_Employee: userId }, { id_Employee: String(userId) }] }).sort({ date: 1 });
+    } catch (err) {
+      console.error("Error consultando accesos:", err.message);
+      accessRecords = [];
+    }
+
+    try {
+      // Absences.id_Employee a veces es string (employee number) o id
+      absences = await Absence.find({ $or: [{ id_Employee: userId }, { id_Employee: String(userId) }, { id_Employee: user.numEmpleado || "" }] }).sort({ date: -1 });
+    } catch (err) {
+      console.error("Error consultando inasistencias:", err.message);
+      absences = [];
+    }
 
     const doc = new PDFDocument({ margin: 50 });
     const fontPath = path.resolve("src/font/Roboto-Regular.ttf");
@@ -56,7 +101,7 @@ generateReportController.generateUserReport = async (req, res) => {
       doc.image(logoPath, 450, 40, { width: 80 });
     }
 
-    doc.fillColor("#2c3e50").fontSize(20).text("Reporte del empleado", 50, 50, { align: "left" });
+  doc.fillColor("#2c3e50").fontSize(20).text("Reporte del usuario", 50, 50, { align: "left" });
     doc.moveDown();
     doc.moveTo(50, doc.y).lineTo(550, doc.y).strokeColor("#3498db").stroke();
     doc.moveDown();
@@ -65,9 +110,10 @@ generateReportController.generateUserReport = async (req, res) => {
     const startY = doc.y;
 
     doc.fontSize(14).fillColor("#000");
-    doc.text(`Empleado: ${user.names} ${user.surnames}`, startX, startY);
-    doc.text(`Código de empleado: ${user.numEmpleado || "No definido"}`);
-    doc.text(`Área: ${teamName}`);
+  doc.text(`${userType.charAt(0).toUpperCase() + userType.slice(1)}: ${user.names} ${user.surnames}`, startX, startY);
+  doc.text(`Código: ${user.numEmpleado || "No definido"}`);
+  doc.text(`Área: ${teamName}`);
+  doc.text(`Tipo de usuario: ${userType}`);
     doc.text(`Fecha de generación: ${new Date().toLocaleDateString("es-ES")}`);
 
     if (user.photo) {

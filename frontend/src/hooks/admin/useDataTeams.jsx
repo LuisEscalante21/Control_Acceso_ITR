@@ -7,14 +7,11 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${BASE_URL}${PORT}/api`;
 
-// Cache global simple
-let cachedTeams = null;
-
 const useDataTeams = () => {
-  const [teams, setTeams] = useState(cachedTeams || []);
+  const [teams, setTeams] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [teamEdit, setTeamEdit] = useState(null);
-  const [loading, setLoading] = useState(!cachedTeams);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   // Manejo de errores
@@ -29,14 +26,11 @@ const useDataTeams = () => {
     }
   };
 
-  // Obtener equipos (usa cache si existe)
+  // Obtener equipos - SIEMPRE consulta al servidor
   const fetchTeams = useCallback(async () => {
-    if (cachedTeams) return cachedTeams;
-
     setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/teams`, { withCredentials: true });
-      cachedTeams = res.data;
       setTeams(res.data);
       setLoading(false);
       return res.data;
@@ -46,31 +40,50 @@ const useDataTeams = () => {
       Swal.fire("Error", "No se pudo obtener la lista de equipos.", "error");
       return [];
     }
-  }, []);
+  }, [navigate]);
 
   // Guardar o actualizar equipo
   const saveTeam = async (teamData, idToUpdate = null) => {
     try {
       const config = { withCredentials: true };
-      if (teamData instanceof FormData) config.headers = { "Content-Type": "multipart/form-data" };
+      
+      // NO envíes FormData para equipos simples
+      if (teamData instanceof FormData) {
+        config.headers = { "Content-Type": "multipart/form-data" };
+      }
 
       const teamId = idToUpdate || teamEdit?._id;
 
+      console.log("🔵 saveTeam llamado con:", { 
+        teamData, 
+        teamId, 
+        esActualizacion: !!teamId,
+        url: teamId ? `${API_URL}/teams/${teamId}` : `${API_URL}/teams`
+      });
+
       if (teamId) {
-        await axios.put(`${API_URL}/teams/${teamId}`, teamData, config);
+        // ACTUALIZAR - asegúrate que solo envías { name: "..." }
+        console.log("🟡 Haciendo PUT a:", `${API_URL}/teams/${teamId}`);
+        const response = await axios.put(`${API_URL}/teams/${teamId}`, teamData, config);
+        console.log("✅ Respuesta del servidor (update):", response.data);
         Swal.fire("¡Actualizado!", "El equipo ha sido actualizado.", "success");
       } else {
-        await axios.post(`${API_URL}/teams`, teamData, config);
+        // CREAR NUEVO
+        console.log("🟢 Haciendo POST a:", `${API_URL}/teams`);
+        const response = await axios.post(`${API_URL}/teams`, teamData, config);
+        console.log("✅ Respuesta del servidor (create):", response.data);
         Swal.fire("¡Guardado!", "El equipo ha sido guardado.", "success");
       }
 
-      // Actualiza cache
-      cachedTeams = null;
+      // Refresca la lista inmediatamente
       await fetchTeams();
       handleCloseForm();
+      return true;
     } catch (error) {
+      console.error("Error completo en saveTeam:", error.response?.data || error);
       handleNetworkError(error);
       Swal.fire("Error", "No se pudo guardar el equipo.", "error");
+      return false;
     }
   };
 
@@ -89,13 +102,17 @@ const useDataTeams = () => {
       try {
         await axios.delete(`${API_URL}/teams/${id}`, { withCredentials: true });
         Swal.fire("¡Eliminado!", "El equipo ha sido eliminado.", "success");
-        cachedTeams = null;
+        
+        // Refresca la lista inmediatamente
         await fetchTeams();
+        return true;
       } catch (error) {
         handleNetworkError(error);
         Swal.fire("Error", "No se pudo eliminar el equipo.", "error");
+        return false;
       }
     }
+    return false;
   };
 
   const handleCloseForm = () => {
@@ -103,9 +120,9 @@ const useDataTeams = () => {
     setTeamEdit(null);
   };
 
-  // Inicialmente solo carga si no hay cache
+  // Carga inicial
   useEffect(() => {
-    if (!cachedTeams) fetchTeams();
+    fetchTeams();
   }, [fetchTeams]);
 
   return {

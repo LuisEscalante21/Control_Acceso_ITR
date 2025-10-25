@@ -21,7 +21,7 @@ const EmployeesByAreaChart = () => {
       <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="label" />
-        <YAxis />
+        <YAxis ticks={[0, 2, 4 , 6, 8, 10, 12, 14, 16, 18, 20]} />
         <Tooltip />
         <Legend />
         <Line

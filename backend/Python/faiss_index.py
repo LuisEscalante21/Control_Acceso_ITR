@@ -4,12 +4,16 @@ from collections import Counter
 from pymongo.errors import DuplicateKeyError
 
 class FaissFaceIndex:
-    def __init__(self, collection, dim=128, threshold=0.55, min_diff=0.08, topk=5, debug=True):
+    def __init__(self, collection, dim=128, threshold=0.40, min_diff=0.03, topk=5, debug=True):
         """
-        PARÁMETROS OPTIMIZADOS PARA MAYOR PRECISIÓN:
-        - threshold: 0.55 (antes 0.40) - Similitud mínima más estricta
-        - min_diff: 0.08 (antes 0.03) - Mayor margen contra impostores
-        - topk: 5 (antes 10) - Menos vecinos = menos ruido en votación
+        PARÁMETROS AJUSTADOS PARA CONDICIONES DE LUZ VARIABLES:
+        - threshold: 0.40 (reducido desde 0.55) - Más tolerante a variaciones de luz
+        - min_diff: 0.03 (reducido desde 0.08) - Menor margen contra impostores
+        - topk: 5 - Vecinos para votación
+        
+        RECOMENDACIÓN: Puedes ajustar estos valores según tus necesidades:
+        - Si aún no reconoce: bajar threshold a 0.35 o 0.30
+        - Si hay muchos falsos positivos: subir threshold a 0.45
         """
         self.collection = collection
         self.dim = int(dim)
@@ -60,9 +64,9 @@ class FaissFaceIndex:
 
     def search_face(self, encoding_query):
         """
-        BÚSQUEDA MEJORADA:
-        1. Valida threshold estricto (0.55)
-        2. Verifica margen contra impostor (0.08)
+        BÚSQUEDA MEJORADA CON PARÁMETROS MÁS PERMISIVOS:
+        1. Valida threshold más bajo (0.40) para tolerar variaciones de luz
+        2. Verifica margen mínimo contra impostor (0.03)
         3. Agrupa votos por empleado antes de decidir
         4. Devuelve None si hay ambigüedad
         """
@@ -72,7 +76,7 @@ class FaissFaceIndex:
             return None, None
 
         q = np.array([self._normalize(encoding_query)], dtype="float32")
-        k = min(self.topk * 2, max(1, self.index.ntotal))  # Buscamos más vecinos para mejor análisis
+        k = min(self.topk * 2, max(1, self.index.ntotal))
         sims, idxs = self.index.search(q, k)
         sims = sims[0].astype(float)
         idxs = idxs[0].astype(int)
