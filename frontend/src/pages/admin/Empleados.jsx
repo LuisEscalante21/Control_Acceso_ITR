@@ -13,6 +13,9 @@ const Empleados = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewEmpleado, setShowNewEmpleado] = useState(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
+  const [selectedArea, setSelectedArea] = useState("Todas");
+  const [openDropdown, setOpenDropdown] = useState(false);
+  const areaRef = useRef(null);
 
   // 🔹 Estado para el filtro de área
   const [selectedArea, setSelectedArea] = useState("Todas");
@@ -63,6 +66,7 @@ const Empleados = () => {
     }
   }
 
+<<<<<<< HEAD
   // 🔹 Manejar cambio de filtro de área
   const handleSelectArea = async (option) => {
     setSelectedArea(option);
@@ -85,11 +89,55 @@ const Empleados = () => {
       return fullName.includes(searchTerm.toLowerCase());
     });
   }, [searchTerm, employees]);
+=======
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (areaRef.current && !areaRef.current.contains(event.target)) {
+        setOpenDropdown(false);
+      }
+    }
+
+    if (openDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openDropdown]);
+>>>>>>> d1346b6603bbffe4d62a1bffac8cd25a236a87e4
 
   // Obtener nombre del equipo por su ID
   const getTeamName = (teamId) => {
     const team = teams.find((t) => t._id === teamId);
     return team ? team.name : "Sin área";
+  };
+
+  // Filtrar empleados por nombre completo y área
+  const filteredEmpleados = useMemo(() => {
+    return employees.filter((empleado) => {
+      const fullName = `${empleado.names} ${empleado.surnames}`.toLowerCase();
+      const matchesSearch = fullName.includes(searchTerm.toLowerCase());
+      
+      // Filtrar por área
+      if (selectedArea === "Todas") {
+        return matchesSearch;
+      } else if (selectedArea === "Sin área") {
+        return matchesSearch && !empleado.IdTeam;
+      } else {
+        const teamName = empleado.IdTeam ? getTeamName(empleado.IdTeam._id) : "";
+        return matchesSearch && teamName === selectedArea;
+      }
+    });
+  }, [searchTerm, selectedArea, employees, teams]);
+
+  // Manejar selección de área
+  const handleSelectArea = (area) => {
+    setSelectedArea(area);
+    setOpenDropdown(false);
   };
 
   // Guardar o actualizar empleado
@@ -147,6 +195,7 @@ const Empleados = () => {
             Nuevo Empleado
           </button>
 
+<<<<<<< HEAD
           {/* 🔹 Filtro de área */}
           <div
             className="dropdown"
@@ -169,10 +218,18 @@ const Empleados = () => {
                 fontSize: "14px",
                 whiteSpace: "nowrap",
               }}
+=======
+          {/* Filtro por área */}
+          <div className="dropdown"  ref={areaRef}>
+            <button
+              className="filter-button docentes"
+              style={{ maxWidth: "400px" }}
+>>>>>>> d1346b6603bbffe4d62a1bffac8cd25a236a87e4
               onClick={() => setOpenDropdown(!openDropdown)}
             >
               {selectedArea} <ChevronDown size={16} />
             </button>
+<<<<<<< HEAD
 
             {openDropdown && (
               <div
@@ -223,11 +280,39 @@ const Empleados = () => {
                     }}
                   >
                     {area.name}
+=======
+            {openDropdown && (
+              <div className="dropdown-menu docentes">
+                <button
+                  onClick={() => handleSelectArea("Todas")}
+                  className={selectedArea === "Todas" ? "selected" : ""}
+                >
+                  Todas
+                </button>
+                <button
+                  onClick={() => handleSelectArea("Sin área")}
+                  className={selectedArea === "Sin área" ? "selected" : ""}
+                >
+                  Sin área
+                </button>
+                {teams.map((team) => (
+                  <button
+                    key={team._id}
+                    onClick={() => handleSelectArea(team.name)}
+                    className={selectedArea === team.name ? "selected" : ""}
+                  >
+                    {team.name}
+>>>>>>> d1346b6603bbffe4d62a1bffac8cd25a236a87e4
                   </button>
                 ))}
               </div>
             )}
           </div>
+<<<<<<< HEAD
+=======
+
+          
+>>>>>>> d1346b6603bbffe4d62a1bffac8cd25a236a87e4
         </div>
       </div>
 

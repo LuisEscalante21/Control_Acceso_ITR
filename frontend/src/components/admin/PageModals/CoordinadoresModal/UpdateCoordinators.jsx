@@ -3,6 +3,11 @@ import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 import "../../../../components/styles/ModalUpdate.css";
 import { Pencil, Trash2, Camera, UserCircle } from "lucide-react";
+import { useGenerateReport } from "../../../../hooks/Global/useGenerateReport";
+
+const API_URL = import.meta.env.VITE_BASE_URL;
+const PORT = import.meta.env.VITE_PORT;
+const BASE_URL = `${API_URL}${PORT}`; 
 
 const toInputDateFormat = (date) => {
   if (!date) return "";
@@ -25,6 +30,11 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
   const [editMode, setEditMode] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(coordinator?.photo || "");
+  const [teams, setTeams] = useState([]);
+  const [loadingTeams, setLoadingTeams] = useState(true);
+  const [loadingPDF, setLoadingPDF] = useState(false);
+
+  const { generateReport } = useGenerateReport();
 
   useEffect(() => {
     reset({
@@ -32,12 +42,52 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
       birthday: toInputDateFormat(coordinator?.birthday),
       telephone: formatPhone(coordinator?.telephone || ""),
       status: coordinator?.status ? "activo" : "inactivo",
+      IdTeam: coordinator?.IdTeam?._id || (typeof coordinator?.IdTeam === "string" ? coordinator?.IdTeam : ""),
       password: "",
     });
     setPhotoPreview(coordinator?.photo || "");
     setPhotoFile(null);
     setEditMode(false);
   }, [coordinator, reset]);
+
+  // Cargar equipos
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchTeams = async () => {
+      setLoadingTeams(true);
+      try {
+        const res = await fetch(`${BASE_URL}/api/teams`, {
+          method: "GET",
+          credentials: "include",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        const data = await res.json();
+        setTeams((Array.isArray(data) ? data : []).map((team) => ({ value: team._id, label: team.name })));
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Error al cargar equipos:", error);
+          setTeams([]);
+        }
+      } finally {
+        setLoadingTeams(false);
+      }
+    };
+
+    fetchTeams();
+    return () => controller.abort();
+  }, []);
+
+  // Obtener nombre de equipo a partir del coordinator o del listado de teams
+  const getTeamNameFromCoordinator = (coord) => {
+    if (!coord) return null;
+    if (coord.IdTeam && typeof coord.IdTeam === "object" && coord.IdTeam.name) return coord.IdTeam.name;
+    const id = typeof coord.IdTeam === "string" ? coord.IdTeam : (coord.IdTeam?._id || "");
+    const found = teams.find((t) => t.value === id);
+    return found ? found.label : null;
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -69,7 +119,8 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
       "address",
       "DUI",
       "birthday",
-      "status"
+      "status",
+      "IdTeam"
     ];
 
     data.status = data.status === "activo";
@@ -174,8 +225,28 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
                 <span className="cvcard-value">{toInputDateFormat(coordinator.birthday)}</span>
               </div>
               <div className="cvcard-info-group">
-                <span className="cvcard-label">Estado:</span>
-                <span className="cvcard-value">{coordinator.status ? "Activo" : "Inactivo"}</span>
+                <span className="cvcard-label">Área de trabajo:</span>
+                <span className="cvcard-value">{getTeamNameFromCoordinator(coordinator) || "No asignado"}</span>
+              </div>
+              {/* BOTÓN PARA GENERAR REPORTE */}
+              <div style={{ textAlign: "center", marginTop: "20px" }}>
+                <button
+                  className="btn-reporte"
+                  onClick={async () => {
+                    setLoadingPDF(true);
+                    try {
+                      await generateReport(coordinator._id);
+                    } catch (error) {
+                      console.error("Error al generar reporte:", error);
+                      Swal.fire("Error", "No se pudo generar el reporte", "error");
+                    } finally {
+                      setLoadingPDF(false);
+                    }
+                  }}
+                  disabled={loadingPDF}
+                >
+                  {loadingPDF ? "Generando..." : "Generar Reporte PDF"}
+                </button>
               </div>
             </>
           ) : (
@@ -209,7 +280,8 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
                 <input
                   {...register("telephone", { required: true })}
                   onChange={(e) => {
-                    e.target.value = formatPhone(e.target.value);
+                    const formatted = formatPhone(e.target.value);
+                    setValue("telephone", formatted, { shouldValidate: true });
                   }}
                 />
                 {errors.telephone && <span className="error-message">Teléfono obligatorio</span>}
@@ -230,8 +302,28 @@ export default function UpdateCoordinators({ coordinator, onSave, onDelete, onCl
                 {errors.birthday && <span className="error-message">Fecha obligatoria</span>}
               </div>
               <div className="form-field">
+                <label>Equipo:</label>
+                <select
+                  {...register("IdTeam", {
+                    required: "Debes seleccionar un equipo",
+                  })}
+                  defaultValue={coordinator.IdTeam?._id || (typeof coordinator.IdTeam === "string" ? coordinator.IdTeam : "")}
+                >
+                  <option value="">Selecciona un equipo</option>
+                  {loadingTeams ? (
+                    <option disabled>Cargando...</option>
+                  ) : (
+                    teams.map((team) => (
+                      <option key={team.value} value={team.value}>{team.label}</option>
+                    ))
+                  )}
+                </select>
+                {errors.IdTeam && <span className="error-message">{errors.IdTeam.message}</span>}
+              </div>
+
+              <div className="form-field">
                 <label htmlFor="status">Estado:</label>
-                <select id="status" {...register("status", { required: true })}>
+                <select id="status" {...register("status", { required: true })} defaultValue={coordinator.status ? "activo" : "inactivo"}>
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
                 </select>

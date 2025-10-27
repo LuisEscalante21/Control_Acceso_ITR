@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import useDataTeams from "../../../../hooks/admin/useDataTeams.jsx";
 import "../../../../components/styles/ModalUpdateTeams.css";
 
-const UpdateTeams = ({ area, onClose }) => {
-  const { saveTeam, eliminarTeam } = useDataTeams();
+const UpdateTeams = ({ area, onClose, onSaved }) => {
+  const { saveTeam } = useDataTeams();
 
   const {
     register,
@@ -20,13 +20,20 @@ const UpdateTeams = ({ area, onClose }) => {
   }, [area, reset]);
 
   const onSubmit = async (data) => {
-    await saveTeam({ ...data, _id: area._id });
-    onClose();
-  };
-
-  const handleDelete = async () => {
-    await eliminarTeam(area._id);
-    onClose();
+    try {
+      // Envía solo el nombre, el ID se pasa como segundo parámetro
+      const success = await saveTeam({ name: data.name }, area._id);
+      
+      if (success) {
+        // Llama onSaved para refrescar la lista en el componente padre
+        if (onSaved) {
+          onSaved();
+        }
+        onClose();
+      }
+    } catch (error) {
+      console.error("Error al actualizar:", error);
+    }
   };
 
   return (
@@ -40,19 +47,19 @@ const UpdateTeams = ({ area, onClose }) => {
           <input
             className="card-teams-input"
             type="text"
-            {...register("name", { required: true })}
+            {...register("name", { 
+              required: "El nombre es obligatorio",
+              validate: value => value.trim().length > 0 || "El nombre no puede estar vacío"
+            })}
           />
         </div>
         <div className="card-teams-actions">
-          <button type="submit" className="card-teams-btn success" disabled={isSubmitting}>
-            {isSubmitting ? "Actualizando..." : "Actualizar"}
-          </button>
-          <button
-            type="button"
-            className="card-teams-btn danger"
-            onClick={handleDelete}
+          <button 
+            type="submit" 
+            className="card-teams-btn success" 
+            disabled={isSubmitting}
           >
-            Eliminar
+            {isSubmitting ? "Actualizando..." : "Actualizar"}
           </button>
           <button
             type="button"

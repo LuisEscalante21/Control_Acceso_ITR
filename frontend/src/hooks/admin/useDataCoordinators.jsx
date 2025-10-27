@@ -47,10 +47,7 @@ const useDataCoordinators = () => {
       const coordinatorId = id || coordinatorEdit?._id;
 
       if (coordinatorId) {
-        // No modificar IdTeam al actualizar
-        if (coordinatorData instanceof FormData) coordinatorData.delete("IdTeam");
-        else delete coordinatorData.IdTeam;
-
+        // Permitir actualizar IdTeam al editar un coordinador (antes se eliminaba)
         await axios.put(`${API_URL}/coordinators/${coordinatorId}`, coordinatorData, config);
         Swal.fire("¡Actualizado!", "El coordinador ha sido actualizado.", "success");
       } else {

@@ -119,7 +119,10 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
   };
 
   const handleSave = async () => {
-    if (isSaving) return;
+    if (isSaving) {
+      console.log("Operación en progreso, evitando doble envío");
+      return;
+    }
 
     // Validación de campos
     if (!name.trim()) {
@@ -193,6 +196,12 @@ function ModalFace({ mode = "add", face = {}, onClose, onSubmit }) {
     }
 
     setIsSaving(true);
+    
+    // Deshabilitar el botón de guardado inmediatamente
+    const saveButton = document.querySelector('.save-btn');
+    if (saveButton) {
+      saveButton.disabled = true;
+    }
 
     // Mostrar loading
     Swal.fire({

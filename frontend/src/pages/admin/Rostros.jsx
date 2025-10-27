@@ -74,7 +74,7 @@ const Rostros = () => {
             onClick={handleAddFace}
           >
             <CirclePlus size={20} />
-            Nuevo Empleado
+            Agregar Rostro
           </button>
         </div>
       </div>

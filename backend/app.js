@@ -71,7 +71,7 @@ app.use("/api/schedules", authMiddleware, ScheduleRoutes); // Rutas de horarios
 app.use("/api/logout", authMiddleware, logoutRoutes); // Rutas de logout
 app.use("/api/coordinators", authMiddleware, coordinatorsRoutes); // Rutas de coordinadores
 app.use("/api/administrators", authMiddleware, administratorsRoutes); // Rutas de administradores
-app.use("/api/teams", authMiddleware, teamsRoutes); // Rutas de equipos
+app.use("/api/teams", teamsRoutes); // Rutas de equipos
 app.use("/api/permissions", authMiddleware, permissionsRoutes); // Rutas de permisos
 app.use("/api/justifications", authMiddleware, justificationsRoutes); // Rutas de justificaciones
 app.use("/api/reports", authMiddleware, reportRoutes); // Rutas de reportes

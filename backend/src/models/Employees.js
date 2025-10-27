@@ -55,6 +55,7 @@ const employeesSchema = new Schema(
     status: {
       type: Boolean,
       required: true,
+      default: true,
     },
     address: {
       type: String,

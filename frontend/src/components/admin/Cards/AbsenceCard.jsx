@@ -1,6 +1,7 @@
 import React from "react";
 import { UserCircle, CheckCircle2, Clock, BadgeCheck } from "lucide-react";
-import "../../styles/Admin/AbsenceCard.css";
+import JustifyButton from "../../Tools/Buttons/JustifyButton";
+import "../../styles/employee/AbsenceCard.css";
 
 const AbsenceCard = ({
   name,
@@ -10,10 +11,12 @@ const AbsenceCard = ({
   status = "pendiente",
   justification = null,
   onViewJustification = null,
+  showJustifyButton = false,
+  onJustifyClick = null,
 }) => {
   /**
    * Formatea la fecha en español con mejor legibilidad
-   * Ejemplo: "Lun, 27 Oct 2025"
+   * Ejemplo: "lun, 27 oct 2025"
    */
   const formatearFecha = (dateString) => {
     if (!dateString) return "Fecha no disponible";
@@ -29,9 +32,9 @@ const AbsenceCard = ({
 
       // Opciones de formato en español
       const opciones = {
-        weekday: "short", // Lun, Mar, Mié
+        weekday: "short", // lun, mar, mié
         day: "2-digit", // 01, 02, 27
-        month: "short", // Ene, Feb, Oct
+        month: "short", // ene, feb, oct
         year: "numeric", // 2025
       };
 
@@ -44,10 +47,10 @@ const AbsenceCard = ({
 
   const fechaFormateada = formatearFecha(date);
 
-  // Normalizar el estado para comparación
-  const normalized = (status || "").toLowerCase().trim();
+  // 🔹 Normalizar el estado para comparación
+  const normalized = (status || "pendiente").toLowerCase().trim();
 
-  // Determinar estilo, label e ícono según el estado
+  // 🔹 Determinar estilo, label e ícono según el estado
   let statusClass = "pending-label";
   let statusLabel = "Sin justificar";
   let Icon = Clock;
@@ -66,18 +69,20 @@ const AbsenceCard = ({
     Icon = Clock;
   }
 
-  // Hacer clickeable solo si está justificada y hay callback
-  const isClickable = normalized === "justificada" && onViewJustification;
-
-  const handleClick = () => {
-    if (isClickable) {
+  // 🔹 Manejar clic en justificación (solo si está justificada)
+  const handleStatusClick = () => {
+    if (normalized === "justificada" && justification && onViewJustification) {
       onViewJustification(justification);
     }
   };
 
+  // 🔹 Determinar si el estado es clickeable
+  const isClickable =
+    normalized === "justificada" && justification && onViewJustification;
+
   return (
     <div className="absence-card">
-      {/* Status dot visual */}
+      {/* 🔹 Status dot visual */}
       <span
         className={`status-dot ${
           normalized === "justificada"
@@ -91,7 +96,11 @@ const AbsenceCard = ({
       {/* Avatar */}
       <div className="absence-avatar">
         {avatar ? (
-          <img src={avatar} alt="Avatar" className="absence-avatar-img" />
+          <img
+            src={avatar}
+            alt={`Avatar de ${name}`}
+            className="absence-avatar-img"
+          />
         ) : (
           <UserCircle size={48} className="absence-avatar-icon" />
         )}
@@ -110,16 +119,33 @@ const AbsenceCard = ({
         <span>Fecha: {fechaFormateada}</span>
       </div>
 
-      {/* Estado */}
+      {/* Estado y botón de justificar */}
       <div className="absence-status">
-        <span
-          className={`${statusClass} ${isClickable ? "clickable" : ""}`}
-          onClick={handleClick}
-          style={{ cursor: isClickable ? "pointer" : "default" }}
-          title={isClickable ? "Click para ver justificación" : ""}
-        >
-          <Icon size={16} /> {statusLabel}
-        </span>
+        {/* 🔹 SI showJustifyButton es true Y NO está justificada, mostrar JustifyButton */}
+        {showJustifyButton &&
+        normalized !== "justificada" &&
+        normalized !== "con permiso" &&
+        onJustifyClick ? (
+          <JustifyButton onClick={onJustifyClick} />
+        ) : (
+          /* 🔹 SI NO, mostrar el label de estado */
+          <span
+            className={`${statusClass} ${isClickable ? "clickable" : ""}`}
+            onClick={handleStatusClick}
+            style={{ cursor: isClickable ? "pointer" : "default" }}
+            role={isClickable ? "button" : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (isClickable && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                handleStatusClick();
+              }
+            }}
+            title={isClickable ? "Click para ver justificación" : ""}
+          >
+            <Icon size={16} /> {statusLabel}
+          </span>
+        )}
       </div>
     </div>
   );

@@ -59,6 +59,12 @@ const Absences = () => {
   } = useDataAbsences(empleadoId);
   const { teams: areaOptions, fetchTeams } = useDataTeams();
 
+  // 🔸 Debug: Ver qué contiene justificationMap
+  useEffect(() => {
+    console.log("📋 justificationMap completo:", justificationMap);
+    console.log("📋 absenceRecords:", absenceRecords);
+  }, [justificationMap, absenceRecords]);
+
   // 🔸 Cargar datos iniciales
   useEffect(() => {
     fetchJustifications();
@@ -132,6 +138,22 @@ const Absences = () => {
   const handleSelectJustify = (option) => {
     setSelectedJustify(option);
     setOpenDropdown(null);
+  };
+
+  const handleViewJustification = (absence) => {
+    console.log("🔍 Ver justificación para absence:", absence);
+    console.log("🔍 ID de la inasistencia:", absence._id);
+    console.log("🔍 Buscando en justificationMap[" + absence._id + "]:", justificationMap?.[absence._id]);
+    
+    const justification = justificationMap?.[absence._id];
+    
+    if (justification) {
+      console.log("✅ Justificación encontrada:", justification);
+      setViewJustify(justification);
+    } else {
+      console.log("❌ No se encontró justificación para este ID");
+      console.log("📋 Keys disponibles en justificationMap:", Object.keys(justificationMap || {}));
+    }
   };
 
   // 🔹 Filtrado de justificación y búsqueda
@@ -336,9 +358,7 @@ const Absences = () => {
                 date={absence.date}
                 status={absence.status}
                 justification={justificationMap?.[absence._id]}
-                onViewJustification={() =>
-                  setViewJustify(justificationMap?.[absence._id])
-                }
+                onViewJustification={() => handleViewJustification(absence)}
               />
             ))
           )}

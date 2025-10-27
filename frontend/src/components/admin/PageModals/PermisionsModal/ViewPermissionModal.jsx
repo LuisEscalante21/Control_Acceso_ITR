@@ -337,7 +337,7 @@ export default function AdminViewPermissionModal({
             </>
           )}
 
-          {/* 🧾 Historial de acciones — fuera del bloque isPending ✅ */}
+          {/* Historial de acciones — fuera del bloque isPending */}
           {Array.isArray(actionBy) && actionBy.length > 0 && (
             <>
               <h4 className="vp2-subtitle">Historial de acciones</h4>

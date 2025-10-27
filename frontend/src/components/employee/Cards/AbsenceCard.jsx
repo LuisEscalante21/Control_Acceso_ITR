@@ -1,6 +1,6 @@
 import React from "react";
 import { UserCircle, CheckCircle2, Clock, BadgeCheck } from "lucide-react";
-import JustifyButton from "../../Tools/Buttons/JustifyButton"; // 🔹 Importar el componente
+import JustifyButton from "../../Tools/Buttons/JustifyButton";
 import "../../styles/employee/AbsenceCard.css";
 
 const AbsenceCard = ({
@@ -14,23 +14,48 @@ const AbsenceCard = ({
   showJustifyButton = false,
   onJustifyClick = null,
 }) => {
-  // 🔹 Formatear fecha legible
-  const fechaFormateada = new Date(date).toLocaleDateString("es-ES", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  /**
+   * 🔹 Formatea la fecha en español de El Salvador
+   * Corrige el problema de formato usando "es-SV"
+   * Ejemplo: "lun, 27 oct 2025"
+   */
+  const formatearFecha = (dateString) => {
+    if (!dateString) return "Fecha no disponible";
 
-  // 🔹 Normalizar el estado
+    try {
+      const fecha = new Date(dateString);
+
+      // Verificar si la fecha es válida
+      if (isNaN(fecha.getTime())) {
+        console.error("Fecha inválida:", dateString);
+        return "Fecha inválida";
+      }
+
+      const opciones = {
+        weekday: "short", // lun, mar, mié
+        day: "2-digit", // 01, 02, 27
+        month: "short", // ene, feb, oct
+        year: "numeric", // 2025
+      };
+
+      // 🔹 IMPORTANTE: Usar "es-SV" para El Salvador
+      return fecha.toLocaleDateString("es-SV", opciones);
+    } catch (error) {
+      console.error("Error al formatear fecha:", error);
+      return "Error en fecha";
+    }
+  };
+
+  const fechaFormateada = formatearFecha(date);
+
+  // 🔹 Normalizar el estado para comparación
   const normalized = (status || "pendiente").toLowerCase().trim();
 
-  // 🔹 Valores por defecto
+  // 🔹 Determinar estilo, label e ícono según el estado
   let statusClass = "pending-label";
   let statusLabel = "Sin justificar";
   let Icon = Clock;
 
-  // 🔹 Casos especiales
   if (normalized === "justificada") {
     statusClass = "justified-label";
     statusLabel = "Justificada";
@@ -39,17 +64,44 @@ const AbsenceCard = ({
     statusClass = "permission-label";
     statusLabel = "Con permiso";
     Icon = BadgeCheck;
+  } else if (normalized === "pendiente") {
+    statusClass = "pending-label";
+    statusLabel = "Pendiente";
+    Icon = Clock;
   }
 
-  // 🔹 Manejar clic en justificada
+  // 🔹 Determinar si el estado es clickeable
+  const isClickable =
+    normalized === "justificada" && justification && onViewJustification;
+
+  // 🔹 Manejar clic en justificación (solo si está justificada)
   const handleStatusClick = () => {
-    if (normalized === "justificada" && justification && onViewJustification) {
+    if (isClickable) {
       onViewJustification(justification);
+    }
+  };
+
+  // 🔹 Manejar teclas para accesibilidad
+  const handleKeyDown = (e) => {
+    if (isClickable && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      handleStatusClick();
     }
   };
 
   return (
     <div className="absence-card">
+      {/* 🔹 Status dot visual (opcional - requiere CSS) */}
+      <span
+        className={`status-dot ${
+          normalized === "justificada"
+            ? "justified"
+            : normalized === "con permiso"
+            ? "permission"
+            : "pending"
+        }`}
+      />
+
       {/* Avatar */}
       <div className="absence-avatar">
         {avatar ? (
@@ -84,18 +136,13 @@ const AbsenceCard = ({
         ) : (
           /* 🔹 SI NO, mostrar el label de estado */
           <span
-            className={`${statusClass} ${
-              normalized === "justificada" && justification ? "clickable" : ""
-            }`}
+            className={`${statusClass} ${isClickable ? "clickable" : ""}`}
             onClick={handleStatusClick}
-            role={
-              normalized === "justificada" && justification
-                ? "button"
-                : undefined
-            }
-            tabIndex={
-              normalized === "justificada" && justification ? 0 : undefined
-            }
+            onKeyDown={handleKeyDown}
+            style={{ cursor: isClickable ? "pointer" : "default" }}
+            role={isClickable ? "button" : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            title={isClickable ? "Click para ver justificación" : ""}
           >
             <Icon size={16} /> {statusLabel}
           </span>

@@ -404,6 +404,7 @@ export default function NewEmployeesModal({ onSaved, onClose }) {
           { value: "activo", label: "Activo" },
           { value: "inactivo", label: "Inactivo" },
         ]}
+        defaultValue="activo"
       />
 
       <FormField
