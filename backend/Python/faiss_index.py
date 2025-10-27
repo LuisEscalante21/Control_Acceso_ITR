@@ -5,7 +5,6 @@ from collections import Counter
 class FaissFaceIndex:
     def __init__(self, collection, dim=128, threshold=0.40, min_diff=0.03, topk=5, debug=True):
         """
-<<<<<<< HEAD
         ÍNDICE FAISS PARA RECONOCIMIENTO FACIAL
         
         PARÁMETROS OPTIMIZADOS:
@@ -17,16 +16,6 @@ class FaissFaceIndex:
         
         IMPORTANTE: Este índice es de SOLO LECTURA desde MongoDB.
         Las operaciones de escritura deben hacerse desde el servicio de MAPEO.
-=======
-        PARÁMETROS AJUSTADOS PARA CONDICIONES DE LUZ VARIABLES:
-        - threshold: 0.40 (reducido desde 0.55) - Más tolerante a variaciones de luz
-        - min_diff: 0.03 (reducido desde 0.08) - Menor margen contra impostores
-        - topk: 5 - Vecinos para votación
-        
-        RECOMENDACIÓN: Puedes ajustar estos valores según tus necesidades:
-        - Si aún no reconoce: bajar threshold a 0.35 o 0.30
-        - Si hay muchos falsos positivos: subir threshold a 0.45
->>>>>>> d1346b6603bbffe4d62a1bffac8cd25a236a87e4
         """
         self.collection = collection
         self.dim = int(dim)
@@ -135,7 +124,6 @@ class FaissFaceIndex:
 
     def search_face(self, encoding_query):
         """
-<<<<<<< HEAD
         Busca el rostro más similar en el índice FAISS con validación estricta.
         
         Algoritmo:
@@ -149,13 +137,6 @@ class FaissFaceIndex:
             
         Returns:
             tuple: (employee_code, confidence) o (None, None) si no hay match
-=======
-        BÚSQUEDA MEJORADA CON PARÁMETROS MÁS PERMISIVOS:
-        1. Valida threshold más bajo (0.40) para tolerar variaciones de luz
-        2. Verifica margen mínimo contra impostor (0.03)
-        3. Agrupa votos por empleado antes de decidir
-        4. Devuelve None si hay ambigüedad
->>>>>>> d1346b6603bbffe4d62a1bffac8cd25a236a87e4
         """
         if self.index.ntotal == 0:
             if self.debug:
@@ -164,11 +145,8 @@ class FaissFaceIndex:
 
         # Normalizar query
         q = np.array([self._normalize(encoding_query)], dtype="float32")
-<<<<<<< HEAD
         
         # Buscar k vecinos más cercanos (buscamos más para mejor análisis)
-=======
->>>>>>> d1346b6603bbffe4d62a1bffac8cd25a236a87e4
         k = min(self.topk * 2, max(1, self.index.ntotal))
         sims, idxs = self.index.search(q, k)
         sims = sims[0].astype(float)

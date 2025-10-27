@@ -38,7 +38,6 @@ registerEmployeesController.register = async (req, res) => {
 
     // Validación básica - campos requeridos (status no es obligatorio; por defecto será activo)
     if (
-<<<<<<< HEAD
       !numEmpleado ||
       !names ||
       !surnames ||
@@ -51,10 +50,6 @@ registerEmployeesController.register = async (req, res) => {
       !IdTeam ||
       !status ||
       !address
-=======
-      !numEmpleado || !names || !surnames || !DUI || !birthday ||
-      !telephone || !email || !password || !hireDate || !IdTeam || !address
->>>>>>> d1346b6603bbffe4d62a1bffac8cd25a236a87e4
     ) {
       return res.status(400).json({
         message: "Todos los campos son requeridos (excepto status).",
@@ -190,11 +185,7 @@ registerEmployeesController.register = async (req, res) => {
       password: passwordHash,
       hireDate: new Date(hireDate),
       IdTeam,
-<<<<<<< HEAD
       status: status === "activo" || status === "true" || status === true,
-=======
-      status: statusValue,
->>>>>>> d1346b6603bbffe4d62a1bffac8cd25a236a87e4
       address: address.trim(),
       photo: photoUrl,
     });

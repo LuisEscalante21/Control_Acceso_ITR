@@ -49,7 +49,21 @@ def get_sv_time():
 def convert_to_sv_time(dt):
     if dt is None:
         return None
-    return SV_TZ.localize(dt) if dt.tzinfo is None else dt.astimezone(SV_TZ)
+    # PyMongo typically returns naive datetimes (no tzinfo) which represent UTC instants.
+    # Por seguridad asumimos que una datetime 'naive' viene en UTC y la convertimos a UTC
+    # antes de convertir a la zona de El Salvador.
+    try:
+        if dt.tzinfo is None:
+            # Tratar la datetime naive como UTC
+            from datetime import timezone as _dt_timezone
+            dt = dt.replace(tzinfo=_dt_timezone.utc)
+        return dt.astimezone(SV_TZ)
+    except Exception:
+        # En caso de problemas inesperados, intentar localizar a SV (fallback)
+        try:
+            return SV_TZ.localize(dt)
+        except Exception:
+            return dt
 
 
 def _norm(s: str) -> str:
@@ -109,17 +123,14 @@ def parse_iso_datetime(iso_string):
     """
     if not iso_string:
         return None
-    
     iso_string = str(iso_string).strip()
-    
-    # Eliminar la Z si existe
+
+    # Manejar Z (UTC) convirtiéndolo a +00:00 para obtener un datetime con tzinfo
+    # Ej: 2025-10-16T14:34:33.709Z -> 2025-10-16T14:34:33.709+00:00
     if iso_string.endswith('Z'):
-        iso_string = iso_string[:-1]
-    
-    # Si tiene milisegundos, eliminarlos
-    if '.' in iso_string:
-        iso_string = iso_string.split('.')[0]
-    
+        iso_string = iso_string[:-1] + "+00:00"
+
+    # Dejar que fromisoformat maneje milisegundos si están presentes
     try:
         return datetime.fromisoformat(iso_string)
     except ValueError as e:
