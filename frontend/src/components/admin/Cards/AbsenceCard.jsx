@@ -7,19 +7,47 @@ const AbsenceCard = ({
   avatar,
   employeeType,
   date,
-  status = "pendiente",          //ahora llega el estado del backend
+  status = "pendiente",
   justification = null,
   onViewJustification = null,
 }) => {
-  const fechaFormateada = new Date(date).toLocaleDateString([], {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  /**
+   * Formatea la fecha en español con mejor legibilidad
+   * Ejemplo: "Lun, 27 Oct 2025"
+   */
+  const formatearFecha = (dateString) => {
+    if (!dateString) return "Fecha no disponible";
 
+    try {
+      const fecha = new Date(dateString);
+
+      // Verificar si la fecha es válida
+      if (isNaN(fecha.getTime())) {
+        console.error("Fecha inválida:", dateString);
+        return "Fecha inválida";
+      }
+
+      // Opciones de formato en español
+      const opciones = {
+        weekday: "short", // Lun, Mar, Mié
+        day: "2-digit", // 01, 02, 27
+        month: "short", // Ene, Feb, Oct
+        year: "numeric", // 2025
+      };
+
+      return fecha.toLocaleDateString("es-SV", opciones);
+    } catch (error) {
+      console.error("Error al formatear fecha:", error);
+      return "Error en fecha";
+    }
+  };
+
+  const fechaFormateada = formatearFecha(date);
+
+  // Normalizar el estado para comparación
   const normalized = (status || "").toLowerCase().trim();
 
+  // Determinar estilo, label e ícono según el estado
   let statusClass = "pending-label";
   let statusLabel = "Sin justificar";
   let Icon = Clock;
@@ -32,16 +60,34 @@ const AbsenceCard = ({
     statusClass = "permission-label";
     statusLabel = "Con permiso";
     Icon = BadgeCheck;
+  } else if (normalized === "pendiente") {
+    statusClass = "pending-label";
+    statusLabel = "Pendiente";
+    Icon = Clock;
   }
 
+  // Hacer clickeable solo si está justificada y hay callback
+  const isClickable = normalized === "justificada" && onViewJustification;
+
   const handleClick = () => {
-    if (normalized === "justificada" && onViewJustification) {
+    if (isClickable) {
       onViewJustification(justification);
     }
   };
 
   return (
     <div className="absence-card">
+      {/* Status dot visual */}
+      <span
+        className={`status-dot ${
+          normalized === "justificada"
+            ? "justified"
+            : normalized === "con permiso"
+            ? "permission"
+            : "pending"
+        }`}
+      />
+
       {/* Avatar */}
       <div className="absence-avatar">
         {avatar ? (
@@ -67,8 +113,10 @@ const AbsenceCard = ({
       {/* Estado */}
       <div className="absence-status">
         <span
-          className={`${statusClass} ${normalized === "justificada" && onViewJustification ? "clickable" : ""}`}
+          className={`${statusClass} ${isClickable ? "clickable" : ""}`}
           onClick={handleClick}
+          style={{ cursor: isClickable ? "pointer" : "default" }}
+          title={isClickable ? "Click para ver justificación" : ""}
         >
           <Icon size={16} /> {statusLabel}
         </span>

@@ -15,7 +15,11 @@ const useDataEmployee = () => {
 
   // Manejo de errores
   const handleNetworkError = (error) => {
-    if (!error.response || error.code === "ERR_NETWORK" || error.response?.status === 503) {
+    if (
+      !error.response ||
+      error.code === "ERR_NETWORK" ||
+      error.response?.status === 503
+    ) {
       navigate("/503");
     } else if (error.response?.status === 401) {
       Swal.fire("Error", "No autorizado. Por favor inicia sesión.", "error");
@@ -25,11 +29,26 @@ const useDataEmployee = () => {
     }
   };
 
-  // Obtener empleados
-  const fetchEmployees = async () => {
+  // 🔹 ACTUALIZADO: Obtener empleados con filtro opcional por área
+  const fetchEmployees = async (options = {}) => {
     try {
-      const res = await axios.get(`${API_URL}/employee`, { withCredentials: true });
-      setEmployees(res.data);
+      let url = `${API_URL}/employee`;
+      const config = { withCredentials: true };
+
+      // 🔹 Si hay filtro por equipo, obtener todos y filtrar en frontend
+      const res = await axios.get(url, config);
+      let employeesList = res.data;
+
+      // 🔹 Filtro por área/equipo (filtrado en frontend)
+      if (options.teamId) {
+        employeesList = employeesList.filter((emp) => {
+          // Compara con el ID del equipo (puede venir como objeto poblado o como string)
+          const empTeamId = emp.IdTeam?._id || emp.IdTeam;
+          return empTeamId === options.teamId;
+        });
+      }
+
+      setEmployees(employeesList);
     } catch (error) {
       handleNetworkError(error);
       Swal.fire("Error", "No se pudo obtener la lista de empleados.", "error");
@@ -40,16 +59,24 @@ const useDataEmployee = () => {
   const saveEmployee = async (employeeData, idToUpdate = null) => {
     try {
       const config = { withCredentials: true };
-      if (employeeData instanceof FormData) config.headers = { "Content-Type": "multipart/form-data" };
+      if (employeeData instanceof FormData)
+        config.headers = { "Content-Type": "multipart/form-data" };
 
       const employeeId = idToUpdate || employeeEdit?._id;
 
       if (employeeId) {
         if (employeeData instanceof FormData) employeeData.delete("IdTeam");
         else delete employeeData.IdTeam;
-
-        await axios.put(`${API_URL}/employee/${employeeId}`, employeeData, config);
-        Swal.fire("¡Actualizado!", "El empleado ha sido actualizado.", "success");
+        await axios.put(
+          `${API_URL}/employee/${employeeId}`,
+          employeeData,
+          config
+        );
+        Swal.fire(
+          "¡Actualizado!",
+          "El empleado ha sido actualizado.",
+          "success"
+        );
       } else {
         await axios.post(`${API_URL}/registerEmployees`, employeeData, config);
         Swal.fire("¡Guardado!", "El empleado ha sido creado.", "success");
@@ -76,7 +103,9 @@ const useDataEmployee = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_URL}/employee/${id}`, { withCredentials: true });
+        await axios.delete(`${API_URL}/employee/${id}`, {
+          withCredentials: true,
+        });
         Swal.fire("¡Eliminado!", "El empleado ha sido eliminado.", "success");
         await fetchEmployees();
       } catch (error) {

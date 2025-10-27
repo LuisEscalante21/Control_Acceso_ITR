@@ -1,9 +1,11 @@
+// 📁 controllers/employeesController.js
 import employeesModel from "../models/Employees.js";
 import bcryptjs from "bcryptjs";
 import { config } from "../config.js";
 import { v2 as cloudinary } from "cloudinary";
+import fs from "fs";
 
-// Configurar cloudinary (si aún no está configurado globalmente)
+// 🔧 Configurar Cloudinary (si no está configurado globalmente)
 cloudinary.config({
   cloud_name: config.cloudinary.cloudinary_name,
   api_key: config.cloudinary.cloudinary_api_key,
@@ -12,32 +14,46 @@ cloudinary.config({
 
 const employeesController = {};
 
-// S E L E C T - Obtener todos los empleados
+/* ===========================================================
+   📘 GET - Obtener todos los empleados
+=========================================================== */
 employeesController.getEmployees = async (req, res) => {
   try {
     const employees = await employeesModel.find().populate("IdTeam");
-    res.json(employees);
+    res.status(200).json(employees);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching employees", error });
+    res.status(500).json({
+      message: "Error al obtener empleados",
+      error: error.message,
+    });
   }
 };
 
-// Obtener empleado por id (parametro)
+/* ===========================================================
+   📘 GET - Obtener empleado por ID
+=========================================================== */
 employeesController.getEmployeeById = async (req, res) => {
   try {
-    const employee = await employeesModel.findById(req.params.id).populate("IdTeam");
+    const employee = await employeesModel
+      .findById(req.params.id)
+      .populate("IdTeam");
 
     if (!employee) {
-      return res.json({ message: "Empleado no existe", employee: null });
+      return res.status(404).json({ message: "Empleado no encontrado" });
     }
 
-    res.json(employee);
+    res.status(200).json(employee);
   } catch (error) {
-    res.status(500).json({ message: "Error obteniendo empleado", error });
+    res.status(500).json({
+      message: "Error al obtener empleado",
+      error: error.message,
+    });
   }
 };
 
-// G E T  P O R  T E A M
+/* ===========================================================
+   📘 GET - Obtener empleados por equipo (Team)
+=========================================================== */
 employeesController.getEmployee = async (req, res) => {
   const { teamId } = req.query;
 
@@ -46,14 +62,21 @@ employeesController.getEmployee = async (req, res) => {
   }
 
   try {
-    const result = await employeesModel.find({ IdTeam: teamId }).populate("IdTeam");
-    return res.status(200).json(result);
+    const result = await employeesModel
+      .find({ IdTeam: teamId })
+      .populate("IdTeam");
+    res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({ message: "Error obteniendo empleado(s)", error });
+    res.status(500).json({
+      message: "Error al obtener empleados por equipo",
+      error: error.message,
+    });
   }
 };
 
-// C R E A T E - Crear nuevo empleado
+/* ===========================================================
+   🟢 POST - Crear nuevo empleado
+=========================================================== */
 employeesController.createEmployees = async (req, res) => {
   try {
     const {
@@ -71,100 +94,103 @@ employeesController.createEmployees = async (req, res) => {
       address,
     } = req.body;
 
-    // Validar que los campos requeridos estén presentes
+    // 1️⃣ Validar campos obligatorios
     if (!numEmpleado || !names || !surnames || !DUI || !email || !password) {
       return res.status(400).json({ message: "Faltan campos requeridos" });
     }
 
-    // Validar formatos
+    // 2️⃣ Limpiar y validar formato de numEmpleado
+    const numEmpleadoTrim = numEmpleado.trim();
+    const employeeCodeRegex = /^[A-Za-z]{2}\d{2}$/; // Ejemplo: CB01
+    if (!employeeCodeRegex.test(numEmpleadoTrim)) {
+      return res.status(400).json({
+        message:
+          "El código de empleado debe tener 2 letras seguidas de 2 números. Ejemplo: CB01",
+      });
+    }
+
+    // 3️⃣ Validar formatos de teléfono y DUI
     const phoneRegex = /^\d{4}-\d{4}$/;
     const duiRegex = /^\d{8}-\d$/;
 
     if (telephone && !phoneRegex.test(telephone)) {
-      return res.status(400).json({ message: "Formato de teléfono inválido. Use ####-####." });
+      return res
+        .status(400)
+        .json({ message: "Formato de teléfono inválido. Use ####-####." });
     }
-
     if (!duiRegex.test(DUI)) {
-      return res.status(400).json({ message: "Formato de DUI inválido. Use ########-#." });
+      return res
+        .status(400)
+        .json({ message: "Formato de DUI inválido. Use ########-#." });
     }
 
-    // ✅ Validar que el número de empleado no exista
-    const existingNumEmpleado = await employeesModel.findOne({ numEmpleado });
-    if (existingNumEmpleado) {
-      return res.status(400).json({ message: "El número de empleado ya está registrado" });
-    }
+    // 4️⃣ Validar duplicados de DUI y Email
+    // ⚠️ numEmpleado ya fue validado por el middleware validateUniqueNumEmpleado
+    const [existingDUI, existingEmail] = await Promise.all([
+      employeesModel.findOne({ DUI }),
+      employeesModel.findOne({ email }),
+    ]);
 
-    // ✅ Validar que el DUI no exista
-    const existingDUI = await employeesModel.findOne({ DUI });
-    if (existingDUI) {
+    if (existingDUI)
       return res.status(400).json({ message: "El DUI ya está registrado" });
-    }
+    if (existingEmail)
+      return res
+        .status(400)
+        .json({ message: "El correo electrónico ya está registrado" });
 
-    // ✅ Validar que el correo electrónico no exista
-    const existingEmail = await employeesModel.findOne({ email });
-    if (existingEmail) {
-      return res.status(400).json({ message: "El correo electrónico ya está registrado" });
-    }
-
-    // Preparar datos del empleado
+    // 5️⃣ Construir datos del empleado
     const newEmployeeData = {
-      numEmpleado,
-      names,
-      surnames,
+      numEmpleado: numEmpleadoTrim,
+      names: names.trim(),
+      surnames: surnames.trim(),
       DUI,
       birthday,
       telephone,
-      email,
+      email: email.trim().toLowerCase(),
       hireDate,
       status,
       address,
     };
 
-    // Agregar IdTeam si viene
+    // Asociar IdTeam
     if (IdTeam) {
-      if (typeof IdTeam === "string") {
-        newEmployeeData.IdTeam = IdTeam;
-      } else if (typeof IdTeam === "object" && IdTeam._id) {
+      if (typeof IdTeam === "string") newEmployeeData.IdTeam = IdTeam;
+      else if (typeof IdTeam === "object" && IdTeam._id)
         newEmployeeData.IdTeam = IdTeam._id;
-      }
     }
 
-    // Hashear la contraseña
+    // 6️⃣ Hashear contraseña
     newEmployeeData.password = await bcryptjs.hash(password, 10);
 
-    // 📸 Subir imagen si viene en el request
+    // 7️⃣ Subir imagen a Cloudinary
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "employees",
         allowed_formats: ["jpg", "png", "jpeg"],
       });
       newEmployeeData.photo = result.secure_url;
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     }
 
-    // Crear el empleado
+    // 8️⃣ Crear empleado
     const newEmployee = await employeesModel.create(newEmployeeData);
 
-    res.status(201).json({ message: "Empleado creado exitosamente", employee: newEmployee });
+    res.status(201).json({
+      message: "Empleado creado exitosamente",
+      employee: newEmployee,
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error al crear empleado", error: error.message });
+    console.error("❌ Error al crear empleado:", error);
+    res.status(500).json({
+      message: "Error al crear empleado",
+      error: error.message,
+    });
   }
 };
 
-// D E L E T E - Eliminar empleado por ID
-employeesController.deleteEmployees = async (req, res) => {
-  try {
-    const deleted = await employeesModel.findByIdAndDelete(req.params.id);
-    if (!deleted) {
-      return res.status(404).json({ message: "Empleado no encontrado" });
-    }
-    res.json({ message: "Empleado eliminado" });
-  } catch (error) {
-    res.status(500).json({ message: "Error al eliminar empleado", error });
-  }
-};
-
-// U P D A T E - Actualizar empleado por ID
+/* ===========================================================
+   🟡 PUT - Actualizar empleado
+=========================================================== */
 employeesController.updateEmployees = async (req, res) => {
   try {
     const {
@@ -182,83 +208,86 @@ employeesController.updateEmployees = async (req, res) => {
       address,
     } = req.body;
 
-    // Obtener el empleado actual para comparar
     const currentEmployee = await employeesModel.findById(req.params.id);
     if (!currentEmployee) {
       return res.status(404).json({ message: "Empleado no encontrado" });
     }
 
-    const updatedData = {
-      numEmpleado,
-      names,
-      surnames,
-      DUI,
-      birthday,
-      telephone,
-      email,
-      hireDate,
-      status,
-      address,
-    };
+    const updatedData = {};
 
-    // Validar formatos
-    const phoneRegex = /^\d{4}-\d{4}$/;
-    const duiRegex = /^\d{8}-\d$/;
-
-    if (telephone && !phoneRegex.test(telephone)) {
-      return res.status(400).json({ message: "Formato de teléfono inválido. Use ####-####." });
-    }
-
-    if (DUI && !duiRegex.test(DUI)) {
-      return res.status(400).json({ message: "Formato de DUI inválido. Use ########-#." });
-    }
-
-    // ✅ Validar que el número de empleado no exista (si es diferente al actual)
-    if (numEmpleado && numEmpleado !== currentEmployee.numEmpleado) {
-      const existingNumEmpleado = await employeesModel.findOne({ numEmpleado });
-      if (existingNumEmpleado) {
-        return res.status(400).json({ message: "El número de empleado ya está registrado" });
+    // ✅ Validar formato de numEmpleado (si viene en el body)
+    // ⚠️ La unicidad ya fue validada por el middleware validateUniqueNumEmpleado
+    if (numEmpleado) {
+      const numEmpleadoTrim = numEmpleado.trim();
+      const employeeCodeRegex = /^[A-Za-z]{2}\d{2}$/;
+      if (!employeeCodeRegex.test(numEmpleadoTrim)) {
+        return res.status(400).json({
+          message:
+            "El código de empleado debe tener 2 letras seguidas de 2 números. Ejemplo: CB01",
+        });
       }
+      updatedData.numEmpleado = numEmpleadoTrim;
     }
 
-    // ✅ Validar que el DUI no exista (si es diferente al actual)
-    if (DUI && DUI !== currentEmployee.DUI) {
-      const existingDUI = await employeesModel.findOne({ DUI });
-      if (existingDUI) {
-        return res.status(400).json({ message: "El DUI ya está registrado" });
+    // ✅ Validar y actualizar otros campos
+    if (names) updatedData.names = names.trim();
+    if (surnames) updatedData.surnames = surnames.trim();
+    if (birthday) updatedData.birthday = birthday;
+
+    if (telephone) {
+      const phoneRegex = /^\d{4}-\d{4}$/;
+      if (!phoneRegex.test(telephone)) {
+        return res
+          .status(400)
+          .json({ message: "Formato de teléfono inválido. Use ####-####." });
       }
+      updatedData.telephone = telephone;
     }
 
-    // ✅ Validar que el correo electrónico no exista (si es diferente al actual)
     if (email && email !== currentEmployee.email) {
-      const existingEmail = await employeesModel.findOne({ email });
-      if (existingEmail) {
-        return res.status(400).json({ message: "El correo electrónico ya está registrado" });
-      }
+      const exists = await employeesModel.findOne({ email });
+      if (exists)
+        return res
+          .status(400)
+          .json({ message: "El correo electrónico ya está registrado" });
+      updatedData.email = email.trim().toLowerCase();
     }
 
-    // Solo agregar IdTeam si viene como string
+    if (DUI && DUI !== currentEmployee.DUI) {
+      const duiRegex = /^\d{8}-\d$/;
+      if (!duiRegex.test(DUI)) {
+        return res
+          .status(400)
+          .json({ message: "Formato de DUI inválido. Use ########-#." });
+      }
+      const exists = await employeesModel.findOne({ DUI });
+      if (exists)
+        return res.status(400).json({ message: "El DUI ya está registrado" });
+      updatedData.DUI = DUI;
+    }
+
+    if (hireDate) updatedData.hireDate = hireDate;
+    if (status !== undefined) updatedData.status = status;
+    if (address) updatedData.address = address;
+
     if (IdTeam) {
-      if (typeof IdTeam === "string") {
-        updatedData.IdTeam = IdTeam;
-      } else if (typeof IdTeam === "object" && IdTeam._id) {
+      if (typeof IdTeam === "string") updatedData.IdTeam = IdTeam;
+      else if (typeof IdTeam === "object" && IdTeam._id)
         updatedData.IdTeam = IdTeam._id;
-      }
-      // Si no es string ni objeto con _id, no lo agregamos
     }
 
-    // Hashear la contraseña si se proporciona
     if (password) {
       updatedData.password = await bcryptjs.hash(password, 10);
     }
 
-    // 📸 Subir imagen si viene en el request
+    // ✅ Subir nueva foto
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "employees",
         allowed_formats: ["jpg", "png", "jpeg"],
       });
       updatedData.photo = result.secure_url;
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     }
 
     const updatedEmployee = await employeesModel.findByIdAndUpdate(
@@ -267,14 +296,34 @@ employeesController.updateEmployees = async (req, res) => {
       { new: true }
     );
 
-    if (!updatedEmployee) {
+    res.status(200).json({
+      message: "Empleado actualizado correctamente",
+      employee: updatedEmployee,
+    });
+  } catch (error) {
+    console.error("❌ Error al actualizar empleado:", error);
+    res.status(500).json({
+      message: "Error al actualizar empleado",
+      error: error.message,
+    });
+  }
+};
+
+/* ===========================================================
+   🔴 DELETE - Eliminar empleado
+=========================================================== */
+employeesController.deleteEmployees = async (req, res) => {
+  try {
+    const deleted = await employeesModel.findByIdAndDelete(req.params.id);
+    if (!deleted) {
       return res.status(404).json({ message: "Empleado no encontrado" });
     }
-
-    res.json({ message: "Empleado actualizado", employee: updatedEmployee });
+    res.status(200).json({ message: "Empleado eliminado correctamente" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error al actualizar empleado", error: error.message });
+    res.status(500).json({
+      message: "Error al eliminar empleado",
+      error: error.message,
+    });
   }
 };
 

@@ -15,9 +15,8 @@ from PIL import Image, ImageOps
 import numpy as np
 from datetime import datetime
 
-# Blueprints y FAISS
+# Blueprints
 from Health import health_bp
-from faiss_index import FaissFaceIndex
 
 # ============================
 # Configuración inicial
@@ -47,12 +46,6 @@ cloudinary_config(
 cliente = MongoClient(DB_URI)
 db = cliente[DB_NAME]
 coleccion_de_caras = db[DB_COLLECTION]
-
-# FAISS
-faiss_index = FaissFaceIndex(coleccion_de_caras)
-
-# Lock para sincronización FAISS
-faiss_lock = threading.Lock()
 
 # Flask App
 app = Flask(__name__)
@@ -106,7 +99,7 @@ def require_api_key(expected_key):
 def notificar_reload_faiss():
     """
     Notifica al servicio de reconocimiento que recargue su índice FAISS.
-    Se ejecuta SOLO cuando hay cambios (ADD/UPDATE/DELETE).
+    El servicio de MAPEO no mantiene índice FAISS, solo MongoDB.
     """
     try:
         response = requests.post(
@@ -120,42 +113,6 @@ def notificar_reload_faiss():
             print(f"[MAPEO] Falló recarga de FAISS: {response.status_code} - {response.text}")
     except Exception as e:
         print(f"[MAPEO] No se pudo notificar a reconocimiento: {e}")
-
-def actualizar_faiss_local_y_notificar(operacion, employee_code=None, encoding=None, gender=None, area_id=None):
-    """
-    Actualiza el índice FAISS LOCAL de forma thread-safe y notifica al servicio de reconocimiento.
-    
-    Args:
-        operacion: 'add', 'update', 'delete'
-        employee_code: código del empleado
-        encoding: vector del rostro (numpy array o list)
-        gender: género del empleado
-        area_id: área del empleado
-    """
-    with faiss_lock:
-        try:
-            if operacion == 'add':
-                print(f"[MAPEO-FAISS] Agregando rostro: {employee_code}")
-                faiss_index.add_face(encoding, employee_code, gender, area_id)
-                
-            elif operacion == 'update':
-                print(f"[MAPEO-FAISS] Actualizando rostro: {employee_code}")
-                # Primero eliminar la entrada antigua
-                faiss_index.remove_face(employee_code)
-                # Luego agregar la nueva
-                if encoding is not None:
-                    faiss_index.add_face(encoding, employee_code, gender, area_id)
-                    
-            elif operacion == 'delete':
-                print(f"[MAPEO-FAISS] Eliminando rostro: {employee_code}")
-                faiss_index.remove_face(employee_code)
-            
-            # Notificar al servicio de reconocimiento en un thread separado
-            threading.Thread(target=notificar_reload_faiss, daemon=True).start()
-            print(f"[MAPEO-FAISS] Operación '{operacion}' completada para {employee_code}")
-            
-        except Exception as e:
-            print(f"[MAPEO-FAISS] Error en operación '{operacion}': {e}")
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -354,8 +311,9 @@ def mapeo():
 
     coleccion_de_caras.insert_one(documento)
     
-    # ACTUALIZACIÓN CRÍTICA: Sincronizar FAISS solo cuando hay cambio
-    actualizar_faiss_local_y_notificar('add', employee_code, encoding, gender, area_id)
+    # SOLO NOTIFICAR - El servicio de reconocimiento recargará desde MongoDB
+    threading.Thread(target=notificar_reload_faiss, daemon=True).start()
+    print(f"[MAPEO] Rostro guardado en MongoDB: {employee_code}")
 
     return jsonify({
         'status': 'success',
@@ -393,34 +351,13 @@ def eliminar_face(id):
     resultado = coleccion_de_caras.delete_one({'_id': ObjectId(id)})
 
     if resultado.deleted_count == 1:
-        # Eliminar de FAISS
-        if employee_code:
-            print(f"[MAPEO] Eliminando de FAISS: {employee_code}")
-            actualizar_faiss_local_y_notificar('delete', employee_code)
+        # SOLO NOTIFICAR - El servicio de reconocimiento recargará desde MongoDB
+        threading.Thread(target=notificar_reload_faiss, daemon=True).start()
+        print(f"[MAPEO] Rostro eliminado de MongoDB: {employee_code}")
         
         return jsonify({'status': 'success', 'message': 'Rostro eliminado correctamente'}), 200
     else:
         return jsonify({'status': 'error', 'message': 'No se pudo eliminar'}), 404
-
-# ============================
-# Endpoint para recargar FAISS manualmente (útil para debug)
-# ============================
-@app.route('/reload-faiss-local', methods=['POST'])
-@require_api_key(MAPEO_API_KEY)
-def reload_faiss_local():
-    """Endpoint para forzar recarga completa del índice FAISS local"""
-    with faiss_lock:
-        try:
-            print("[MAPEO] Recargando índice FAISS completo desde MongoDB...")
-            faiss_index.load_encodings()
-            return jsonify({
-                'status': 'success',
-                'message': 'Índice FAISS recargado correctamente',
-                'total_indexed': faiss_index.index.ntotal
-            }), 200
-        except Exception as e:
-            print(f"[MAPEO] Error recargando FAISS: {e}")
-            return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # ============================
 # Inicialización
@@ -428,10 +365,9 @@ def reload_faiss_local():
 def iniciar_api_mapeo():
     print("[MAPEO] ========================================")
     print("[MAPEO] Inicializando servicio de mapeo...")
-    print("[MAPEO] Cargando índice FAISS desde MongoDB...")
-    faiss_index.load_encodings()
-    print(f"[MAPEO] Índice FAISS cargado: {faiss_index.index.ntotal} rostros")
-    print("[MAPEO] Sistema listo - Actualizaciones ON-DEMAND activadas")
+    print("[MAPEO] Este servicio NO mantiene índice FAISS")
+    print("[MAPEO] Solo guarda en MongoDB y notifica al servicio de reconocimiento")
+    print("[MAPEO] Sistema listo")
     print("[MAPEO] ========================================")
     
     port = int(os.getenv('PORT_MAPEO'))

@@ -157,6 +157,20 @@ select:focus {
   transition: opacity 0.3s ease;
 }
 
+.filter-button {
+  min-width: 220px;
+  padding: 10px 16px;
+  background: #f4f4f4;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+
 .employee-modal-overlay.active {
   opacity: 1;
   pointer-events: auto;

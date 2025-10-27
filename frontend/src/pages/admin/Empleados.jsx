@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import "../../styles/Admin/Empleados.css";
 import EmpleadoCard from "../../components/admin/Cards/DocenteCard.jsx";
-import { Search, CirclePlus } from "lucide-react";
+import { Search, CirclePlus, ChevronDown } from "lucide-react";
 import ModalEmpleado from "../../components/admin/PageModals/EmpleadosModal/NewEmpleadosModal.jsx";
 import EditEmpleadoModal from "../../components/admin/PageModals/EmpleadosModal/UpdateEmpleaods.jsx";
 import useEmployees from "../../hooks/admin/useDataEmployee.jsx";
-import useDataTeams from "../../hooks/admin/useDataTeams.jsx"; 
+import useDataTeams from "../../hooks/admin/useDataTeams.jsx";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
 
@@ -14,7 +14,13 @@ const Empleados = () => {
   const [showNewEmpleado, setShowNewEmpleado] = useState(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
 
-  const { employees, fetchEmployees, saveEmployee, deleteEmployee } = useEmployees();
+  // 🔹 Estado para el filtro de área
+  const [selectedArea, setSelectedArea] = useState("Todas");
+  const [openDropdown, setOpenDropdown] = useState(false);
+  const areaRef = useRef(null);
+
+  const { employees, fetchEmployees, saveEmployee, deleteEmployee } =
+    useEmployees();
   const { teams, fetchTeams } = useDataTeams();
 
   // Traer empleados y equipos al cargar
@@ -22,6 +28,25 @@ const Empleados = () => {
     fetchEmployees();
     fetchTeams();
   }, []);
+
+  // 🔹 Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (areaRef.current && !areaRef.current.contains(event.target)) {
+        setOpenDropdown(false);
+      }
+    }
+
+    if (openDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openDropdown]);
 
   // Obtener userInfo descifrado (si existe cookie cifrada)
   const secretKey = import.meta.env.VITE_JWT_SECRET;
@@ -38,7 +63,22 @@ const Empleados = () => {
     }
   }
 
-  // Filtrar empleados por nombre completo
+  // 🔹 Manejar cambio de filtro de área
+  const handleSelectArea = async (option) => {
+    setSelectedArea(option);
+    setOpenDropdown(false);
+
+    if (option === "Todas") {
+      await fetchEmployees();
+    } else {
+      const team = teams.find((t) => t.name === option);
+      if (team) {
+        await fetchEmployees({ teamId: team._id });
+      }
+    }
+  };
+
+  // Filtrar empleados por nombre completo (búsqueda local)
   const filteredEmpleados = useMemo(() => {
     return employees.filter((empleado) => {
       const fullName = `${empleado.names} ${empleado.surnames}`.toLowerCase();
@@ -56,22 +96,40 @@ const Empleados = () => {
   const handleSave = async (data, id) => {
     await saveEmployee(data, id);
     setSelectedEmpleado(null);
-    fetchEmployees();
+
+    // 🔹 Recargar con el filtro actual
+    if (selectedArea !== "Todas") {
+      const team = teams.find((t) => t.name === selectedArea);
+      if (team) {
+        fetchEmployees({ teamId: team._id });
+      }
+    } else {
+      fetchEmployees();
+    }
   };
 
   // Eliminar empleado
   const handleDelete = async (id) => {
     await deleteEmployee(id);
     setSelectedEmpleado(null);
-    fetchEmployees();
+
+    // 🔹 Recargar con el filtro actual
+    if (selectedArea !== "Todas") {
+      const team = teams.find((t) => t.name === selectedArea);
+      if (team) {
+        fetchEmployees({ teamId: team._id });
+      }
+    } else {
+      fetchEmployees();
+    }
   };
 
   return (
     <>
       <div className="encabezado">
         <h1 className="titulo">Gestión de Empleados</h1>
-        <div className="busqueda-bar" >
-          <div className="buscadora" >
+        <div className="busqueda-bar">
+          <div className="buscadora">
             <Search className="search-icon" />
             <input
               type="text"
@@ -80,6 +138,7 @@ const Empleados = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
           <button
             className="nuevo-empleado-btn-G"
             onClick={() => setShowNewEmpleado(true)}
@@ -87,6 +146,88 @@ const Empleados = () => {
             <CirclePlus size={20} />
             Nuevo Empleado
           </button>
+
+          {/* 🔹 Filtro de área */}
+          <div
+            className="dropdown"
+            ref={areaRef}
+            style={{ position: "relative" }}
+          >
+            <button
+              className="filter-button"
+              style={{
+                minWidth: "320px",
+                padding: "10px 16px",
+                background: "#f4f4f4",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "8px",
+                fontSize: "14px",
+                whiteSpace: "nowrap",
+              }}
+              onClick={() => setOpenDropdown(!openDropdown)}
+            >
+              {selectedArea} <ChevronDown size={16} />
+            </button>
+
+            {openDropdown && (
+              <div
+                className="dropdown-menu"
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 5px)",
+                  left: 0,
+                  background: "white",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  minWidth: "280px",
+                  maxHeight: "300px",
+                  overflowY: "auto",
+                  zIndex: 1000,
+                }}
+              >
+                <button
+                  onClick={() => handleSelectArea("Todas")}
+                  style={{
+                    width: "100%",
+                    padding: "10px 16px",
+                    border: "none",
+                    background:
+                      selectedArea === "Todas" ? "#e8f4ff" : "transparent",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontSize: "14px",
+                  }}
+                >
+                  Todas las áreas
+                </button>
+
+                {teams.map((area) => (
+                  <button
+                    key={area._id}
+                    onClick={() => handleSelectArea(area.name)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 16px",
+                      border: "none",
+                      background:
+                        selectedArea === area.name ? "#e8f4ff" : "transparent",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {area.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -100,19 +241,29 @@ const Empleados = () => {
                 name={empleado.names}
                 surnames={empleado.surnames}
                 photo={empleado.photo}
-                teamName={empleado.IdTeam ? getTeamName(empleado.IdTeam._id) : "Sin área"} 
+                teamName={
+                  empleado.IdTeam
+                    ? getTeamName(empleado.IdTeam._id)
+                    : "Sin área"
+                }
                 onClick={() => setSelectedEmpleado(empleado)}
               />
             ))
           ) : (
-            <p style={{ padding: "20px", color: "#888" }}>No se encontraron empleados.</p>
+            <p style={{ padding: "20px", color: "#888" }}>
+              {selectedArea !== "Todas"
+                ? `No se encontraron empleados en el área: ${selectedArea}`
+                : "No se encontraron empleados."}
+            </p>
           )}
         </div>
       </div>
 
       {showNewEmpleado && (
         <div
-          className={`employee-modal-overlay ${showNewEmpleado ? "active" : ""}`}
+          className={`employee-modal-overlay ${
+            showNewEmpleado ? "active" : ""
+          }`}
           onClick={() => setShowNewEmpleado(false)}
         >
           <div
@@ -123,7 +274,15 @@ const Empleados = () => {
             <ModalEmpleado
               tipo="empleado"
               onSaved={() => {
-                fetchEmployees();
+                // 🔹 Recargar con el filtro actual
+                if (selectedArea !== "Todas") {
+                  const team = teams.find((t) => t.name === selectedArea);
+                  if (team) {
+                    fetchEmployees({ teamId: team._id });
+                  }
+                } else {
+                  fetchEmployees();
+                }
                 setShowNewEmpleado(false);
               }}
               onClose={() => setShowNewEmpleado(false)}

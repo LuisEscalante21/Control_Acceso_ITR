@@ -8,6 +8,7 @@ import JustifyButton from "../../Tools/Buttons/JustifyButton";
 const AccessCard = ({
   name,
   avatar,
+  employeeType,
   timeLabel,
   time,
   tipoRegistro,
@@ -15,10 +16,48 @@ const AccessCard = ({
   isJustified,
   onJustifyClick,
 }) => {
-  const horaFormateada = new Date(time).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  /**
+   * Formatea la hora correctamente con AM/PM
+   * Solución al bug de AM/PM invertido
+   */
+  const formatearHora = (timestamp) => {
+    if (!timestamp) return "N/A";
+
+    try {
+      const fecha = new Date(timestamp);
+
+      // Verificar si la fecha es válida
+      if (isNaN(fecha.getTime())) {
+        console.error("Fecha inválida:", timestamp);
+        return "Hora inválida";
+      }
+
+      // Obtener horas y minutos
+      let horas = fecha.getHours();
+      const minutos = fecha.getMinutes();
+
+      // Determinar AM o PM
+      const periodo = horas >= 12 ? "PM" : "AM";
+
+      // Convertir a formato 12 horas
+      if (horas === 0) {
+        horas = 12; // Medianoche -> 12 AM
+      } else if (horas > 12) {
+        horas = horas - 12; // 13:00 -> 1 PM
+      }
+
+      // Formatear con ceros a la izquierda
+      const horasStr = horas.toString().padStart(2, "0");
+      const minutosStr = minutos.toString().padStart(2, "0");
+
+      return `${horasStr}:${minutosStr} ${periodo}`;
+    } catch (error) {
+      console.error("Error al formatear hora:", error);
+      return "Error en hora";
+    }
+  };
+
+  const horaFormateada = formatearHora(time);
 
   const icono =
     tipoRegistro === "entrada"
@@ -29,7 +68,7 @@ const AccessCard = ({
 
   return (
     <div className="access-card">
-      {/* Estado con puntito */}
+      {/* Estado con puntito (status dot) */}
       <span className={`status-dot ${isJustified ? "justified" : "pending"}`} />
 
       {/* Avatar */}
@@ -41,8 +80,13 @@ const AccessCard = ({
         )}
       </div>
 
-      {/* Nombre */}
-      <div className="access-name">{name || "Sin nombre"}</div>
+      {/* Nombre y tipo de empleado */}
+      <div className="access-name">
+        {name || "Sin nombre"}
+        {employeeType && (
+          <div className="access-employee-type">{employeeType}</div>
+        )}
+      </div>
 
       {/* Hora + icono */}
       <div className="access-time">
@@ -57,15 +101,18 @@ const AccessCard = ({
         <JustifyButton onClick={onJustifyClick} />
       )}
 
-      {/* Labels con íconos de estado */}
+      {/* Label de justificado (clickeable para ver detalles) */}
       {isJustified && (
         <span
           className="justified-label clickable"
-          onClick={() => onJustifyClick && onJustifyClick()} 
+          onClick={() => onJustifyClick && onJustifyClick()}
+          style={{ cursor: "pointer" }}
         >
           <CheckCircle size={16} className="icon-justified" /> Justificado
         </span>
       )}
+
+      {/* Label de pendiente (solo si muestra botón de justificar) */}
       {!isJustified && showJustifyButton && (
         <span className="pending-label">
           <Clock size={16} className="icon-pending" /> Pendiente

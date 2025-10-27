@@ -1,25 +1,64 @@
 import React from "react";
 import iconSalida from "../../../img/Salida_acceso.png";
 import iconEntrada from "../../../img/Entrada_acceso.png";
-import { UserCircle, CheckCircle2, Clock } from "lucide-react"; // Íconos para estado
+import { UserCircle, CheckCircle2, Clock } from "lucide-react";
 import "../../../components/styles/AccessCard.css";
 
 const AccessCard = ({
   name,
   avatar,
+  employeeType,
   timeLabel,
   time,
   tipoRegistro,
   isJustified = false,
-  justification = null, // información de la justificación
-  onViewJustification = null, // callback para abrir modal de ver justificación
-  showJustifyButton = false, // mostrar botón de justificar (coordinador)
-  onJustifyClick = null, // callback para abrir modal de justificar
+  justification = null,
+  onViewJustification = null,
+  showJustifyButton = false,
+  onJustifyClick = null,
 }) => {
-  const horaFormateada = new Date(time).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  /**
+   * Formatea la hora correctamente con AM/PM
+   * Solución al bug de AM/PM invertido
+   */
+  const formatearHora = (timestamp) => {
+    if (!timestamp) return "N/A";
+
+    try {
+      const fecha = new Date(timestamp);
+
+      // Verificar si la fecha es válida
+      if (isNaN(fecha.getTime())) {
+        console.error("Fecha inválida:", timestamp);
+        return "Hora inválida";
+      }
+
+      // Obtener horas y minutos
+      let horas = fecha.getHours();
+      const minutos = fecha.getMinutes();
+
+      // Determinar AM o PM
+      const periodo = horas >= 12 ? "PM" : "AM";
+
+      // Convertir a formato 12 horas
+      if (horas === 0) {
+        horas = 12; // Medianoche -> 12 AM
+      } else if (horas > 12) {
+        horas = horas - 12; // 13:00 -> 1 PM
+      }
+
+      // Formatear con ceros a la izquierda
+      const horasStr = horas.toString().padStart(2, "0");
+      const minutosStr = minutos.toString().padStart(2, "0");
+
+      return `${horasStr}:${minutosStr} ${periodo}`;
+    } catch (error) {
+      console.error("Error al formatear hora:", error);
+      return "Error en hora";
+    }
+  };
+
+  const horaFormateada = formatearHora(time);
 
   const icono =
     tipoRegistro === "entrada"
@@ -39,8 +78,13 @@ const AccessCard = ({
         )}
       </div>
 
-      {/* Nombre */}
-      <div className="access-name">{name || "Sin nombre"}</div>
+      {/* Nombre y tipo */}
+      <div className="access-name">
+        {name || "Sin nombre"}
+        {employeeType && (
+          <div className="access-employee-type">{employeeType}</div>
+        )}
+      </div>
 
       {/* Hora + icono */}
       <div className="access-time">
@@ -56,6 +100,7 @@ const AccessCard = ({
           <span
             className="justified-label clickable"
             onClick={() => onViewJustification && onViewJustification()}
+            style={{ cursor: "pointer" }}
           >
             <CheckCircle2 size={16} /> Justificado
           </span>
@@ -64,7 +109,6 @@ const AccessCard = ({
             <span className="pending-label">
               <Clock size={16} /> Pendiente
             </span>
-
             {showJustifyButton && (
               <button
                 type="button"

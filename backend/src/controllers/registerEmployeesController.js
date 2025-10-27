@@ -38,8 +38,18 @@ registerEmployeesController.register = async (req, res) => {
 
     // Validación básica - campos requeridos
     if (
-      !numEmpleado || !names || !surnames || !DUI || !birthday ||
-      !telephone || !email || !password || !hireDate || !IdTeam || !status || !address
+      !numEmpleado ||
+      !names ||
+      !surnames ||
+      !DUI ||
+      !birthday ||
+      !telephone ||
+      !email ||
+      !password ||
+      !hireDate ||
+      !IdTeam ||
+      !status ||
+      !address
     ) {
       return res.status(400).json({
         message: "Todos los campos son requeridos.",
@@ -76,19 +86,25 @@ registerEmployeesController.register = async (req, res) => {
     // Validar formato de teléfono (1234-5678)
     const phoneRegex = /^\d{4}-\d{4}$/;
     if (!phoneRegex.test(telephone.trim())) {
-      return res.status(400).json({ message: "Formato de teléfono inválido. Use ####-####." });
+      return res
+        .status(400)
+        .json({ message: "Formato de teléfono inválido. Use ####-####." });
     }
 
     // Validar formato de DUI (12345678-9)
     const duiRegex = /^\d{8}-\d$/;
     if (!duiRegex.test(DUI.trim())) {
-      return res.status(400).json({ message: "Formato de DUI inválido. Use ########-#." });
+      return res
+        .status(400)
+        .json({ message: "Formato de DUI inválido. Use ########-#." });
     }
 
     // Validar que la contraseña cumpla requisitos
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
     if (password.length < 8) {
-      return res.status(400).json({ message: "La contraseña debe tener mínimo 8 caracteres." });
+      return res
+        .status(400)
+        .json({ message: "La contraseña debe tener mínimo 8 caracteres." });
     }
     if (!passwordRegex.test(password)) {
       return res.status(400).json({
@@ -99,21 +115,26 @@ registerEmployeesController.register = async (req, res) => {
     // Validar fecha de nacimiento (no puede ser futura)
     const birthdayDate = new Date(birthday);
     if (birthdayDate > new Date()) {
-      return res.status(400).json({ message: "La fecha de nacimiento no puede ser futura." });
+      return res
+        .status(400)
+        .json({ message: "La fecha de nacimiento no puede ser futura." });
     }
 
     // Validar fecha de contratación (debe ser posterior a nacimiento)
     const hireDateObj = new Date(hireDate);
     if (hireDateObj <= birthdayDate) {
       return res.status(400).json({
-        message: "La fecha de contratación debe ser posterior a la fecha de nacimiento.",
+        message:
+          "La fecha de contratación debe ser posterior a la fecha de nacimiento.",
       });
     }
 
     // Verificar que el email no exista en ninguna colección
     const emailExists = await emailExistsInAnyCollection(emailTrimmed);
     if (emailExists) {
-      return res.status(400).json({ message: "El email ya existe en el sistema." });
+      return res
+        .status(400)
+        .json({ message: "El email ya existe en el sistema." });
     }
 
     // Verificar si el empleado ya existe por DUI
@@ -160,7 +181,7 @@ registerEmployeesController.register = async (req, res) => {
       password: passwordHash,
       hireDate: new Date(hireDate),
       IdTeam,
-      status: status === "activo" || status === true,
+      status: status === "activo" || status === "true" || status === true,
       address: address.trim(),
       photo: photoUrl,
     });
@@ -204,7 +225,7 @@ registerEmployeesController.register = async (req, res) => {
 
     // Manejo específico de errores de validación de Mongoose
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(err => err.message);
+      const messages = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({
         message: "Error de validación",
         errors: messages,
